@@ -16,10 +16,12 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -38,6 +40,9 @@ public class AssistantRun {
     public static final int MAX_USER_MESSAGES = 10;
 
     private static final String POSTING_REF_PREFIX = "p";
+    private static final Set<AssistantTool> VISIBLE_WORK = EnumSet.of(AssistantTool.START_COVER_LETTER,
+            AssistantTool.START_REPO_ANALYSIS, AssistantTool.FILL_POSTING_GAPS, AssistantTool.ASK_CARD_GAP,
+            AssistantTool.POLISH_COVER_LETTER);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,6 +61,12 @@ public class AssistantRun {
     private List<RepoLabel> repos;
 
     @JdbcTypeCode(SqlTypes.JSON)
+    private List<CardLabel> cards;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<LetterLabel> letters;
+
+    @JdbcTypeCode(SqlTypes.JSON)
     private List<RunItem> items;
 
     private String errorCode;
@@ -63,8 +74,9 @@ public class AssistantRun {
     private Instant createdAt;
     private Instant updatedAt;
 
-    /** repos 는 이름표(r1…)를 붙인 레포 목록으로, 만들 때 정하면 실행이 끝날 때까지 바뀌지 않는다 */
-    public static AssistantRun start(Long userId, String text, int stepLimit, List<RepoLabel> repos) {
+    /** repos·cards·letters 는 이름표(r1…·c1…·l1…)를 붙인 목록으로, 만들 때 정하면 실행이 끝날 때까지 바뀌지 않는다 */
+    public static AssistantRun start(Long userId, String text, int stepLimit, List<RepoLabel> repos,
+                                     List<CardLabel> cards, List<LetterLabel> letters) {
 
         AssistantRun run = new AssistantRun();
         Instant now = now();
@@ -73,6 +85,8 @@ public class AssistantRun {
         run.state = AssistantRunState.RUNNING;
         run.stepLimit = stepLimit;
         run.repos = new ArrayList<>(repos);
+        run.cards = new ArrayList<>(cards);
+        run.letters = new ArrayList<>(letters);
         run.items = new ArrayList<>(List.of(RunItem.user(1, text)));
         run.createdAt = now;
         run.updatedAt = now;
@@ -99,12 +113,26 @@ public class AssistantRun {
 
     }
 
-    /** 자소서나 레포 정리를 시작한 걸음이 성공했으면 true 로, 그 결과로 가는 길이 이미 줄에 남아 있다는 뜻이다 */
+    // 이름표를 두기 전에 만든 실행은 cards·letters 가 null 이다
+    public Optional<CardLabel> cardOf(String ref) {
+
+        return cards == null ? Optional.empty()
+                : cards.stream().filter(card -> ref != null && ref.equals(card.ref())).findFirst();
+
+    }
+
+    public Optional<LetterLabel> letterOf(String ref) {
+
+        return letters == null ? Optional.empty()
+                : letters.stream().filter(letter -> ref != null && ref.equals(letter.ref())).findFirst();
+
+    }
+
+    /** 사용자에게 보이는 일(자소서·레포 정리·채우기·카드 질문·첨삭)을 시작한 걸음이 성공했으면 true 로, 그 결과로 가는 길이 이미 줄에 남아 있다는 뜻이다 */
     public boolean hasSucceededStart() {
 
         return items.stream().anyMatch(item -> item.kind() == RunItem.Kind.STEP && Boolean.TRUE.equals(item.ok())
-                && (item.tool() == AssistantTool.START_COVER_LETTER
-                || item.tool() == AssistantTool.START_REPO_ANALYSIS));
+                && VISIBLE_WORK.contains(item.tool()));
 
     }
 

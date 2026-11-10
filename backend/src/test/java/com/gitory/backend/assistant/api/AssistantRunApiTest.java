@@ -159,8 +159,8 @@ class AssistantRunApiTest {
     void addsMessageOnlyWhileWaitingForUser() throws Exception {
 
         AssistantRun waiting = waitingRun(myUserId, 1);
-        AssistantRun running = runs.save(AssistantRun.start(myUserId, "공고 찾아 줘", 6, List.of()));
-        AssistantRun done = runs.save(finished(AssistantRun.start(myUserId, "공고 찾아 줘", 6, List.of())));
+        AssistantRun running = runs.save(AssistantRun.start(myUserId, "공고 찾아 줘", 6, List.of(), List.of(), List.of()));
+        AssistantRun done = runs.save(finished(AssistantRun.start(myUserId, "공고 찾아 줘", 6, List.of(), List.of(), List.of())));
 
         say(waiting.getPublicId(), json("  지원 동기를 적어 주세요  "))
                 .andExpect(status().isOk())
@@ -206,7 +206,9 @@ class AssistantRunApiTest {
 
         UUID postingId = UUID.randomUUID();
         UUID coverLetterId = UUID.randomUUID();
-        AssistantRun running = runs.save(AssistantRun.start(myUserId, "토스 공고에 맞춰 자소서 써 줘", 6, List.of()));
+        UUID cardId = UUID.randomUUID();
+        UUID letterId = UUID.randomUUID();
+        AssistantRun running = runs.save(AssistantRun.start(myUserId, "토스 공고에 맞춰 자소서 써 줘", 6, List.of(), List.of(), List.of()));
         jdbc.update("UPDATE assistant_run SET items = CAST(? AS jsonb), steps_used = 3 WHERE id = ?", """
                 [{"seq":1,"kind":"USER","text":"토스 공고에 맞춰 자소서 써 줘"},
                  {"seq":2,"kind":"STEP","tool":"FIND_POSTINGS","ok":true,"find":{"company":"토스","keywords":[]},
@@ -216,9 +218,16 @@ class AssistantRunApiTest {
                   "posting":{"ref":"p1","postingId":"%s","company":"토스","title":"백엔드","daysLeft":2,
                              "requiredMet":null,"requiredTotal":null}},
                  {"seq":4,"kind":"STEP","tool":"START_COVER_LETTER","postingRef":"p1","ok":true,"questionCount":2,
-                  "coverLetterId":"%s"}]
-                """.formatted(postingId, postingId, coverLetterId), running.getId());
-        AssistantRun done = runs.save(finished(AssistantRun.start(myUserId, "공고 찾아 줘", 6, List.of())));
+                  "coverLetterId":"%s"},
+                 {"seq":5,"kind":"STEP","tool":"FILL_POSTING_GAPS","postingRef":"p1","ok":true,"gapsFilled":2,
+                  "posting":{"ref":"p1","postingId":"%s","company":"토스","title":"백엔드","daysLeft":2,
+                             "requiredMet":3,"requiredTotal":3}},
+                 {"seq":6,"kind":"STEP","tool":"ASK_CARD_GAP","cardRef":"c1","ok":true,"cardId":"%s",
+                  "cardTitle":"결제 서버 개선","question":{"field":"R","text":"결과는 어땠나요?"}},
+                 {"seq":7,"kind":"STEP","tool":"POLISH_COVER_LETTER","letterRef":"l1","ok":true,"letterId":"%s",
+                  "polished":[{"seq":1,"points":3},{"seq":2,"points":2}],"remainingQuestions":1}]
+                """.formatted(postingId, postingId, coverLetterId, postingId, cardId, letterId), running.getId());
+        AssistantRun done = runs.save(finished(AssistantRun.start(myUserId, "공고 찾아 줘", 6, List.of(), List.of(), List.of())));
 
         read(running.getPublicId())
                 .andExpect(status().isOk())
@@ -233,7 +242,19 @@ class AssistantRunApiTest {
                 .andExpect(jsonPath("$.data.items[2].posting.ref").doesNotExist())
                 .andExpect(jsonPath("$.data.items[2].ok").doesNotExist())
                 .andExpect(jsonPath("$.data.items[3].coverLetterId").value(coverLetterId.toString()))
-                .andExpect(jsonPath("$.data.items[3].postingRef").doesNotExist());
+                .andExpect(jsonPath("$.data.items[3].postingRef").doesNotExist())
+                .andExpect(jsonPath("$.data.items[4].gapsFilled").value(2))
+                .andExpect(jsonPath("$.data.items[4].posting.requiredMet").value(3))
+                .andExpect(jsonPath("$.data.items[4].postingRef").doesNotExist())
+                .andExpect(jsonPath("$.data.items[5].cardId").value(cardId.toString()))
+                .andExpect(jsonPath("$.data.items[5].cardTitle").value("결제 서버 개선"))
+                .andExpect(jsonPath("$.data.items[5].question.field").value("R"))
+                .andExpect(jsonPath("$.data.items[5].question.text").value("결과는 어땠나요?"))
+                .andExpect(jsonPath("$.data.items[5].cardRef").doesNotExist())
+                .andExpect(jsonPath("$.data.items[6].letterId").value(letterId.toString()))
+                .andExpect(jsonPath("$.data.items[6].polished[1].points").value(2))
+                .andExpect(jsonPath("$.data.items[6].remainingQuestions").value(1))
+                .andExpect(jsonPath("$.data.items[6].letterRef").doesNotExist());
         read(done.getPublicId())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.state").value("DONE"))
@@ -243,7 +264,7 @@ class AssistantRunApiTest {
 
     private AssistantRun waitingRun(Long userId, int userMessages) {
 
-        AssistantRun run = AssistantRun.start(userId, "첫 말", 6, List.of());
+        AssistantRun run = AssistantRun.start(userId, "첫 말", 6, List.of(), List.of(), List.of());
         for (int count = 1; count < userMessages; count++) {
             run.ask("더 알려 주세요", "FREE", List.of());
             run.addUserMessage("답 " + count);

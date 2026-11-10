@@ -14,9 +14,9 @@ class AssistantRunTest {
     @DisplayName("끝났거나 실패한 실행은 다시 바뀌지 않는다")
     void finishedOrFailedRunNeverChangesAgain() {
 
-        AssistantRun done = AssistantRun.start(1L, "공고 찾아 줘", 6, List.of());
+        AssistantRun done = AssistantRun.start(1L, "공고 찾아 줘", 6, List.of(), List.of(), List.of());
         done.finish("찾았어요.");
-        AssistantRun failed = AssistantRun.start(1L, "공고 찾아 줘", 6, List.of());
+        AssistantRun failed = AssistantRun.start(1L, "공고 찾아 줘", 6, List.of(), List.of(), List.of());
         failed.fail(AssistantRunError.AI_UNAVAILABLE);
 
         for (AssistantRun run : List.of(done, failed)) {

@@ -3,8 +3,15 @@ package com.gitory.backend.assistant.domain;
 import com.gitory.backend.assistant.infra.AssistantRunRepository;
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.audit.domain.AuditLog;
+import com.gitory.backend.card.domain.MatchingCard;
+import com.gitory.backend.card.domain.MatchingCardLabel;
+import com.gitory.backend.card.domain.MatchingCardReader;
+import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.common.infra.ratelimit.RateLimitedAction;
 import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
+import com.gitory.backend.coverletter.domain.CoverLetterQueryService;
+import com.gitory.backend.coverletter.domain.CoverLetterStage;
+import com.gitory.backend.coverletter.domain.CoverLetterSummary;
 import com.gitory.backend.ingest.domain.RepositoryListService;
 import com.gitory.backend.ingest.domain.RepositorySummary;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +23,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -29,22 +37,34 @@ public class AssistantRunService {
 
     private static final int TEXT_MAX_LENGTH = 500;
     private static final int MAX_REPOS = 30;
+    private static final int MAX_CARDS = 10;
+    private static final int MAX_LETTERS = 10;
+    private static final int CARD_TITLE_MAX_LENGTH = 256;
+    private static final int JOB_ROLE_MAX_LENGTH = 100;
+    private static final int COMPANY_MAX_LENGTH = 100;
     private static final String REPO_REF_PREFIX = "r";
+    private static final String CARD_REF_PREFIX = "c";
+    private static final String LETTER_REF_PREFIX = "l";
 
     private final AssistantRunRepository runs;
     private final AssistantProperties properties;
     private final RepositoryListService repositories;
+    private final MatchingCardReader matchingCards;
+    private final CoverLetterQueryService coverLetters;
     private final UserRateLimiter rateLimiter;
     private final AuditLog auditLog;
 
-    /** 입력 검사를 통과한 뒤에만 호출 제한을 세고, 저장한 레포 중 최근 것 30개에 이름표를 붙여 실행에 고정한다 */
+    /**
+     * 입력 검사를 통과한 뒤에만 호출 제한을 세고, 저장한 레포 중 최근 것 30개와 빈 칸이 있는 확정 카드·초안이 끝난 자소서 각각 최근 것 10개에
+     * 이름표를 붙여 실행에 고정한다
+     */
     public AssistantRunView start(Long userId, String login, String text) {
 
         String said = checkedText(text);
         rateLimiter.acquire(RateLimitedAction.ASSISTANT, userId, 1);
 
         return AssistantRunView.of(runs.save(AssistantRun.start(userId, said, properties.stepLimit(),
-                repoLabels(userId, login))));
+                repoLabels(userId, login), cardLabels(userId), letterLabels(userId))));
 
     }
 
@@ -102,6 +122,67 @@ public class AssistantRunService {
         }
 
         return labels;
+
+    }
+
+    // AI 가 카드 빈 칸을 묻는 도구에 쓰므로 S·T·A·R 중 빈 칸이 하나라도 있는 확정 카드만 최근에 만든 순서로 붙인다
+    private List<CardLabel> cardLabels(Long userId) {
+
+        List<MatchingCard> blank = matchingCards.confirmedOf(userId).reversed().stream()
+                .filter(card -> !missingOf(card).isEmpty())
+                .limit(MAX_CARDS)
+                .toList();
+        Map<Long, MatchingCardLabel> labels = matchingCards.labelsOf(blank.stream().map(MatchingCard::id).toList());
+        List<CardLabel> cards = new ArrayList<>();
+        for (MatchingCard card : blank) {
+            MatchingCardLabel label = labels.get(card.id());
+            if (label != null) {
+                cards.add(new CardLabel(CARD_REF_PREFIX + (cards.size() + 1), label.publicId(),
+                        AssistantTools.clip(label.title(), CARD_TITLE_MAX_LENGTH), missingOf(card)));
+            }
+        }
+
+        return cards;
+
+    }
+
+    private static List<StarField> missingOf(MatchingCard card) {
+
+        List<StarField> missing = new ArrayList<>();
+        if (card.situation() == null) {
+            missing.add(StarField.S);
+        }
+        if (card.task() == null) {
+            missing.add(StarField.T);
+        }
+        if (card.action() == null) {
+            missing.add(StarField.A);
+        }
+        if (card.result() == null) {
+            missing.add(StarField.R);
+        }
+
+        return missing;
+
+    }
+
+    private List<LetterLabel> letterLabels(Long userId) {
+
+        List<CoverLetterSummary> drafted = coverLetters.list(userId).stream()
+                .filter(letter -> letter.stage() == CoverLetterStage.DRAFTED)
+                .limit(MAX_LETTERS)
+                .toList();
+        List<LetterLabel> letters = new ArrayList<>();
+        for (int index = 0; index < drafted.size(); index++) {
+            CoverLetterSummary letter = drafted.get(index);
+            letters.add(new LetterLabel(LETTER_REF_PREFIX + (index + 1), letter.id(),
+                    AssistantTools.clip(letter.jobRole(), JOB_ROLE_MAX_LENGTH),
+                    letter.posting() == null ? null
+                            : AssistantTools.clip(letter.posting().company(), COMPANY_MAX_LENGTH),
+                    letter.questionCount()));
+        }
+
+        return letters;
 
     }
 

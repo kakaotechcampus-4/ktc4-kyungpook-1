@@ -43,6 +43,27 @@ describe('로그인 첫 화면', () => {
     expect(morph().querySelector('.landing-morph__commit')).toHaveTextContent('a3f21c9 feat: 결제 실패 재시도 큐 추가');
   });
 
+  it('다른 탭에 갔다 오면 밀린 타이머를 몰아 돌리지 않고 그 커밋의 처음부터 다시 돈다', () => {
+    vi.useFakeTimers();
+    mount();
+    tick(2600);
+    expect(morph()).toHaveAttribute('data-phase', 'sentence');
+    try {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+      act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+      tick(20_000);
+      expect(morph()).toHaveAttribute('data-phase', 'sentence');
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+      act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+    } finally {
+      delete (document as { hidden?: boolean }).hidden;
+    }
+    expect(morph()).toHaveAttribute('data-phase', 'commit');
+    expect(morph().querySelector('.landing-morph__commit')).toHaveTextContent('9c02de1');
+    tick(2600);
+    expect(morph()).toHaveAttribute('data-phase', 'sentence');
+  });
+
   it('첫 화면 아래에 실제 홈 화면 그림을 설명과 함께 둔다', () => {
     mount();
     const shot = screen.getByRole('img', { name: /Gitory 홈 화면/ });
@@ -71,7 +92,7 @@ describe('로그인 첫 화면', () => {
     const closing = screen.getByRole('heading', { level: 2, name: '지금 레포 하나로 시작해 보세요' }).closest('section')!;
     expect(within(closing).getByRole('button', { name: /시작|체험/ })).toBeInTheDocument();
     expect(within(closing).queryByRole('button', { name: /둘러보기/ })).toBeNull();
-    const tour = screen.getByRole('button', { name: '둘러보기' });
+    const tour = screen.getByRole('button', { name: '샘플 데이터로 둘러보기' });
     expect(tour.closest('.landing__hero')).not.toBeNull();
     fireEvent.click(tour);
     expect(startSampleTour).toHaveBeenCalledTimes(1);

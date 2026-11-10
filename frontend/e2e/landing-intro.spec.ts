@@ -84,9 +84,10 @@ test('resizing mid-flight safely reveals the final layout', async ({ page }) => 
   await expect(page.locator('.landing__hero')).not.toHaveAttribute('inert');
 });
 
-test('skipping ends only the current intro and refresh replays it', async ({ page }) => {
+test('Esc ends only the current intro and refresh replays it', async ({ page }) => {
   await page.goto('/login');
-  await page.getByRole('button', { name: /건너뛰기/ }).click();
+  await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'playing');
+  await page.keyboard.press('Escape');
   await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'done');
   await page.reload();
   await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'playing');

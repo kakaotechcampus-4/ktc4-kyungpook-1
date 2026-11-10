@@ -11,8 +11,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections import Counter
+from datetime import datetime
 from pathlib import Path
+
+_AI_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(_AI_ROOT))
+
+from evals.common import llm_harness  # noqa: E402
 
 
 def main() -> None:
@@ -36,6 +43,13 @@ def main() -> None:
         by_category[runs[c]["category"]] += 1
         hit[runs[c]["category"]] += runs[c]["decision"] == gold[c]["gold"]
     print("분야별 일치:", ", ".join(f"{k} {hit[k]}/{v}" for k, v in by_category.items()))
+    llm_harness.record_summary(
+        "gap_fill", args.results.stem,
+        {"conditions": len(shared), "agree": agree, "missed": len(missed), "wasted": len(wasted),
+         "ai_search": sum(runs[c]["decision"] == "SEARCH" for c in shared),
+         "gold_search": sum(gold[c]["gold"] == "SEARCH" for c in shared),
+         "agree_by_category": {k: f"{hit[k]}/{v}" for k, v in by_category.items()}},
+        sample="찾아볼지 첫 판단 vs 가린 정답", measured_at=datetime.fromtimestamp(args.results.stat().st_mtime))
     for label, ids in (("놓침", missed), ("헛걸음", wasted)):
         for c in ids:
             print(f"[{label}] {runs[c]['text'][:70]} | AI: {runs[c]['reason']} | 정답: {gold[c]['why']}")

@@ -11,7 +11,6 @@ import { LandingPage } from '@/features/auth/LandingPage';
 import { HomePage } from '@/features/home/HomePage';
 import { AnalyzePage } from '@/features/repos/AnalyzePage';
 import { ReposPage } from '@/features/repos/ReposPage';
-import { LandingBrand } from '@/features/auth/LandingBrand';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 
@@ -221,13 +220,6 @@ describe('로그인 화면 (#520 L-01 · L-03)', () => {
     landing('/login?error=access_denied');
     expect(screen.getByRole('status')).toHaveTextContent('GitHub 연결을 취소했어요. 준비되면 다시 시작해 주세요.');
     expect(screen.queryByText(/취소하셨네요/)).not.toBeInTheDocument();
-  });
-
-  it('건너뛰기 버튼에 글자 화살표가 없다', () => {
-    // jsdom 에는 matchMedia 가 없어 인트로가 돌지 않는다 — 인트로가 도는 상태(active)로 브랜드 영역만 그린다
-    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }));
-    render(<LandingBrand active onComplete={() => {}} />);
-    expect(screen.getByRole('button', { name: '건너뛰기' }).textContent).toBe('건너뛰기');
   });
 });
 

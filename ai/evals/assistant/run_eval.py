@@ -261,6 +261,7 @@ def main() -> int:
     parser.add_argument("--max-won", type=float, default=300.0, help="추정 비용이 이 값을 넘으면 남은 사례를 부르지 않는다")
     parser.add_argument("--only", help="이 사례들만 돌린다(이름을 쉼표로 이음)")
     parser.add_argument("--dry-run", action="store_true", help="LLM 을 부르지 않고 사례와 요청 검증만 본다")
+    parser.add_argument("--label", help="results/history 에 남길 요약 파일의 이름표(기본: --output 파일 이름)")
     args = parser.parse_args()
 
     cases = json.loads(CASES_PATH.read_text(encoding="utf-8"))
@@ -290,6 +291,12 @@ def main() -> int:
         "prompt_sha1": hashlib.sha1(ASSISTANT_PROMPT.encode("utf-8")).hexdigest()[:10],
         "totals": summary, "cases": entries,
     }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    from evals.common import llm_harness  # noqa: E402
+
+    llm_harness.record_summary(
+        "assistant", args.label or output.stem, summary, sample=f"사례 {len(cases)}개 x {args.runs}번",
+        model=configured_model(TASK), calls=summary["calls"], spend_won=summary["cost_krw"])
 
     print(render_table(entries))
     print(json.dumps(summary, ensure_ascii=False, indent=2))

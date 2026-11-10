@@ -16,7 +16,10 @@ LLM 게이트웨이가 모델마다 주소(<서버>/<ID>/v1)를 따로 주면, �
 from __future__ import annotations
 
 import json
+import math
 import os
+import re
+import subprocess
 import sys
 import threading
 import time
@@ -227,3 +230,63 @@ def install() -> None:
         return response
 
     httpx.Client.send = send
+
+
+HISTORY_DIR = _EVALS_ROOT / "results" / "history"
+BACKFILL_NOTE = "원본 결과 파일에서 뒤늦게 만든 요약 — date 는 원본 파일 시각, git_sha 는 알 수 없어 비움"
+_MAX_TEXT = 200
+
+
+def _clean(value):
+    """숫자·짧은 글·목록·사전만 남긴다. 모델이 쓴 긴 글과 비밀값·이메일이 요약 파일에 새지 않게 하려는 것이다."""
+    if value is None or isinstance(value, (bool, int)):
+        return value
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, str):
+        if len(value) > _MAX_TEXT:
+            return None
+        try:
+            from services.secret_redaction import mask_emails, redact_secrets
+        except ImportError:
+            # 가림 도구가 없는 채로 글을 그대로 쓰면 비밀값이 샐 수 있어 글을 버린다
+            return None
+        return mask_emails(redact_secrets(value))
+    if isinstance(value, (list, tuple)):
+        return [item for item in map(_clean, value) if item is not None]
+    if isinstance(value, dict):
+        cleaned = {key: _clean(item) for key, item in value.items() if isinstance(key, str)}
+        return {key: item for key, item in cleaned.items() if item is not None}
+    return None
+
+
+def _slug(text: str) -> str:
+    return re.sub(r"[^a-z0-9._-]+", "-", text.lower()).strip("-") or "x"
+
+
+def _git_sha() -> str:
+    try:
+        done = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=_EVALS_ROOT, capture_output=True,
+                              text=True, timeout=10)
+        return done.stdout.strip() if done.returncode == 0 and done.stdout.strip() else "unknown"
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+
+
+def record_summary(eval_name: str, label: str, metrics: dict, *, sample: str | None = None, model: str | None = None,
+                   calls: int | None = None, spend_won: float | None = None, measured_at: datetime | None = None,
+                   note: str | None = None) -> Path:
+    """측정 요약을 날짜·평가·이름이 든 파일로 남긴다. 같은 날 같은 측정을 다시 하면 그 파일을 덮어쓴다."""
+    # GITORY_EVAL_BACKFILL=1 이면 옛 원본에서 뒤늦게 만든 요약이라 측정 때의 커밋을 알 수 없다
+    backfill = os.getenv("GITORY_EVAL_BACKFILL") == "1"
+    when = measured_at or datetime.now()
+    HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+    path = HISTORY_DIR / f"{when:%Y-%m-%d}-{_slug(eval_name)}-{_slug(label)}.json"
+    body = {
+        "date": f"{when:%Y-%m-%d}", "measured_at": when.isoformat(timespec="seconds"), "eval": eval_name,
+        "label": label, "sample": _clean(sample), "model": _clean(model), "git_sha": None if backfill else _git_sha(), "calls": calls,
+        "spend_won": None if spend_won is None else round(spend_won, 2), "metrics": _clean(metrics),
+        "note": BACKFILL_NOTE if backfill else _clean(note),
+    }
+    path.write_text(json.dumps(body, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n")
+    return path

@@ -14,11 +14,15 @@ import api.assistant as assistant_api
 from main import app
 from schemas.assistant import AssistantStepRequest
 from services.assistant_step import (
+    ASK_DEFAULT_OR_PASTE_POSTING_SAY,
+    ASK_DEFAULT_OR_PASTE_SAY,
     ASSISTANT_PROMPT,
     BROKEN_ASK_SAY,
     MATCH_FIRST_SAY,
     NEED_QUESTIONS_SAY,
     OFF_TOPIC_SAY,
+    OPTION_DEFAULT_QUESTIONS,
+    OPTION_PASTE_QUESTIONS,
     OUT_OF_STEPS_SAY,
     REPEATED_SAY,
     WHICH_CARD_SAY,
@@ -80,8 +84,8 @@ class QueuedClient:
 
 def choice(action: str = "CALL_TOOL", **fields: Any) -> StepChoice:
     base: dict[str, Any] = {"action": action, "tool": None, "find": None, "posting_ref": None, "repo_ref": None,
-                            "card_ref": None, "letter_ref": None, "job_role": None, "questions": [], "say": None,
-                            "ask_kind": None, "options": []}
+                            "card_ref": None, "letter_ref": None, "job_role": None, "questions": [],
+                            "default_questions": False, "say": None, "ask_kind": None, "options": []}
     return StepChoice.model_validate(base | fields)
 
 
@@ -152,8 +156,8 @@ def body(*texts: str, steps: Optional[list[dict]] = None, steps_left: int = 4, *
 
 def step(**fields: Any) -> dict[str, Any]:
     base: dict[str, Any] = {"action": "FINISH", "tool": None, "find": None, "posting_ref": None, "repo_ref": None,
-                            "card_ref": None, "letter_ref": None, "job_role": None, "questions": [], "say": None,
-                            "ask_kind": None, "options": []}
+                            "card_ref": None, "letter_ref": None, "job_role": None, "questions": [],
+                            "default_questions": False, "say": None, "ask_kind": None, "options": []}
     return base | fields
 
 
@@ -353,26 +357,102 @@ def test_a_question_the_user_did_not_write_is_asked_again_once(monkeypatch: pyte
 
 
 def test_questions_still_invented_after_the_retry_become_an_ask_for_questions(monkeypatch: pytest.MonkeyPatch) -> None:
-    """다시 물어도 지어낸 문항이 있으면 문항을 붙여 넣게 하는 정해 둔 질문(QUESTIONS)으로 바꾼다."""
+    """문항 붙여 넣기를 골랐는데 다시 물어도 지어낸 문항이 있으면 문항을 붙여 넣게 하는 정해 둔 질문(QUESTIONS)으로 바꾼다."""
     invented = cover_call("입사 후 포부를 쓰세요")
     client = QueuedClient(invented, invented)
 
-    result = post(monkeypatch, client, body())
+    result = post(monkeypatch, client, body(GOAL, OPTION_PASTE_QUESTIONS))
 
     assert result["data"] == step(action="ASK_USER", say=NEED_QUESTIONS_SAY, ask_kind="QUESTIONS")
     assert result["meta"]["ended_by"] == "FALLBACK"
     assert len(client.calls) == 2
 
 
-def test_cover_letter_without_questions_asks_for_them_without_asking_the_model_again(
+def test_cover_letter_without_questions_or_a_choice_asks_which_way_without_asking_the_model_again(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """문항 없이 자소서를 시작하려 하면 다시 묻지 않고 바로 문항을 붙여 넣게 하는 질문(QUESTIONS)으로 바꾼다."""
+    """문항 없이 자소서를 시작하려 하고 아직 고르지 않았으면 다시 묻지 않고 두 선택지(CHOICE)를 보여 준다."""
     client = QueuedClient(cover_call())
 
     result = post(monkeypatch, client, body("토스 자소서 써 줘"))
 
-    assert result["data"] == step(action="ASK_USER", say=NEED_QUESTIONS_SAY, ask_kind="QUESTIONS")
+    assert result["data"] == step(
+        action="ASK_USER", ask_kind="CHOICE", options=[OPTION_DEFAULT_QUESTIONS, OPTION_PASTE_QUESTIONS],
+        say=ASK_DEFAULT_OR_PASTE_POSTING_SAY.format(company="토스"))
     assert len(client.calls) == 1
+
+
+def test_choice_ask_without_a_posting_leaves_out_the_company(monkeypatch: pytest.MonkeyPatch) -> None:
+    """공고가 없는 실행의 선택 질문은 회사 이름 없는 문장을 쓴다."""
+    client = QueuedClient(cover_call(posting_ref=None, job_role="백엔드 개발자"))
+
+    result = post(monkeypatch, client, body("자소서 써 줘", steps=[]))
+
+    assert result["data"]["say"] == ASK_DEFAULT_OR_PASTE_SAY
+    assert result["data"]["options"] == [OPTION_DEFAULT_QUESTIONS, OPTION_PASTE_QUESTIONS]
+
+
+def test_choosing_default_questions_starts_the_letter_with_them(monkeypatch: pytest.MonkeyPatch) -> None:
+    """자주 나오는 문항으로 쓰기를 골랐으면 문항 없이 default_questions 를 켠 자소서 시작을 돌려준다."""
+    client = QueuedClient(cover_call())
+
+    result = post(monkeypatch, client, body("토스 자소서 써 줘", OPTION_DEFAULT_QUESTIONS))
+
+    assert result["data"] == step(action="CALL_TOOL", tool="START_COVER_LETTER", posting_ref="p1",
+                                  default_questions=True)
+    assert result["meta"]["ended_by"] == "COMPLETED"
+
+
+def test_choosing_to_paste_questions_asks_for_them(monkeypatch: pytest.MonkeyPatch) -> None:
+    """문항 붙여 넣기를 골랐으면 문항을 붙여 넣게 하는 질문(QUESTIONS)을 한다."""
+    client = QueuedClient(cover_call())
+
+    result = post(monkeypatch, client, body("토스 자소서 써 줘", OPTION_PASTE_QUESTIONS))
+
+    assert result["data"] == step(action="ASK_USER", say=NEED_QUESTIONS_SAY, ask_kind="QUESTIONS")
+
+
+def test_a_questions_ask_before_any_choice_becomes_the_choice_ask(monkeypatch: pytest.MonkeyPatch) -> None:
+    """모델이 고르기 전에 문항을 붙여 넣으라고 물으면 두 선택지를 보여 주는 질문으로 바꾼다."""
+    client = QueuedClient(ask("문항을 붙여 넣어 주세요.", "QUESTIONS"))
+
+    result = post(monkeypatch, client, body("토스 자소서 써 줘"))
+
+    assert result["data"]["ask_kind"] == "CHOICE"
+    assert result["data"]["options"] == [OPTION_DEFAULT_QUESTIONS, OPTION_PASTE_QUESTIONS]
+
+
+def test_a_questions_ask_after_choosing_to_paste_is_kept(monkeypatch: pytest.MonkeyPatch) -> None:
+    """문항 붙여 넣기를 고른 뒤의 QUESTIONS 질문은 그대로 둔다."""
+    client = QueuedClient(ask("문항을 붙여 넣어 주세요.", "QUESTIONS"))
+
+    result = post(monkeypatch, client, body("토스 자소서 써 줘", OPTION_PASTE_QUESTIONS))
+
+    assert result["data"] == step(action="ASK_USER", say="문항을 붙여 넣어 주세요.", ask_kind="QUESTIONS")
+
+
+def test_invented_questions_after_choosing_default_questions_become_the_default_step(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """자주 나오는 문항을 골랐는데 모델이 문항을 지어내면 그 문항을 버리고 default_questions 단계로 바꾼다."""
+    invented = cover_call("입사 후 포부를 쓰세요")
+    client = QueuedClient(invented, invented)
+
+    result = post(monkeypatch, client, body("토스 자소서 써 줘", OPTION_DEFAULT_QUESTIONS))
+
+    assert result["data"] == step(action="CALL_TOOL", tool="START_COVER_LETTER", posting_ref="p1",
+                                  default_questions=True)
+    assert len(client.calls) == 2
+
+
+def test_default_questions_together_with_questions_is_asked_again_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """default_questions 와 문항을 같이 넘기면 틀린 답으로 보고 한 번 더 물어 맞는 답을 쓴다."""
+    both = cover_call(QUESTION_1).model_copy(update={"default_questions": True})
+    client = QueuedClient(both, cover_call(QUESTION_1))
+
+    result = post(monkeypatch, client, body())
+
+    assert result["data"]["default_questions"] is False
+    assert [question["text"] for question in result["data"]["questions"]] == [QUESTION_1]
+    assert len(client.calls) == 2
 
 
 def test_char_limit_outside_the_contract_range_is_dropped(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -488,7 +568,8 @@ def test_say_that_stays_wrong_becomes_a_fixed_sentence(
 
 def test_fixed_sentences_obey_the_say_rules() -> None:
     """정해 둔 문장은 모두 say 규칙(200자 안, 주소·이메일 없음)을 지킨다."""
-    sentences = [OFF_TOPIC_SAY, OUT_OF_STEPS_SAY, NEED_QUESTIONS_SAY, WHICH_POSTING_SAY, WHICH_REPO_SAY, WHICH_CARD_SAY,
+    sentences = [OFF_TOPIC_SAY, OUT_OF_STEPS_SAY, NEED_QUESTIONS_SAY, ASK_DEFAULT_OR_PASTE_SAY,
+                 ASK_DEFAULT_OR_PASTE_POSTING_SAY.format(company="토스"), WHICH_POSTING_SAY, WHICH_REPO_SAY, WHICH_CARD_SAY,
                  WHICH_LETTER_SAY, MATCH_FIRST_SAY, REPEATED_SAY, BROKEN_ASK_SAY]
 
     assert all(_say_ok(sentence) for sentence in sentences)

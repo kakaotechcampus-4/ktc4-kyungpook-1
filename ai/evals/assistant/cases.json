@@ -493,7 +493,7 @@
     ],
     "expect": {
       "action": "ASK_USER",
-      "ask_kind": "QUESTIONS"
+      "ask_kind": "CHOICE"
     }
   },
   {
@@ -526,7 +526,7 @@
     ],
     "expect": {
       "action": "ASK_USER",
-      "ask_kind": "QUESTIONS"
+      "ask_kind": "CHOICE"
     }
   },
   {
@@ -537,7 +537,7 @@
     ],
     "expect": {
       "action": "ASK_USER",
-      "ask_kind": "QUESTIONS"
+      "ask_kind": "CHOICE"
     }
   },
   {
@@ -1326,6 +1326,107 @@
     ],
     "expect": {
       "action": "FINISH"
+    }
+  },
+  {
+    "name": "cover-default-choice",
+    "kind": "자소서 문항 없음",
+    "messages": [
+      "토스 백엔드 공고에 맞춰서 자소서 써줘"
+    ],
+    "steps": [
+      {
+        "seq": 1,
+        "tool": "FIND_POSTINGS",
+        "ok": true,
+        "find": {
+          "company": "토스",
+          "keywords": []
+        },
+        "postings": [
+          {
+            "ref": "p1",
+            "company": "토스",
+            "title": "Server Developer",
+            "days_left": 12,
+            "required_met": 3,
+            "required_total": 4
+          }
+        ],
+        "total_found": 1
+      }
+    ],
+    "expect": {
+      "action": "ASK_USER",
+      "ask_kind": "CHOICE"
+    }
+  },
+  {
+    "name": "cover-default-chosen",
+    "kind": "자소서 문항 없음",
+    "messages": [
+      "토스 백엔드 공고에 맞춰서 자소서 써줘",
+      "자주 나오는 문항으로 쓰기"
+    ],
+    "steps": [
+      {
+        "seq": 1,
+        "tool": "FIND_POSTINGS",
+        "ok": true,
+        "find": {
+          "company": "토스",
+          "keywords": []
+        },
+        "postings": [
+          {
+            "ref": "p1",
+            "company": "토스",
+            "title": "Server Developer",
+            "days_left": 12,
+            "required_met": 3,
+            "required_total": 4
+          }
+        ],
+        "total_found": 1
+      }
+    ],
+    "expect": {
+      "action": "CALL_TOOL",
+      "tool": "START_COVER_LETTER"
+    }
+  },
+  {
+    "name": "cover-paste-chosen",
+    "kind": "자소서 문항 없음",
+    "messages": [
+      "토스 백엔드 공고에 맞춰서 자소서 써줘",
+      "문항 붙여 넣기"
+    ],
+    "steps": [
+      {
+        "seq": 1,
+        "tool": "FIND_POSTINGS",
+        "ok": true,
+        "find": {
+          "company": "토스",
+          "keywords": []
+        },
+        "postings": [
+          {
+            "ref": "p1",
+            "company": "토스",
+            "title": "Server Developer",
+            "days_left": 12,
+            "required_met": 3,
+            "required_total": 4
+          }
+        ],
+        "total_found": 1
+      }
+    ],
+    "expect": {
+      "action": "ASK_USER",
+      "ask_kind": "QUESTIONS"
     }
   }
 ]

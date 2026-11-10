@@ -44,7 +44,8 @@
     { "seq": 3, "kind": "STEP", "tool": "MATCH_POSTING", "ok": true,
       "posting": { "postingId": "UUID", "company": "가온소프트", "title": "백엔드 엔지니어 (Java·Spring)", "daysLeft": 2, "requiredMet": 2, "requiredTotal": 3 },
       "match": { "requiredMet": 2, "requiredTotal": 3, "met": ["관계형 데이터베이스 설계 경험"], "missing": ["Docker 배포 경험"] } },
-    { "seq": 4, "kind": "ASK", "askKind": "QUESTIONS", "text": "자소서를 쓰려면 문항이 필요해요. 지원서에 있는 문항을 그대로 붙여 넣어 주세요." } ],
+    { "seq": 4, "kind": "ASK", "askKind": "CHOICE", "options": ["자주 나오는 문항으로 쓰기", "문항 붙여 넣기"],
+      "text": "가온소프트 공고의 문항은 알 수 없어요. 자주 나오는 문항 3개로 바로 쓸까요, 지원서 문항을 붙여 넣을까요?" } ],
   "createdAt": "ISO", "updatedAt": "ISO" }
 
 // POST /assistant/runs/{id}/messages  { "text": "지원 동기를 적어 주세요\n가장 어려웠던 경험을 적어 주세요" } → 끝난 뒤의 GET
@@ -120,7 +121,7 @@
 
 | 첫 말 | 대본 |
 |---|---|
-| `자소서` 가 들어 있다 | `FIND_POSTINGS` → `MATCH_POSTING` → `ASK`(`QUESTIONS`, `WAITING_USER`). 문항을 받으면 실제 Mock 자소서를 만드는 `START_COVER_LETTER` → `SAY` → `DONE` |
+| `자소서` 가 들어 있다 | `FIND_POSTINGS` → `MATCH_POSTING` → `ASK`(`CHOICE`, `자주 나오는 문항으로 쓰기` · `문항 붙여 넣기`, `WAITING_USER`). 첫 번째를 고르면 자주 나오는 문항 3개로 Mock 자소서를 만드는 `START_COVER_LETTER`(`questionCount` 3, `defaultQuestions` true) → `SAY` → `DONE`. 두 번째를 고르면 `ASK`(`QUESTIONS`) 로 한 번 더 묻고 받은 문항으로 만든다 |
 | `정리` 나 `레포` 가 들어 있다 | `ASK`(`CHOICE`, 레포 이름 3개, `WAITING_USER`). 이름을 받으면 Mock 분석을 시작하는 `START_REPO_ANALYSIS` → `SAY` → `DONE`. 이름을 못 찾으면 `SAY` 만 하고 `DONE` |
 | `첨삭` 이 들어 있다 | `POLISH_COVER_LETTER`(Mock 자소서 첫 번째, 없으면 하나 만든다, 문항 두 개 · 포인트 3개와 2개) → `SAY` → `DONE` |
 | `채워` 가 들어 있다 | `FIND_POSTINGS` → `MATCH_POSTING`(모자란 조건 두 개) → `FILL_POSTING_GAPS`(`gapsFilled` 2) → `SAY` → `DONE` |

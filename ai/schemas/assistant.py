@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal, Optional
 
-from pydantic import Field, StringConstraints
+from pydantic import Field, StringConstraints, model_validator
 
 from schemas.matching import StrictModel
 
@@ -148,6 +148,13 @@ class AssistantStep(StrictModel):
     letter_ref: Optional[str] = Field(None, description="POLISH_COVER_LETTER 의 자소서. context.letters 에 있는 ref(l1 모양)")
     job_role: Optional[str] = Field(None, max_length=100, description="공고 없이 시작하는 START_COVER_LETTER 의 지원 직무")
     questions: list[AssistantQuestion] = Field(default_factory=list, max_length=10, description="START_COVER_LETTER 의 문항")
+    default_questions: bool = Field(False, description="START_COVER_LETTER 를 문항 없이 자주 나오는 문항 3개로 시작한다. 이때 questions 는 비어 있다")
     say: Optional[str] = Field(None, max_length=MAX_SAY_CHARS, description="ASK_USER·FINISH 에서 사용자에게 보일 한두 문장. CALL_TOOL 이면 null")
     ask_kind: Optional[AssistantAskKind] = Field(None, description="ASK_USER 일 때 사용자가 답하는 방식. QUESTIONS 는 문항 붙여 넣기, CHOICE 는 options 중 고르기, FREE 는 직접 적기")
     options: list[Option] = Field(default_factory=list, max_length=MAX_OPTIONS, description="ask_kind 가 CHOICE 일 때의 선택지")
+
+    @model_validator(mode="after")
+    def _default_questions_only_without_questions(self) -> "AssistantStep":
+        if self.default_questions and (self.tool != "START_COVER_LETTER" or self.questions):
+            raise ValueError("default_questions 는 문항 없는 START_COVER_LETTER 에만 쓴다")
+        return self

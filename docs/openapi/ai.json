@@ -871,6 +871,12 @@
             "description": "ASK_CARD_GAP 의 카드. context.cards 에 있는 ref(c1 모양)",
             "title": "Card Ref"
           },
+          "default_questions": {
+            "default": false,
+            "description": "START_COVER_LETTER 를 문항 없이 자주 나오는 문항 3개로 시작한다. 이때 questions 는 비어 있다",
+            "title": "Default Questions",
+            "type": "boolean"
+          },
           "find": {
             "anyOf": [
               {

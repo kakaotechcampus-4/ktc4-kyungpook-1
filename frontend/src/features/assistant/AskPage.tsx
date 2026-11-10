@@ -13,7 +13,7 @@ import { scrollPageTo } from '@/components/chat/chatScroll';
 import { Breadcrumb, Button, ButtonLink, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
-import { composerHint, coverLetterToOpen, failedNext, firstUserText, matchResult, postingMeta, questionsGuide, questionsGuideText, resultLink, stepLine } from './askCopy';
+import { composerHint, coverLetterToOpen, failedNext, firstUserText, matchResult, postingMeta, resultLink, stepLine } from './askCopy';
 import './ask.css';
 
 const Dots = () => <span className="ai-wait__dots" aria-hidden><i /><i /><i /></span>;
@@ -25,7 +25,7 @@ const START_HINT = '예: 토스 백엔드 공고 찾아서 나랑 맞는지 봐 
 /** 처음 화면의 예시 — 누르면 입력 칸에 그대로 들어가서, 회사 이름만 고쳐 보낼 수 있다 */
 const EXAMPLES = [
   { icon: BriefcaseBusiness, text: '백엔드 신입 공고 찾아 줘', sub: '조건에 맞는 공고를 찾아서 보여 드려요' },
-  { icon: FileText, text: '토스 공고에 맞춰 자소서 써 줘', sub: '공고를 내 카드와 맞춰 보고, 문항을 받아 초안을 써요' },
+  { icon: FileText, text: '토스 공고에 맞춰 자소서 써 줘', sub: '공고를 내 카드와 맞춰 보고 바로 초안을 써요' },
   { icon: FolderGit2, text: '레포 정리해 줘', sub: '레포를 골라 경험 카드로 정리해요' },
 ];
 
@@ -124,7 +124,6 @@ function AskChat() {
 
   const thinking = pending || (state === 'RUNNING' && !(last?.kind === 'STEP' && last.ok === null));
   const choices = state === 'WAITING_USER' && last?.kind === 'ASK' && last.askKind === 'CHOICE' ? last.options : [];
-  const guide = state === 'WAITING_USER' && last?.kind === 'ASK' && last.askKind === 'QUESTIONS' ? questionsGuide(items) : null;
   const failed = start.isError ? errorView(start.error).message : say.isError ? errorView(say.error).message
     : state === 'FAILED' ? '지금은 답을 받지 못했어요. 할 일을 다시 적어 주세요.' : null;
   const spoken = last && last.kind !== 'USER' ? (last.kind === 'STEP' ? stepLine(last) : last.text ?? '') : '';
@@ -163,13 +162,6 @@ function AskChat() {
             {(sending || !last || last.kind === 'USER') && <ChatFrom />}
             <Bubble side="it" enter wait>확인하고 있어요<Dots /></Bubble>
           </>
-        )}
-        {guide && (
-          <section className="ask-guide" aria-labelledby="ask-guide-title">
-            <h2 id="ask-guide-title">문항이 아직 없나요?</h2>
-            <p>{questionsGuideText(guide.posting)}</p>
-            <ButtonLink to={guide.to} variant="primary" className="ask-go">자소서 화면에서 문항 고르기</ButtonLink>
-          </section>
         )}
         {choices.length > 0 && (
           <div className="chat-quick">

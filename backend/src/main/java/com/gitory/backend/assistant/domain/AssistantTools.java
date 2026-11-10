@@ -17,6 +17,7 @@ import com.gitory.backend.coverletter.domain.CoverLetterQueryService;
 import com.gitory.backend.coverletter.domain.CoverLetterService;
 import com.gitory.backend.coverletter.domain.CoverLetterStage;
 import com.gitory.backend.coverletter.domain.CoverLetterView;
+import com.gitory.backend.coverletter.domain.NewQuestion;
 import com.gitory.backend.coverletter.domain.NoConfirmedCardsException;
 import com.gitory.backend.matching.domain.GapFillNeedsJudgementException;
 import com.gitory.backend.matching.domain.GapFillService;
@@ -266,10 +267,11 @@ public class AssistantTools {
         }
 
         UUID postingId = call.posting() == null ? null : call.posting().postingId();
-        CoverLetterView letter = coverLetters.create(userId, jobRole, null, List.of(), call.questions(), postingId,
-                "assistant-" + call.runId() + "-" + seq);
+        List<NewQuestion> questions = call.defaultQuestions() ? DefaultCoverLetterQuestions.ALL : call.questions();
+        CoverLetterView letter = coverLetters.create(userId, jobRole, null, List.of(), questions, postingId,
+                "assistant-" + call.runId() + "-" + seq, call.defaultQuestions());
 
-        return ToolResult.coverLetter(call.questions().size(), letter.id());
+        return ToolResult.coverLetter(questions.size(), letter.id(), call.defaultQuestions());
 
     }
 

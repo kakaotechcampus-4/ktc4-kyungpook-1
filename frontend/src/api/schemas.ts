@@ -533,11 +533,10 @@ export const InterviewTurn = z.object({
   askedBy: unknownAs(z.enum(['USER_REQUEST', 'FOLLOW_UP']).nullable(), null),
   sourceType: unknownAs(InterviewSourceType.nullable(), null), // PR 없는 커밋 묶음·직접 작성 카드도 되묻기 대상이다
   questionType: unknownAs(QuestionType.nullable(), null),
-  found: z.array(z.string()),
-  missing: z.array(z.string()),
   question: z.string(),
   options: z.array(z.string()), // USER_SELECTED 보기
-  answer: z.object({ text: z.string(), source: EvidenceType }).nullable(),
+  // original 은 AI 가 읽기 전 사용자가 친 말이다. 다듬지 않고 저장한 답에는 없다
+  answer: z.object({ text: z.string(), source: EvidenceType, original: z.string().nullable().optional() }).nullable(),
   // 질문이 어떻게 끝났는지. 답 전이면 null 이고, 데모 데이터처럼 값이 없으면 null 로 본다
   outcome: TurnOutcome.nullable().optional().transform((value) => value ?? null),
   // AI 가 이 칸을 고른 이유 한 줄(#430). 사용자가 칸을 골랐거나 AI 가 실패해 틀 질문을 썼으면 null 이다
@@ -546,9 +545,21 @@ export const InterviewTurn = z.object({
   maxTurns: z.number(), // 상한은 서버 정책이다. 화면 상수로 두지 않는다
 });
 export type InterviewTurn = z.infer<typeof InterviewTurn>;
-/** 서버의 InterviewTurn.isClosed 와 같은 규칙: 답·넘김·측정으로 끝나지 않았으면(LATER·INSUFFICIENT 포함) 아직 답을 기다린다 */
+export const ReplyOutcome = z.enum(['APPLIED', 'ASK_MORE', 'NOT_USED', 'SKIPPED', 'UNPOLISHED']);
+export type ReplyOutcome = z.infer<typeof ReplyOutcome>;
+/** POST /cards/{id}/interview/{turnNo}/reply — 모르는 결과는 '문장으로 다듬지 못함' 으로 읽어 화면이 멈추지 않게 한다 */
+export const InterviewReply = z.object({
+  outcome: unknownAs(ReplyOutcome, 'UNPOLISHED'),
+  reason: z.string().nullable().optional().transform((value) => value ?? null),
+  written: z.array(z.object({ field: StarField, text: z.string() })),
+  restoreVersionNo: z.number().nullable().optional().transform((value) => value ?? null),
+  card: Card,
+  nextTurn: InterviewTurn.nullable().optional().transform((value) => value ?? null),
+});
+export type InterviewReply = z.infer<typeof InterviewReply>;
+/** 서버의 InterviewTurn.isClosed 와 같은 규칙: 답·넘김·측정·모자란 답으로 끝나지 않았으면(LATER 포함) 아직 답을 기다린다 */
 export const isOpenTurn = (turn: Pick<InterviewTurn, 'answer' | 'outcome'>) =>
-  !turn.answer && (turn.outcome == null || turn.outcome === 'LATER' || turn.outcome === 'INSUFFICIENT');
+  !turn.answer && (turn.outcome == null || turn.outcome === 'LATER');
 
 export const ConfirmResult = z.object({
   cardId: z.string(),

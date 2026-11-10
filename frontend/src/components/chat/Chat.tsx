@@ -4,9 +4,9 @@ import { BrandLogo } from '@/components/ui/BrandLogo';
 import { CHAT_START } from './chatScroll';
 import './chat.css';
 
-/** Gitory 가 말하기 시작하는 자리에 한 번 붙는 이름표 */
-export function ChatFrom() {
-  return <span className="chat-from" {...{ [CHAT_START]: '' }}><BrandLogo height={20} mark />Gitory</span>;
+/** Gitory 가 말하기 시작하는 자리에 한 번 붙는 이름표. start 를 끄면 새 말의 첫 줄로 굴려 보이는 자리에서 빠진다 */
+export function ChatFrom({ start = true }: { start?: boolean }) {
+  return <span className="chat-from" {...(start ? { [CHAT_START]: '' } : {})}><BrandLogo height={20} mark />Gitory</span>;
 }
 
 /** 말풍선 — it 은 Gitory 의 말(왼쪽), me 는 내 말(오른쪽) */

@@ -61,18 +61,19 @@ export function SuggestionBox({ letter, question, onText }: { letter: CoverLette
     );
   }
 
-  const use = (cardId: string, title: string) => {
+  // 응답이 오면 대화 줄이 생겨 이 상자가 먼저 사라진다 — mutate 의 콜백은 그때 버려지므로 await 로 받아 종이에 새 글을 꼭 넣는다
+  const use = async (cardId: string, title: string) => {
     setFlow({ phase: 'rewriting', title });
-    rewrite.mutate({ questionId: question.id, cardId }, {
-      onSuccess: (r) => {
-        if (r.rewriteFailed || !r.question.draft) { setFlow({ phase: 'failed', message: '다시 쓰지 못했어요. 글은 그대로예요' }); return; }
-        onText(question.id, r.question.draft.text);
-        setDone(true);
-        setCollapsed(true);
-        setFlow(null);
-      },
-      onError: () => setFlow({ phase: 'failed', message: '다시 쓰지 못했어요. 잠시 뒤 다시 해 주세요' }),
-    });
+    try {
+      const r = await rewrite.mutateAsync({ questionId: question.id, cardId });
+      if (r.rewriteFailed || !r.question.draft) { setFlow({ phase: 'failed', message: '다시 쓰지 못했어요. 글은 그대로예요' }); return; }
+      onText(question.id, r.question.draft.text);
+      setDone(true);
+      setCollapsed(true);
+      setFlow(null);
+    } catch {
+      setFlow({ phase: 'failed', message: '다시 쓰지 못했어요. 잠시 뒤 다시 해 주세요' });
+    }
   };
   const make = async (s: Suggestion) => {
     if (!s.repoId) return;
@@ -87,7 +88,7 @@ export function SuggestionBox({ letter, question, onText }: { letter: CoverLette
     }
   };
   const afterMaking = (cardId: string, title: string, status: string | null) => {
-    if (status === 'CONFIRMED') use(cardId, title);
+    if (status === 'CONFIRMED') void use(cardId, title);
     else if (status) setFlow({ phase: 'review', title, cardId });
     else setFlow({ phase: 'failed', message: '카드를 만들지 못했어요. 다른 제안을 골라 보세요' });
   };
@@ -123,7 +124,7 @@ export function SuggestionBox({ letter, question, onText }: { letter: CoverLette
             <b className="clp-sg__name">{s.title}</b>
             <span className="clp-sg__angle">{s.angle}</span>
             {s.source === 'CARD'
-              ? <Button size="lg" disabled={busy} onClick={() => use(s.id, s.title)}>이걸로 쓰기</Button>
+              ? <Button size="lg" disabled={busy} onClick={() => void use(s.id, s.title)}>이걸로 쓰기</Button>
               : <Button size="lg" variant="secondary" disabled={busy || !s.repoId} onClick={() => void make(s)}>카드 만들어 쓰기</Button>}
           </li>
         ))}

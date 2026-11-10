@@ -87,7 +87,12 @@ public class CardThemeSuggester {
         }
 
         new TransactionTemplate(transactionManager).executeWithoutResult(status ->
-                cards.findWithLockById(event.cardId()).ifPresent(card -> card.suggestThemes(suggested)));
+                cards.findWithLockById(event.cardId()).ifPresent(card -> {
+                    card.suggestThemes(suggested);
+                    if (!card.themeTags().isEmpty()) {
+                        events.publishEvent(new CardThemesReady(card.getId(), card.getUserId()));
+                    }
+                }));
 
     }
 

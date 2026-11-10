@@ -63,13 +63,13 @@ describe('real-server mode (the endpoint does not exist yet)', () => {
 });
 
 describe('mock mode', () => {
-  it('MyPage links to the form and summarizes what is saved', async () => {
+  it('MyPage links to the form and summarizes the saved interests only', async () => {
     const server = connectMockServer();
     putProfile(sampleInput());
     mountApp([page(<MyPage />, '/settings')], '/settings');
     const row = await screen.findByRole('link', { name: /인적사항/ });
     expect(row).toHaveAttribute('href', '/settings/profile');
-    await waitFor(() => expect(row).toHaveTextContent('학력 1, 경력 1, 어학 1, 자격증 1'));
+    await waitFor(() => expect(row).toHaveTextContent('관심 백엔드, 인프라, DevOps'));
     expect(server.profileCalls()).toHaveLength(1);
   });
   it('MyPage invites a never-saved profile without pretending anything is saved', async () => {
@@ -78,21 +78,21 @@ describe('mock mode', () => {
     const row = await screen.findByRole('link', { name: /인적사항/ });
     await waitFor(() => expect(row).toHaveTextContent('아직 입력하지 않았어요'));
   });
-  it('MyPage tells a profile with interests only (saved, all lists empty) apart from a never-saved one', async () => {
+  it('MyPage tells a profile with interests only apart from a never-saved one, and never mentions the removed lists', async () => {
     connectMockServer();
     putProfile(minimalInput());
     mountApp([page(<MyPage />, '/settings')], '/settings');
     const row = await screen.findByRole('link', { name: /인적사항/ });
-    await waitFor(() => expect(row).toHaveTextContent('입력한 정보가 없어요'));
+    await waitFor(() => expect(row).toHaveTextContent('관심 백엔드'));
     expect(row).not.toHaveTextContent('아직 입력하지 않았어요');
+    expect(row).not.toHaveTextContent(/학력|경력|어학|자격증/);
   });
-  it('lists the profile among the stored data with both uses, so the transparency page stays true (#552: matching and cover-letter AI)', async () => {
+  it('lists the profile among the stored data as interests only, so the transparency page stays true', async () => {
     connectMockServer();
     mountApp([page(<MyPage />, '/settings')], '/settings');
     await screen.findByRole('link', { name: /인적사항/ });
-    const line = screen.getByText('인적사항 (학력, 경력, 어학, 자격증, 관심 분야)').closest('.settings-data-row')!;
-    expect(line).toHaveTextContent('공고 매칭의 지원 자격 비교');
-    expect(line).toHaveTextContent('자소서 AI 참고');
+    const line = screen.getByText('인적사항 (관심 분야)').closest('.settings-data-row')!;
+    expect(line).toHaveTextContent('공고 매칭에서 공고 고르기');
   });
   it('the form page fails visibly (not silently) when the profile cannot be read, and can retry', async () => {
     let fail = true;
@@ -101,6 +101,6 @@ describe('mock mode', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('서버에서 처리하지 못했어요');
     fail = false;
     screen.getByRole('button', { name: '다시 불러오기' }).click();
-    expect(await screen.findByRole('button', { name: '학력 추가' })).toBeInTheDocument();
+    expect(await screen.findByRole('checkbox', { name: '백엔드' })).toBeInTheDocument();
   });
 });

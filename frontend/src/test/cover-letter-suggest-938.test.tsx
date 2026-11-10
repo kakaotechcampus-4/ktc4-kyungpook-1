@@ -96,6 +96,31 @@ describe('쓸거리 제안', () => {
     expect(within(panel()).getByText(/카드로 다시 썼어요/, SEEN)).toBeInTheDocument();
   });
 
+  it('F7 다시 쓰는 사이 탭을 바꿔 제안 상자가 사라져도, 응답이 오면 종이에 새 글이 들어간다', { timeout: 15000 }, async () => {
+    const l = draftedWithoutCard();
+    let release!: () => void;
+    const gate = new Promise<void>((done) => { release = done; });
+    // 다시 쓰기 응답만 붙들어 두고, 그 사이에 상자가 사라지게 한다
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (resource: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(typeof resource === 'string' ? resource : resource instanceof URL ? resource.toString() : resource.url, 'http://localhost');
+      const path = url.pathname.replace(/^\/api/, '');
+      const method = (init?.method ?? 'GET').toUpperCase();
+      if (method === 'POST' && path.endsWith('/rewrite')) await gate;
+      const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {};
+      const r = handle(method, path, url.searchParams, body, true, {});
+      return new Response(JSON.stringify({ data: r.data, error: r.error }), { status: r.status, headers: { 'Content-Type': 'application/json' } });
+    });
+    mount(l);
+    await openChat();
+    const box = within(panel()).getByRole('region', { name: '쓸거리 제안' });
+    fireEvent.click(within(box).getByRole('button', { name: '이걸로 쓰기' }));
+    expect(within(panel()).getByText(/로 다시 쓰는 중이에요/, SEEN)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: '진단과 첨삭' }));
+    expect(within(panel()).queryByRole('region', { name: '쓸거리 제안' })).toBeNull();
+    release();
+    await waitFor(() => expect(draftText()).toContain(REWRITTEN_PART), SLOW);
+  });
+
   it('F2 카드 만들어 쓰기는 카드를 만들고 작업이 끝나길 기다린 뒤, 확정된 카드로 다시 쓴다', { timeout: 15000 }, async () => {
     const l = draftedWithoutCard();
     const log: string[] = [];

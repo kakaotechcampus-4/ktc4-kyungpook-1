@@ -59,7 +59,7 @@ class CoverLetterFiller:
         # 채울 자리가 항목 빈칸이면 다시 쓴 글에서 빠지는 게 맞고, 남은 다른 항목 빈칸은 그대로 두게 한다
         blanks: list[MaterialItem] = [item for item in ITEM_LABELS if blank(item) in text and blank(item) != spot]  # type: ignore[misc]
         inferred = [sentences[seq - 1] for seq in target.inferred_seqs if seq <= len(sentences)]
-        settled = {_squash(s) for s in sentences} - {_squash(s) for s in inferred}
+        settled = {squash(s) for s in sentences} - {squash(s) for s in inferred}
         before = WrittenDraft(qid, text, blanks, 0, "LLM", inferred=tuple(inferred))
         answer = [answer for answer in target.answers if answer.item == request.filled_item][-1]
 
@@ -70,31 +70,11 @@ class CoverLetterFiller:
         written = self._kept_or_reverted(before, written, spot, qid, record)
         found: list[ReviewFinding] = []
         if written.text != before.text:
-            reviewed, found = await self._review(draft_request, question, written, sentences, settled, deadline, record)
+            reviewed, found = await review_new_sentences(self._drafter, self._writer, draft_request, question, written,
+                                                         sentences, settled, deadline, record)
             written = self._kept_or_reverted(written, reviewed, spot, qid, record, original=before)
         written = keep_status(written, inferred, settled)
         return FillResult(draft=self._writer.finish(draft_request, question, written, found, record), steps=steps)
-
-    async def _review(
-        self, request: DraftsRequest, question: DraftQuestion, written: WrittenDraft, old: list[str],
-        settled: set[str], deadline: float, record,
-    ) -> tuple[WrittenDraft, list[ReviewFinding]]:
-        """감독이 새로 쓴 문장만 본다. 그대로 둔 문장은 사용자가 이미 본 글이라 다시 고치지 않는다."""
-        qid = question.question_id
-        try:
-            found = (await self._drafter.review(request, [(question, written)], deadline)).get(qid, [])
-        except CoverLetterLLMUnavailable:
-            record("SUPERVISOR", "FAILED", qid)
-            return written, []
-        unchanged = {_squash(s) for s in old}
-        found = [finding for finding in found if _squash(finding.sentence) not in unchanged
-                 and (finding.code != "INFERRED" or _squash(finding.sentence) not in settled)]
-        sent_back = [finding for finding in found if finding.code != "INFERRED" or mixes_fact(finding.sentence)]
-        record("SUPERVISOR", "REVIEWED", qid, value=str(len(sent_back)))
-        for finding in sent_back:
-            record("SUPERVISOR", "SENT_BACK", qid, code=finding.code, sentence_seq=finding.sentence_seq,
-                   reason=finding.reason, sentence=finding.sentence)
-        return await self._writer.rewrite_for_review(request, question, written, sent_back, deadline, record), found
 
     def _kept_or_reverted(
         self, before: WrittenDraft, after: WrittenDraft, spot: Optional[str], qid: int, record,
@@ -106,6 +86,28 @@ class CoverLetterFiller:
             return after
         record("CODE", "REVERTED", qid)
         return replace(before, rewrites=after.rewrites)
+
+
+async def review_new_sentences(
+    drafter: CoverLetterDrafter, writer: QuestionWriter, request: DraftsRequest, question: DraftQuestion,
+    written: WrittenDraft, old: list[str], settled: set[str], deadline: float, record,
+) -> tuple[WrittenDraft, list[ReviewFinding]]:
+    """감독이 새로 쓴 문장만 본다. 그대로 둔 문장은 사용자가 이미 본 글이라 다시 고치지 않는다."""
+    qid = question.question_id
+    try:
+        found = (await drafter.review(request, [(question, written)], deadline)).get(qid, [])
+    except CoverLetterLLMUnavailable:
+        record("SUPERVISOR", "FAILED", qid)
+        return written, []
+    unchanged = {squash(s) for s in old}
+    found = [finding for finding in found if squash(finding.sentence) not in unchanged
+             and (finding.code != "INFERRED" or squash(finding.sentence) not in settled)]
+    sent_back = [finding for finding in found if finding.code != "INFERRED" or mixes_fact(finding.sentence)]
+    record("SUPERVISOR", "REVIEWED", qid, value=str(len(sent_back)))
+    for finding in sent_back:
+        record("SUPERVISOR", "SENT_BACK", qid, code=finding.code, sentence_seq=finding.sentence_seq,
+               reason=finding.reason, sentence=finding.sentence)
+    return await writer.rewrite_for_review(request, question, written, sent_back, deadline, record), found
 
 
 def locate_blank(text: str, wanted: Optional[str], item: MaterialItem) -> Optional[str]:
@@ -130,9 +132,9 @@ def fill_problem(spot: Optional[str], answer: KnownAnswer) -> str:
 
 def changed_sentences(before: str, after: str, spot: Optional[str]) -> int:
     """앞 글의 문장 가운데 빈칸 자리가 든 문장을 빼고 다시 쓴 글에 그대로 없는 문장 수."""
-    left = {_squash(s) for s in split_sentences(after)}
-    return sum(1 for s in split_sentences(before) if (spot is None or spot not in s) and _squash(s) not in left)
+    left = {squash(s) for s in split_sentences(after)}
+    return sum(1 for s in split_sentences(before) if (spot is None or spot not in s) and squash(s) not in left)
 
 
-def _squash(text: str) -> str:
+def squash(text: str) -> str:
     return " ".join(text.split())

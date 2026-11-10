@@ -131,7 +131,7 @@ public class AiCoverLetterTurnAdapter implements CoverLetterTurnPort {
 
     // 과정은 저장하지 않지만, 모르는 값이 오면 AI 와 계약이 어긋난 것이라 다시 쓴 글도 믿지 않는다
     // AI 는 다시 쓴 글이 새 문제를 남기거나 다른 문장을 많이 바꾸면 앞 글로 되돌리고 과정에 REVERTED 를 남긴다
-    private static CoverLetterFill filled(JsonNode data, int questionId) {
+    static CoverLetterFill filled(JsonNode data, int questionId) {
 
         CoverLetterDrafts.Draft draft = AiCoverLetterDraftsAdapter.draft(data.path("draft"));
         if (draft.questionId() != questionId) {
@@ -147,7 +147,7 @@ public class AiCoverLetterTurnAdapter implements CoverLetterTurnPort {
     }
 
     // AI 는 LLM 이 실패하면 503 을 돌려주므로, 그 실패는 다시 해 볼 만하다
-    private static AgentUnavailableException unavailable(String what, AiClientException failure) {
+    static AgentUnavailableException unavailable(String what, AiClientException failure) {
 
         boolean retryable = failure.temporary();
         return new AgentUnavailableException("AI 자소서 대화 " + what + " 실패 (" + failure.errorCode() + ")",

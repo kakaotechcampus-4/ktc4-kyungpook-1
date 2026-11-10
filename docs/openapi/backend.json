@@ -2217,6 +2217,11 @@
             "format" : "date-time",
             "type" : "string"
           },
+          "emptyQuestionCount" : {
+            "description" : "초안이 있지만 빈칸 틀만 남아 글이 없는 문항 수",
+            "format" : "int32",
+            "type" : "integer"
+          },
           "firstQuestion" : {
             "type" : "string"
           },
@@ -2330,11 +2335,23 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "newCommits" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "newPullRequests" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
           "reads" : {
             "items" : {
               "type" : "string"
             },
             "type" : "array"
+          },
+          "reanalyzeSeconds" : {
+            "format" : "int32",
+            "type" : "integer"
           },
           "skips" : {
             "items" : {
@@ -3559,6 +3576,12 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "cardId" : {
+            "type" : "string"
+          },
+          "cardTitle" : {
+            "type" : "string"
+          },
           "cardTitles" : {
             "items" : {
               "type" : "string"
@@ -3579,7 +3602,13 @@
             "type" : "string"
           },
           "kind" : {
-            "enum" : [ "CARDS_DRAFTED", "REPO_REFRESHED", "ANALYSIS_FAILED", "POSTINGS_MATCHED" ],
+            "enum" : [ "CARDS_DRAFTED", "REPO_REFRESHED", "ANALYSIS_FAILED", "POSTINGS_MATCHED", "LETTER_CARD_SUGGESTED" ],
+            "type" : "string"
+          },
+          "letterId" : {
+            "type" : "string"
+          },
+          "letterTitle" : {
             "type" : "string"
           },
           "postings" : {
@@ -3587,6 +3616,12 @@
               "$ref" : "#/components/schemas/NoticePostingResponse"
             },
             "type" : "array"
+          },
+          "questionId" : {
+            "type" : "string"
+          },
+          "questionText" : {
+            "type" : "string"
           },
           "readAt" : {
             "format" : "date-time",
@@ -4375,7 +4410,7 @@
           },
           "disclosure" : {
             "$ref" : "#/components/schemas/Disclosure",
-            "description" : "분석 전 안내. reads 는 읽는 것, skips 는 안 읽는 것, estimatedSeconds 는 예상 시간(초)"
+            "description" : "분석 전 안내. reads 는 읽는 것, skips 는 안 읽는 것, estimatedSeconds 는 처음 분석할 때의 예상 시간(초). newCommits·newPullRequests·reanalyzeSeconds 는 분석한 적 있는 저장소만 채우며 지난 분석 뒤 새 커밋 수·새 PR 수·새 기록만 읽을 때의 예상 시간(초)"
           },
           "id" : {
             "description" : "분석 요청 경로의 {id} 로 쓰는 저장소 id",

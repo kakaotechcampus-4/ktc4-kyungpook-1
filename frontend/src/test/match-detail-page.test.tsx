@@ -49,7 +49,7 @@ it('J1 이 공고로 자소서 쓰기는 맞춰 보는 중에도, 맞춰 본 뒤
 it('J1 이 공고로 쓰던 자소서가 있으면 초안 보기나 이어 쓰기로 그 자소서에 잇는다', async () => {
   const letter = (id: string, stage: CoverLetterSummary['stage']): CoverLetterSummary => ({
     id, stage, jobRole: '백엔드', posting: { id: base.id, company: base.company, title: base.role } as CoverLetterSummary['posting'],
-    questionCount: 1, firstQuestion: '지원 동기', createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-02T00:00:00Z',
+    questionCount: 1, emptyQuestionCount: 0, firstQuestion: '지원 동기', createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-02T00:00:00Z',
   });
   vi.spyOn(coverLetterApi, 'list').mockResolvedValue([letter('cl_1', 'DRAFTED')]);
   mount(base);

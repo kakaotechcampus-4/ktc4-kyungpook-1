@@ -1,0 +1,40 @@
+{
+ "date": "2026-11-09",
+ "measured_at": "2026-11-09T19:16:10",
+ "eval": "cover_letter",
+ "label": "c1109r-first",
+ "sample": "가상 사용자 8명",
+ "model": "gpt-5.6-luna",
+ "git_sha": null,
+ "calls": 104,
+ "spend_won": 117.55,
+ "metrics": {
+  "invented_numbers": 0,
+  "unsourced_terms": 0,
+  "over_limit_unmarked": 0,
+  "sparse_blank": "5/6",
+  "a1_hit": "20/24",
+  "skeleton": 9,
+  "avg_ratio_pct": 15,
+  "over_70pct": 0,
+  "questions": 24,
+  "more_blank": 6,
+  "asks": 63,
+  "ai_patterns": 1,
+  "quality": {
+   "total_of_12": 7.04,
+   "scored_questions": 24,
+   "lead": 1.0,
+   "result": 1.08,
+   "concrete": 0.92,
+   "natural": 2.0,
+   "fit": 1.33,
+   "structure": 0.71
+  },
+  "sent_back": {},
+  "reverted": 0,
+  "left_ai_tone": 0,
+  "failed_calls": 4
+ },
+ "note": "원본 결과 파일에서 뒤늦게 만든 요약 — date 는 원본 파일 시각, git_sha 는 알 수 없어 비움"
+}

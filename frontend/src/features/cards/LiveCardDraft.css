@@ -1,18 +1,21 @@
-/* 카드 초안을 쓰는 동안의 STAR 네 칸 (#617). 색은 시맨틱 토큰만, 글자 크기는 12·13·14·16 단계만 쓴다.
+/* 위쪽 한 줄과 얇은 막대 */
+.draft-line { display: flex; flex-direction: column; gap: 10px; }
+.draft-line__text { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin: 0; font-size: 14px; line-height: 22px; font-variant-numeric: tabular-nums; }
+.draft-line__pulse { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--border-accent); animation: draft-pulse 1.2s ease-in-out infinite; }
+@keyframes draft-pulse { 0%, 100% { transform: scale(.7); opacity: .5; } 50% { transform: scale(1); opacity: 1; } }
+.draft-line__stall { margin: 0; font-size: 12px; line-height: 18px; color: var(--text-secondary); }
+
+
+/* 카드 초안을 쓰는 동안의 STAR 네 칸 (#617, #981). 색은 시맨틱 토큰만, 글자 크기는 12·13·14·16 단계만 쓴다.
    상태는 색으로만 가르지 않는다: 칸 이름 옆 글자(대기, 쓸 차례, 쓰는 중, 완료, 비움)와 윤곽·채움이 함께 말한다. */
 .live-draft { display: flex; flex-direction: column; gap: 16px; padding: 24px; }
-.live-draft__head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
 .live-draft__title { margin: 0; font-size: 16px; line-height: 24px; font-weight: var(--heading-weight); }
-.live-draft__count { margin-right: auto; font-size: 12px; line-height: 18px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 
 /* 카드 한 장 틀 */
 .live-card { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); overflow: hidden; }
-.live-card__head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 14px 18px; border-bottom: 1px solid var(--border-default); }
+.live-card__head { display: flex; flex-direction: column; gap: 2px; padding: 14px 18px; border-bottom: 1px solid var(--border-default); }
+.live-card__note { margin: 0; font-size: 13px; line-height: 20px; color: var(--text-secondary); }
 .live-card__title { margin: 0; min-width: 0; font-size: 16px; line-height: 24px; font-weight: var(--heading-weight); overflow-wrap: anywhere; }
-.live-card__state { margin-left: auto; font-size: 12px; line-height: 18px; font-weight: var(--weight-bold); color: var(--text-secondary); }
-.live-card[data-state='WRITING'] .live-card__state, .live-card[data-state='READING'] .live-card__state { color: var(--text-accent); }
-.live-card[data-state='FAILED'] .live-card__state { color: var(--state-failed-text); }
-
 /* 네 칸. 좁은 화면에서는 한 줄에 한 칸이 세로로 쌓이고, 넓으면 2열이다. 칸 사이 가는 선은 칸 틈에 비치는 배경이다 */
 .live-slots { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; margin: 0; padding: 0; list-style: none; background: var(--border-default); }
 @media (min-width: 760px) { .live-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -27,6 +30,8 @@
 .live-slot__body > * { grid-area: 1 / 1; min-width: 0; }
 .live-slot__ghost { visibility: hidden; user-select: none; pointer-events: none; }
 .live-slot__note { font-size: 14px; line-height: 24px; color: var(--text-secondary); }
+
+.live-slot__rewrote { font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
 
 .live-cursor { display: inline-block; width: 2px; height: 1.15em; margin-left: 2px; vertical-align: text-bottom; background: var(--text-accent); animation: live-cursor-blink 1.05s steps(1, end) infinite; }
 @keyframes live-cursor-blink { 50% { opacity: 0; } }
@@ -51,44 +56,57 @@
 .live-slot[data-phase='DONE'], .live-slot[data-phase='BLANK'], .live-slot[data-phase='EMPTY'], .live-slot[data-phase='MISSED'] { transition: background-color .3s; }
 
 /* 칸에 한 AI 의 과정. 카드 상세 '만든 과정'과 같은 세로 모양이다. 왼쪽 선과 아이콘은 장식이고 순서는 목록(ol)이 말한다 */
-.live-steps { display: flex; flex-direction: column; margin: 0; padding: 10px 0 0; list-style: none; border-top: 1px dashed var(--border-strong); }
-.live-step { position: relative; display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 8px; padding-bottom: 8px; min-width: 0; font-size: 13px; line-height: 20px; color: var(--text-strong); }
+/* 과정은 한 줄로 접혀 있다가 누르면 펼쳐진다 — 칸 높이를 글이 아닌 과정이 늘리지 않게 */
+.live-steps-fold { margin-top: 4px; }
+.live-steps-fold__summary { display: inline-flex; align-items: center; min-height: 28px; padding: 0; list-style: none; cursor: pointer; font-size: 12px; line-height: 18px; color: var(--text-tertiary); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+.live-steps-fold__summary::-webkit-details-marker { display: none; }
+.live-steps-fold__summary:hover { color: var(--text-secondary); }
+.live-steps-fold__open, .live-steps-fold[open] .live-steps-fold__closed { display: none; }
+.live-steps-fold[open] .live-steps-fold__open { display: inline; }
+.live-steps { display: flex; flex-direction: column; margin: 0; padding: 4px 0 0; list-style: none; }
+.live-step { position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr); column-gap: 8px; padding-bottom: 6px; min-width: 0; font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
 .live-step:last-child { padding-bottom: 0; }
-.live-step:not(:last-child)::before { content: ''; position: absolute; left: 9px; top: 22px; bottom: 2px; width: 1px; background: var(--border-default); }
-.live-step__icon { display: grid; place-items: center; width: 20px; height: 20px; border-radius: var(--radius-full); background: var(--bg-subtle); border: 1px solid var(--border-default); color: var(--text-secondary); }
+.live-step:not(:last-child)::before { content: ''; position: absolute; left: 7px; top: 18px; bottom: 2px; width: 1px; background: var(--border-default); }
+.live-step__icon { display: grid; place-items: center; width: 16px; height: 16px; border-radius: var(--radius-full); background: var(--bg-subtle); border: 1px solid var(--border-default); color: var(--text-secondary); }
 /* 바퀴 이름이 첫 줄에 있으면 아이콘은 그 아래 글 줄에 맞춘다 */
 .live-step[data-round] .live-step__icon { margin-top: 16px; }
-.live-step[data-round]:not(:last-child)::before { top: 38px; }
+.live-step[data-round]:not(:last-child)::before { top: 34px; }
 /* AI 가 스스로 고르고 이유를 남긴 단계는 아이콘 색으로도 눈에 띄게. 뜻은 아래 '고른 이유' 글자가 따로 말한다 */
 .live-step[data-judged] .live-step__icon { background: var(--accent-point-soft); border-color: var(--border-selected); color: var(--text-accent); }
 .live-step__body { display: flex; flex-direction: column; min-width: 0; }
 .live-step__round { font-size: 12px; line-height: 16px; font-weight: var(--weight-bold); color: var(--text-tertiary); }
 .live-step__text { font-weight: var(--weight-regular); overflow-wrap: anywhere; }
+.live-step__icon svg { width: 10px; height: 10px; }
 .live-step__detail { font-size: 12px; line-height: 18px; color: var(--text-secondary); overflow-wrap: anywhere; }
 .live-step__reason { display: flex; flex-direction: column; margin-top: 4px; padding-left: 8px; border-left: 2px solid var(--border-selected); }
 .live-step__reason-label { font-size: 12px; line-height: 16px; font-weight: var(--weight-bold); color: var(--text-accent); }
-.live-step__reason q { quotes: '\201C' '\201D'; font-size: 12px; line-height: 18px; color: var(--text-strong); overflow-wrap: anywhere; }
+.live-step__reason q { quotes: '\201C' '\201D'; font-size: 12px; line-height: 18px; color: var(--text-secondary); overflow-wrap: anywhere; }
 
-/* 앞서 쓴 카드 — 접어 둔다 */
+/* 앞서 쓴 카드 — 한 줄로 접어 둔다 */
 .live-finished { display: flex; flex-direction: column; gap: 8px; }
 .live-finished__heading { margin: 0; font-size: 13px; line-height: 20px; font-weight: var(--weight-bold); color: var(--text-secondary); }
-.live-finished__item { border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-surface); overflow: hidden; }
-.live-finished__summary { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; min-height: var(--control-touch-size); padding: 8px 14px; cursor: pointer; }
+.live-finished__item { border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); overflow: hidden; }
+.live-finished__summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; min-height: var(--control-touch-size); padding: 10px 16px; cursor: pointer; }
 .live-finished__summary:focus-visible { outline: 2px solid var(--border-selected); outline-offset: -2px; }
-.live-finished__title { min-width: 0; font-size: 14px; line-height: 22px; font-weight: var(--weight-bold); overflow-wrap: anywhere; }
-.live-finished__state { margin-left: auto; font-size: 12px; line-height: 18px; color: var(--text-secondary); }
+.live-finished__title { min-width: 0; font-size: 14px; line-height: 22px; overflow-wrap: anywhere; }
+.live-finished__state { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; line-height: 20px; color: var(--text-secondary); }
+.live-finished__state svg { color: var(--text-primary); flex: 0 0 auto; }
 .live-finished__item[data-state='FAILED'] .live-finished__state { color: var(--state-failed-text); }
 .live-finished__body { border-top: 1px solid var(--border-default); }
 
+/* 맨 아래 글자 링크 */
+.live-foot { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 0 4px; }
+.live-foot .btn--text { text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+
 @media (max-width: 767px) {
+  .live-card__head { padding: 12px 16px; }
   .live-draft { padding: 20px; }
   .live-slot { padding: 14px 16px; }
-  .live-card__head { padding: 12px 16px; }
 }
 
-/* 동작 줄이기: 커서도 깜빡이지 않고 색 바뀜도 없다(글은 펼치지 않고 한 번에 보인다) */
+/* 동작 줄이기: 커서와 점도 깜빡이지 않고 색 바뀜도 없다(글은 펼치지 않고 한 번에 보인다) */
 @media (prefers-reduced-motion: reduce) {
-  .live-cursor { animation: none; }
+  .live-cursor, .draft-line__pulse { animation: none; }
   .live-slot { transition: none; }
 }
-@media print { .live-draft { display: none; } }
+@media print { .live-draft, .draft-line, .live-foot { display: none; } }

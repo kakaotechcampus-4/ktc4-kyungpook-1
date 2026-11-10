@@ -14,7 +14,7 @@ const seedOnce = () => {
 test('랜딩에서 둘러보기를 누르면 띠가 뜬 홈으로 가고, 나가기로 로그인 화면에 돌아온다', async ({ page }) => {
   await page.addInitScript(seedOnce);
   await page.goto('/login');
-  await page.getByRole('button', { name: '둘러보기' }).click();
+  await page.getByRole('button', { name: '샘플 데이터로 둘러보기' }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByText('샘플 데이터로 둘러보는 중이에요. 실제 분석이 아니에요')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('search')).toBeVisible();

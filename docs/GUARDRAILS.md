@@ -78,6 +78,7 @@ AI 가 무엇을 스스로 정하는지는 [에이전트 설계](AGENT_DESIGN.md
 | 매칭 판단이 조건이나 카드를 빠뜨리거나 지어내는 것 | 조건을 빠뜨리거나, 보내지 않은 카드를 대거나, 이유가 비면 한 번 다시 묻고 그래도 안 되면 실패로 답한다 | `ai/services/match_judge.py:_problem` | `test_match_judge.py::test_asks_again_when_the_answer_breaks_the_rules`, `::test_returns_503_when_no_valid_answer_arrives` |
 | 모델이 만든 검색어가 GitHub 검색 범위를 바꾸는 것 | 검색어에서 검색 조건을 바꿀 수 있는 글자를 걸러 내고 3개, 30자까지만 쓴다 | `ai/services/gap_fill.py:_queries` | `test_gap_fill.py::test_search_terms_cannot_change_the_search_and_are_capped_at_three` |
 | 자소서 제안이 보내지 않은 카드·레포 기록을 가리키는 것 | 모델이 낸 번호가 요청에 없거나 종류가 다르거나 겹치면 한 번 다시 받고, 그래도 어기면 그 항목만 버린다. 제안은 3개까지, 이유 한 줄은 60자까지다 | `ai/services/cover_letter_suggester.py:_valid_items` | `test_cover_letter_suggest.py::test_a1_picks_only_ids_from_the_request_with_matching_source`, `::test_a2_retries_once_on_unknown_id_then_drops_it` |
+| 이미 쓴 글에 새 카드를 더하다 원래 문장이 바뀌는 것 | 모델은 끼울 자리 번호와 문장(2곳·2문장·200자까지)만 내고, 글은 코드가 원래 문장을 그대로 둔 채 끼운다. 없는 자리 번호·글자 수 초과·더한 문장 없음은 앞 글로 되돌리고, 새 문장만 감독이 한 번 본다 | `ai/services/cover_letter_append.py:insert`·`rejection` | `test_cover_letter_append.py` |
 
 ### 호출과 기록
 

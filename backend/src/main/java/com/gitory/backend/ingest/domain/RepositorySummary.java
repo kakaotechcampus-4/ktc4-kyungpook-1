@@ -23,7 +23,9 @@ public record RepositorySummary(
         String userDescription,
         String githubDescription,
         String readmeSummary,
-        ReadmeSummarySource readmeSummarySource) {
+        ReadmeSummarySource readmeSummarySource,
+        Integer analyzedCommitCount,
+        Integer analyzedPrCount) {
 
     public RepositorySummary(Long connectionId, UUID publicId, String ownerLogin, String name, String language,
                              Instant activeFrom, Instant activeTo, Instant lastAnalyzedAt, Instant countedAt,
@@ -31,8 +33,20 @@ public record RepositorySummary(
                              String userDescription, String githubDescription, String readmeSummary,
                              ReadmeSummarySource readmeSummarySource) {
         this(connectionId, publicId, ownerLogin, name, language, activeFrom, activeTo, lastAnalyzedAt, countedAt,
+                commitCount, ownCommitCount, prCount, ownPrCount, reviewedPrCount,
+                userDescription, githubDescription, readmeSummary, readmeSummarySource, null, null);
+    }
+
+    public RepositorySummary(Long connectionId, UUID publicId, String ownerLogin, String name, String language,
+                             Instant activeFrom, Instant activeTo, Instant lastAnalyzedAt, Instant countedAt,
+                             int commitCount, int ownCommitCount, int prCount, int ownPrCount, int reviewedPrCount,
+                             String userDescription, String githubDescription, String readmeSummary,
+                             ReadmeSummarySource readmeSummarySource, Integer analyzedCommitCount,
+                             Integer analyzedPrCount) {
+        this(connectionId, publicId, ownerLogin, name, language, activeFrom, activeTo, lastAnalyzedAt, countedAt,
                 commitCount, ownCommitCount, prCount, ownPrCount, reviewedPrCount, null, 0,
-                userDescription, githubDescription, readmeSummary, readmeSummarySource);
+                userDescription, githubDescription, readmeSummary, readmeSummarySource,
+                analyzedCommitCount, analyzedPrCount);
     }
 
     public Contribution contribution() {
@@ -49,7 +63,8 @@ public record RepositorySummary(
 
         return new RepositorySummary(connectionId, publicId, ownerLogin, name, language, activeFrom, activeTo,
                 lastAnalyzedAt, countedAt, commitCount, ownCommitCount, prCount, ownPrCount, reviewedPrCount,
-                shownCandidates, cards, userDescription, githubDescription, readmeSummary, readmeSummarySource);
+                shownCandidates, cards, userDescription, githubDescription, readmeSummary, readmeSummarySource,
+                analyzedCommitCount, analyzedPrCount);
 
     }
 

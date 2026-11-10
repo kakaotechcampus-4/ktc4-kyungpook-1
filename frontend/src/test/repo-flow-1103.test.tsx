@@ -8,7 +8,7 @@ import { keys } from '@/api/keys';
 import { CandidateBoard, RepoDetail, type Job } from '@/api/schemas';
 import { AnalyzePage } from '@/features/repos/AnalyzePage';
 import { CandidateBoardPage } from '@/features/candidates/CandidateBoardPage';
-import { useActivityFeed } from '@/lib/agentActivity';
+import { REVEAL_MS, useActivityFeed } from '@/lib/agentActivity';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 
@@ -103,15 +103,15 @@ describe('고른 이유 재생', () => {
     rerender({ j: job('SUCCEEDED') });
     expect(result.current.drained).toBe(false);
     // 줄마다 타이머가 새로 걸리므로 한 줄씩 넘긴다
-    for (let i = 0; i < 5; i++) act(() => { vi.advanceTimersByTime(700); });
+    for (let i = 0; i < 5; i++) act(() => { vi.advanceTimersByTime(REVEAL_MS); });
     expect(result.current.drained).toBe(true);
   });
 
-  it('고른 이유가 20줄 밀려 있어도 앞은 건너뛰고 마지막 3줄만 보인 뒤 2초 안에 끝난다', () => {
+  it('고른 이유가 20줄 밀려 있어도 앞은 건너뛰고 마지막 3줄만 한 줄 간격씩 보인 뒤 끝난다', () => {
     vi.useFakeTimers();
     const many = { jobId: 'j1', state: 'SUCCEEDED', finishedAt: new Date().toISOString(), activity: Array.from({ length: 20 }, (_, i) => ({ seq: i + 1, step: 'REASON', kind: 'DESCRIBED', title: `이유 ${i + 1}`, reason: null })) } as unknown as Job;
     const { result } = renderHook(() => useActivityFeed(many));
-    for (let i = 0; i < 3; i++) act(() => { vi.advanceTimersByTime(500); });
+    for (let i = 0; i < 3; i++) act(() => { vi.advanceTimersByTime(REVEAL_MS); });
     expect(result.current.drained).toBe(true);
     expect(result.current.lines).toHaveLength(20);
   });

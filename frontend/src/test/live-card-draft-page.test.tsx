@@ -7,7 +7,7 @@ import { keys } from '@/api/keys';
 import { Card, Job } from '@/api/schemas';
 import { CardPage } from '@/features/cards/CardPage';
 import { track } from '@/lib/track';
-import { DWELL_MS } from '@/lib/liveDraft';
+import { DWELL_MS, TYPING_CPS } from '@/lib/liveDraft';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 
@@ -21,6 +21,8 @@ const generating = () => Card.parse({ ...raw('card_01'), generation: { jobId: 'j
 const finished = () => Card.parse({ ...raw('card_01'), generation: null });
 
 const slot = (field: string, text: string, done = true) => ({ field, round: 0, text, done });
+/** n 글자를 쓰는 데 걸리는 시간(ms) — 속도가 바뀌어도 시험의 시각이 따라온다 */
+const typingMs = (chars: number) => Math.ceil((chars / TYPING_CPS) * 1000);
 const ko = (n: number) => '가'.repeat(n);
 const four = (n: number) => ['S', 'T', 'A', 'R'].map((f) => slot(f, ko(n)));
 const draft = (id: string, state: string, slots: unknown[] = []) => ({ cardId: id, title: `카드 ${id}`, state, slots, steps: [] });
@@ -40,14 +42,14 @@ const typedOf = (field: string) => document.querySelector(`.live-slot[data-field
 const refetchCard = () => act(async () => { await client.invalidateQueries({ queryKey: keys.card('card_01') }); });
 const generationScreen = () => screen.queryByRole('heading', { name: '카드 초안을 쓰고 있어요' });
 
-function mount() {
+function mount(state?: Record<string, unknown>) {
   vi.spyOn(endpoints, 'card').mockImplementation(async (id: string) => id === 'card_01' ? serverCard : Card.parse(raw(id)));
   vi.spyOn(endpoints, 'job').mockImplementation(async () => serverJob);
   vi.spyOn(endpoints, 'cards').mockResolvedValue([]);
   client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const router = createMemoryRouter([
     { path: '/cards/:cardId', element: <CardPage /> }, { path: '/cards/repo/:repoId', element: <p>레포 카드 폴더</p> }, { path: '/cards/repo/:repoId/match', element: <p>기업 고르는 화면</p> },
-  ], { initialEntries: ['/cards/card_01'] });
+  ], { initialEntries: [{ pathname: '/cards/card_01', state }] });
   render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
   return router;
 }
@@ -74,22 +76,21 @@ afterEach(() => {
 });
 
 describe('#617 초안 생성 중 화면의 카드 쓰기', () => {
-  it('진행 막대 아래에서 서버가 준 글을 초당 40자로 펼친다', async () => {
+  it('한 줄 진행 아래에서 서버가 준 글을 초당 TYPING_CPS 자로 펼친다', async () => {
     serverCard = generating();
     serverJob = job('RUNNING', [draft('a', 'WRITING', four(40)), draft('b', 'WAITING')]);
     mount();
     await pass(100);
-    expect(screen.getByText('카드 초안 0 / 1장')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '지금 쓰는 카드' })).toBeInTheDocument();
     expect(screen.getByText('2장 중 1번째')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '지금 쓰는 카드' })).toBeInTheDocument();
     const start = Array.from(typedOf('S')).length;
     expect(start).toBeLessThan(5);
     await pass(500);
     const half = Array.from(typedOf('S')).length;
-    expect(half - start).toBeGreaterThanOrEqual(18);
-    expect(half - start).toBeLessThanOrEqual(22);
+    expect(half - start).toBeGreaterThanOrEqual(TYPING_CPS / 2 - 2);
+    expect(half - start).toBeLessThanOrEqual(TYPING_CPS / 2 + 2);
     expect(typedOf('T')).toBe('');
-    await pass(1500); // 두 칸 반 → 상황 끝, 과제 끝, 행동 중
+    await pass(typingMs(80)); // 지난 시간이 두 칸을 넘는다 → 상황 끝, 과제 끝, 행동 중
     expect(typedOf('S')).toBe(ko(40));
     expect(typedOf('T')).toBe(ko(40));
   });
@@ -104,11 +105,11 @@ describe('#617 초안 생성 중 화면의 카드 쓰기', () => {
     serverCard = finished();
     serverJob = job('SUCCEEDED', [draft('a', 'DONE', four(40))]);
     await pass(1000);
-    expect(generationScreen()).toBeInTheDocument(); // 아직 160자 중 60자쯤
-    expect(screen.getByText('카드 초안 1 / 1장')).toBeInTheDocument();
+    expect(generationScreen()).toBeInTheDocument(); // 아직 160자를 다 쓰지 못했다
+    expect(screen.getByText('1장 중 1번째')).toBeInTheDocument();
     await pass(2000);
     expect(generationScreen()).toBeInTheDocument();
-    await pass(1600);
+    await pass(typingMs(160) - 3600 + 300);
     expect(typedOf('R')).toBe(ko(40)); // 다 펼쳤다
     expect(generationScreen()).toBeInTheDocument(); // 쉬는 중
     await pass(DWELL_MS + 100);
@@ -130,7 +131,7 @@ describe('#617 초안 생성 중 화면의 카드 쓰기', () => {
     serverJob = job('SUCCEEDED', [draft('a', 'DONE', four(40))]);
     await pass(1000);
     expect(generationScreen()).toBeInTheDocument();
-    await pass(3000); // 160자는 4초 남짓에 다 보인다
+    await pass(typingMs(160) - 1700 + 300); // 160자가 다 보일 때까지
     expect(typedOf('R')).toBe(ko(40));
     expect(generationScreen()).toBeInTheDocument();
     await pass(DWELL_MS + 100);
@@ -163,13 +164,13 @@ describe('#617 초안 생성 중 화면의 카드 쓰기', () => {
     expect(generationScreen()).not.toBeInTheDocument();
   });
 
-  it('drafts 가 비어 있으면 진행 막대만 그리고, 끝나도 붙잡지 않는다', async () => {
+  it('drafts 가 비어 있으면 위쪽 한 줄만 그리고, 끝나도 붙잡지 않는다', async () => {
     serverCard = generating();
     serverJob = job('RUNNING', []);
     mount();
     await pass(100);
     await pass(3000);
-    expect(screen.getByText('카드 초안 0 / 1장')).toBeInTheDocument();
+    expect(screen.getByText('1장 중 1번째')).toBeInTheDocument(); // drafts 가 없어도 REASON 단계의 장 수로 한 줄은 그린다
     expect(screen.queryByRole('heading', { name: '지금 쓰는 카드' })).not.toBeInTheDocument();
     expect(document.querySelector('.live-draft')).toBeNull();
     serverCard = finished();
@@ -184,7 +185,7 @@ describe('#617 초안 생성 중 화면의 카드 쓰기', () => {
     expect(serverJob.drafts).toBeUndefined();
     mount();
     await pass(2000);
-    expect(screen.getByText('카드 초안 0 / 1장')).toBeInTheDocument();
+    expect(screen.getByText('1장 중 1번째')).toBeInTheDocument(); // drafts 가 없어도 REASON 단계의 장 수로 한 줄은 그린다
     expect(screen.queryByRole('heading', { name: '지금 쓰는 카드' })).not.toBeInTheDocument();
   });
 
@@ -197,7 +198,7 @@ describe('#617 초안 생성 중 화면의 카드 쓰기', () => {
     serverJob = job('RUNNING', []); // 서버가 진행을 잃었다
     await pass(1000);
     expect(screen.getByRole('heading', { name: '지금 쓰는 카드' })).toBeInTheDocument();
-    await pass(3000);
+    await pass(typingMs(160));
     expect(typedOf('R')).toBe(ko(40));
   });
 
@@ -208,25 +209,6 @@ describe('#617 초안 생성 중 화면의 카드 쓰기', () => {
     mount();
     await pass(100);
     expect(typedOf('S')).toBe(ko(40));
-    expect(typedOf('R')).toBe(ko(40));
-    expect(document.querySelector('.live-cursor')).toBeNull();
-    expect(screen.queryByRole('button', { name: '한 번에 보기' })).not.toBeInTheDocument();
-    serverCard = finished();
-    serverJob = job('SUCCEEDED', [draft('a', 'DONE', four(40))]);
-    await pass(1100);
-    expect(generationScreen()).not.toBeInTheDocument();
-  });
-
-  it('한 번에 보기를 누르면 남은 글이 바로 보이고, 끝나면 쉬지 않고 넘어간다', async () => {
-    serverCard = generating();
-    serverJob = job('RUNNING', [draft('a', 'WRITING', four(40))]);
-    mount();
-    await pass(100);
-    await pass(200);
-    expect(typedOf('R')).toBe('');
-    const button = screen.getByRole('button', { name: '한 번에 보기' });
-    await act(async () => { button.click(); });
-    expect(button).toHaveAttribute('aria-pressed', 'true');
     expect(typedOf('R')).toBe(ko(40));
     expect(document.querySelector('.live-cursor')).toBeNull();
     serverCard = finished();
@@ -273,6 +255,17 @@ describe('#617 초안 생성 중 화면의 카드 쓰기', () => {
     await pass(100);
     serverCard = finished();
     serverJob = job('SUCCEEDED', [draft('a', 'DONE', four(40)), draft('b', 'DONE', four(40))], { result: { repoId: 'r_auth', cardIds: ['card_01', 'card_02'] } });
+    await pass(1100);
+
+    expect(screen.getByText('기업 고르는 화면')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/cards/repo/${encodeURIComponent(serverCard.repo!.id)}/match`);
+  });
+
+  it('넘겨받은 초안이 이 화면이 뜨기 전에 이미 다 써져 있어도 기업 고르는 화면으로 간다 (#989)', async () => {
+    stubReducedMotion(true);
+    serverCard = finished();
+    serverJob = job('SUCCEEDED', [draft('a', 'DONE', four(40)), draft('b', 'DONE', four(40))], { result: { repoId: 'r_auth', cardIds: ['card_01', 'card_02'] } });
+    const router = mount({ cardOrder: ['card_01', 'card_02'], draftJobId: 'job_1' });
     await pass(1100);
 
     expect(screen.getByText('기업 고르는 화면')).toBeInTheDocument();

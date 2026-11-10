@@ -33,6 +33,12 @@ export const Notice = z.object({
   errorCode: text,
   // 옛 서버에는 칸이 없다
   postings: z.array(NoticePosting).nullish().transform((value) => value ?? []),
+  letterId: text,
+  letterTitle: text,
+  questionId: text,
+  questionText: text,
+  cardId: text,
+  cardTitle: text,
 });
 export type Notice = z.infer<typeof Notice>;
 
@@ -42,11 +48,13 @@ const NoticeList = z.array(z.unknown()).transform((raw) => raw.flatMap((entry) =
   return read.success ? [read.data] : [];
 }));
 
-export const NOTICE_KINDS = ['CARDS_DRAFTED', 'REPO_REFRESHED', 'ANALYSIS_FAILED', 'POSTINGS_MATCHED'] as const;
+export const NOTICE_KINDS = ['CARDS_DRAFTED', 'REPO_REFRESHED', 'ANALYSIS_FAILED', 'POSTINGS_MATCHED', 'LETTER_CARD_SUGGESTED'] as const;
 export type NoticeKind = (typeof NOTICE_KINDS)[number];
+// 자소서 카드 알림은 가리키는 자소서·문항·카드를 모두 알 때만 그린다
 // 공고 알림은 공고 화면이 열려 있고 맞는 공고가 하나라도 있을 때만 그린다 — 눌러서 갈 곳이 없는 알림은 목록에도 안 읽은 수에도 넣지 않는다
 export const isKnownNotice = (notice: Notice): boolean => {
   if (!(NOTICE_KINDS as readonly string[]).includes(notice.kind)) return false;
+  if (notice.kind === 'LETTER_CARD_SUGGESTED') return Boolean(notice.letterId && notice.questionId && notice.cardId);
   return notice.kind !== 'POSTINGS_MATCHED' || (matchSupported() && notice.postings.length > 0);
 };
 

@@ -1,6 +1,9 @@
 package com.gitory.backend.coverletter.api;
 
 import com.gitory.backend.agent.port.AgentUnavailableException;
+import com.gitory.backend.agent.port.CoverLetterAppend;
+import com.gitory.backend.agent.port.CoverLetterAppendPort;
+import com.gitory.backend.agent.port.CoverLetterAppendRequest;
 import com.gitory.backend.agent.port.CoverLetterDrafts;
 import com.gitory.backend.agent.port.CoverLetterDraftsPort;
 import com.gitory.backend.agent.port.CoverLetterDraftsRequest;
@@ -81,6 +84,10 @@ class CoverLetterSuggestApiTest {
     private static final String OLD_TEXT = "옛 글이다.";
     private static final CoverLetterTurnReply ASKING = new CoverLetterTurnReply(
             new CoverLetterTurnReply.Message("그때 직접 한 일을 한 줄만 알려 주세요.", 1, "ACTION"), null, "ASKING");
+    private static final String EDITED_TEXT = "손으로 고친 글이다.";
+    private static final CoverLetterDrafts.Draft APPENDED = new CoverLetterDrafts.Draft(1, EDITED_TEXT + " 응답이 빨라졌다.",
+            List.of(new CoverLetterDrafts.Sentence(1, EDITED_TEXT), new CoverLetterDrafts.Sentence(2, "응답이 빨라졌다.")),
+            20, 0, List.of(), List.of(), "LLM");
     private static final CoverLetterDrafts REWRITTEN = new CoverLetterDrafts(List.of(new CoverLetterDrafts.Draft(1,
             "캐시를 함께 고쳤다. 응답이 빨라졌다.",
             List.of(new CoverLetterDrafts.Sentence(1, "캐시를 함께 고쳤다."),
@@ -117,6 +124,9 @@ class CoverLetterSuggestApiTest {
 
     @MockitoBean
     CoverLetterDraftsPort draftsPort;
+
+    @MockitoBean
+    CoverLetterAppendPort appendPort;
 
     @MockitoBean
     UserRateLimiter rateLimiter;
@@ -323,6 +333,60 @@ class CoverLetterSuggestApiTest {
         assertThat(sent.getValue().questions().getFirst().questionId()).isEqualTo(1);
         assertThat(sent.getValue().questions().getFirst().primaryCard().cardId()).isEqualTo(card);
         assertThat(firstQuestion(letter).getPrimaryCardId()).isEqualTo(card);
+
+    }
+
+    @Test
+    @DisplayName("중심 카드가 있는 문항은 지금 글에 새 카드를 보조로 덧붙이며, 손으로 고친 글을 보내고 옛 문장이 남은 글로 바뀐다")
+    void rewriteAppendsTheNewCardToTheCurrentTextOfAPrimaryCardQuestion() throws Exception {
+
+        Long primary = confirmedCard(myUserId, UUID.randomUUID());
+        UUID cardId = UUID.randomUUID();
+        Long added = confirmedCard(myUserId, cardId);
+        CoverLetter letter = letterWithFirstCard(primary);
+        CoverLetterQuestion first = firstQuestion(letter);
+        first.edit(EDITED_TEXT);
+        questions.save(first);
+        when(appendPort.append(any())).thenReturn(new CoverLetterAppend(APPENDED, false));
+
+        rewrite(letter, cardId.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.rewriteFailed").value(false))
+                .andExpect(jsonPath("$.data.question.draft.text").value(EDITED_TEXT + " 응답이 빨라졌다."))
+                .andExpect(jsonPath("$.data.turns[0].text").value("Q1 에 '카드' 카드 내용을 더해 썼어요"));
+
+        ArgumentCaptor<CoverLetterAppendRequest> sent = ArgumentCaptor.forClass(CoverLetterAppendRequest.class);
+        verify(appendPort).append(sent.capture());
+        assertThat(sent.getValue().target().currentText()).isEqualTo(EDITED_TEXT);
+        assertThat(sent.getValue().target().primaryCard().cardId()).isEqualTo(primary);
+        assertThat(sent.getValue().target().supportingCard().cardId()).isEqualTo(added);
+        assertThat(sent.getValue().addedCardId()).isEqualTo(added);
+        assertThat(firstQuestion(letter).getPrimaryCardId()).isEqualTo(primary);
+        assertThat(firstQuestion(letter).getSupportingCardId()).isEqualTo(added);
+        verifyNoInteractions(draftsPort);
+
+    }
+
+    @Test
+    @DisplayName("덧붙이기가 되돌려지면 글과 카드를 바꾸지 않고 못 더했다고 말한다")
+    void revertedAppendKeepsTheTextAndSaysItCouldNotAdd() throws Exception {
+
+        Long primary = confirmedCard(myUserId, UUID.randomUUID());
+        UUID cardId = UUID.randomUUID();
+        confirmedCard(myUserId, cardId);
+        CoverLetter letter = letterWithFirstCard(primary);
+        when(appendPort.append(any())).thenReturn(new CoverLetterAppend(
+                new CoverLetterDrafts.Draft(1, OLD_TEXT, List.of(new CoverLetterDrafts.Sentence(1, OLD_TEXT)), 6, 0,
+                        List.of(), List.of(), "LLM"), true));
+
+        rewrite(letter, cardId.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.rewriteFailed").value(true))
+                .andExpect(jsonPath("$.data.question.draft.text").value(OLD_TEXT))
+                .andExpect(jsonPath("$.data.turns[0].text").value("Q1 에 '카드' 카드 내용을 더하지 못했어요"));
+
+        assertThat(firstQuestion(letter).getDraftText()).isEqualTo(OLD_TEXT);
+        assertThat(firstQuestion(letter).getSupportingCardId()).isNull();
 
     }
 

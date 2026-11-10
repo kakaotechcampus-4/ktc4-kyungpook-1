@@ -51,8 +51,9 @@ describe('/repos', () => {
 
   it('읽는 범위 확인 창이 열리면 아래 취소·다음 막대가 숨는다', () => {
     mountRepos('/repos?select=r_auth&disclose=1');
-    const dialog = screen.getByRole('dialog', { name: '읽는 범위 확인' });
-    expect(within(dialog).getByRole('button', { name: '정리 시작' })).toBeInTheDocument();
+    // 목의 r_auth 는 정리한 적이 있어 창 제목과 주 버튼이 다시 정리 모양이다(#974)
+    const dialog = screen.getByRole('dialog', { name: /읽는 범위 확인|새 기록만 읽어요/ });
+    expect(within(dialog).getByRole('button', { name: /정리 시작|다시 정리/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '다음' })).not.toBeInTheDocument();
     expect(screen.queryByText(/을 골랐어요$/)).not.toBeInTheDocument();
   });
@@ -139,7 +140,7 @@ describe('/cover-letters', () => {
   });
 
   it('목록이 있으면 머리의 새 자소서 하나가 주된 버튼이다', () => {
-    mountList([{ id: 'a', stage: 'DRAFTED', jobRole: '백엔드 개발', posting: null, questionCount: 1, firstQuestion: '지원 동기', createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-01T00:00:00Z' }]);
+    mountList([{ id: 'a', stage: 'DRAFTED', jobRole: '백엔드 개발', posting: null, questionCount: 1, emptyQuestionCount: 0, firstQuestion: '지원 동기', createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-01T00:00:00Z' }]);
     const buttons = screen.getAllByRole('link', { name: '새 자소서' });
     expect(buttons).toHaveLength(1);
     expect(isPrimary(buttons[0])).toBe(true);

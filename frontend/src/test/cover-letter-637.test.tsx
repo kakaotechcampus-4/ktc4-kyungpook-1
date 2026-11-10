@@ -113,7 +113,7 @@ describe('① 공고에서 시작한 입력 화면', () => {
 
 describe('자소서 화면과 목록', () => {
   const summary = (over: Record<string, unknown>) => CoverLetterSummary.parse({
-    id: 'a', stage: 'DRAFTED', jobRole: '백엔드 개발', posting: null, questionCount: 1, firstQuestion: '지원 동기',
+    id: 'a', stage: 'DRAFTED', jobRole: '백엔드 개발', posting: null, questionCount: 1, emptyQuestionCount: 0, firstQuestion: '지원 동기',
     createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-01T00:00:00Z', ...over,
   });
 
@@ -145,7 +145,7 @@ describe('자소서 화면과 목록', () => {
 describe('계약 읽기와 Mock 서버', () => {
   it('posting 칸이 없는 옛 응답은 null 로 읽는다', () => {
     expect(CoverLetter.parse({ id: 'x', stage: 'ASSIGNING', jobRole: 'a', createdAt: 't', updatedAt: 't', questions: [] }).posting).toBeNull();
-    expect(CoverLetterSummary.parse({ id: 'x', stage: 'DRAFTED', jobRole: 'a', questionCount: 1, createdAt: 't', updatedAt: 't' }).posting).toBeNull();
+    expect(CoverLetterSummary.parse({ id: 'x', stage: 'DRAFTED', jobRole: 'a', questionCount: 1, emptyQuestionCount: 0, createdAt: 't', updatedAt: 't' }).posting).toBeNull();
   });
 
   it('Mock 은 없는 공고 id 면 404 NOT_FOUND, 있으면 조회·목록 응답에 posting 을 싣는다', () => {

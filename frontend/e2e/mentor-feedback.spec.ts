@@ -6,7 +6,7 @@ import { loginAsDemo as login } from './helpers';
 test('분석이 도는 동안 경과 시간과 마지막 확인이 흐르고 지금 읽는 단계가 파랑 점으로 펼쳐진다', async ({ page }) => {
   await login(page);
   await page.goto('/repos?select=r_auth&disclose=1');
-  await page.getByRole('button', { name: '정리 시작' }).click();
+  await page.getByRole('button', { name: /정리 시작|다시 정리/ }).click();
   const live = page.locator('.job-live');
   await expect(live).toContainText(/(째 진행 중이에요|째 기다리는 중이에요)/);
   await expect(live).toContainText('마지막 확인');

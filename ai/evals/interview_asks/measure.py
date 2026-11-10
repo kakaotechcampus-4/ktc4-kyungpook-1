@@ -23,6 +23,7 @@ import os
 import re
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -221,6 +222,15 @@ def report() -> None:
     for label in labels:
         rows = [s for _, s in scored[label]]
         print(f"{label}: 호출 {sum(s['calls'] for s in rows)}번 · {sum(s['won'] for s in rows):.1f}원")
+        raw_file = RUN_DIR / f"{label}.json"
+        llm_harness.record_summary(
+            "interview_asks", label,
+            {sample or "all": {key: sum(int(s[key]) for r, s in scored[label] if sample in (None, r["sample"]))
+                               for _, key in columns} | {"cards": sum(1 for r, _ in scored[label] if sample in (None, r["sample"]))}
+             for sample in (None, "templates", "repeat")},
+            sample="활동 카드 10장 + 가상 카드 10장, 카드마다 1번", model=MODEL,
+            calls=sum(s["calls"] for s in rows), spend_won=sum(s["won"] for s in rows),
+            measured_at=datetime.fromtimestamp(raw_file.stat().st_mtime))
     print("\n[카드별]")
     for label in labels:
         print(f"== {label}")

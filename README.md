@@ -130,24 +130,24 @@ AI가 일하는 동안 화면이 멈춰 있지 않습니다. 읽는 기록, 써�
     <td width="50%"><strong>카드 초안</strong> — 네 칸이 한 글자씩, 고칠 때는 달라진 뒷부분만</td>
   </tr>
   <tr>
-    <td><img src="./docs/images/readme/gif/analysis-run.gif" alt="레포 정리 화면. PR과 리뷰 읽기, 커밋 읽기, 후보로 추리기, 추천 이유 붙이기 단계가 차례로 진행된다" /></td>
-    <td><img src="./docs/images/readme/gif/card-draft-live.gif" alt="카드 초안 화면. 상황·과제·행동·결과 칸의 글이 한 글자씩 써진다" /></td>
+    <td><img src="./docs/images/readme/gif/analysis-run.gif?v=20261111b" alt="레포 정리 화면. PR과 리뷰 읽기, 커밋 읽기, 후보로 추리기, 추천 이유 붙이기 단계가 차례로 진행된다" /></td>
+    <td><img src="./docs/images/readme/gif/card-draft-live.gif?v=20261111b" alt="카드 초안 화면. 상황·과제·행동·결과 칸의 글이 한 글자씩 써진다" /></td>
   </tr>
   <tr>
     <td><strong>되묻기</strong> — 답하면 그 칸에 다듬어 넣고, 다음 빈칸을 물음</td>
     <td><strong>자소서 채우기</strong> — 한 줄로 알려 주면 그 자리를 다시 씀</td>
   </tr>
   <tr>
-    <td><img src="./docs/images/readme/gif/interview-chat.gif" alt="답변하기 화면. 답을 보내면 AI가 판단 이유와 함께 카드 문장으로 다듬어 넣는다" /></td>
-    <td><img src="./docs/images/readme/gif/cover-letter-fill.gif" alt="자소서 대화 탭. 한 줄 답을 보내면 다시 쓰는 중 표시 뒤 종이의 문장이 바뀐다" /></td>
+    <td><img src="./docs/images/readme/gif/interview-chat.gif?v=20261111b" alt="답변하기 화면. 답을 보내면 AI가 판단 이유와 함께 카드 문장으로 다듬어 넣는다" /></td>
+    <td><img src="./docs/images/readme/gif/cover-letter-fill.gif?v=20261111b" alt="자소서 대화 탭. 한 줄 답을 보내면 다시 쓰는 중 표시 뒤 종이의 문장이 바뀐다" /></td>
   </tr>
   <tr>
     <td><strong>맞는 기업 고르기</strong> — 고르는 과정과 이유를 실시간으로</td>
     <td><strong>홈 한 줄 명령</strong> — 공고 찾기·매칭·자소서 시작을 도구로 이어 실행</td>
   </tr>
   <tr>
-    <td><img src="./docs/images/readme/gif/repo-match-pick.gif" alt="한 저장소의 카드로 맞는 기업을 고르는 과정 화면" /></td>
-    <td><img src="./docs/images/readme/gif/home-command.gif" alt="홈 입력창에 한 문장을 맡기면 AI가 도구를 차례로 실행하는 화면" /></td>
+    <td><img src="./docs/images/readme/gif/repo-match-pick.gif?v=20261111b" alt="한 저장소의 카드로 맞는 기업을 고르는 과정 화면" /></td>
+    <td><img src="./docs/images/readme/gif/home-command.gif?v=20261111b" alt="홈 입력창에 한 문장을 맡기면 AI가 도구를 차례로 실행하는 화면" /></td>
   </tr>
 </table>
 
@@ -222,12 +222,12 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
 
 | 영역 | 사용 기술 |
 | --- | --- |
-| Frontend | React 19 · TypeScript · Vite · TanStack Query · React Router · Zod |
-| Backend | Java 21 · Spring Boot 4 · Spring Security · Spring Data JPA · Flyway |
-| AI | Python 3.11 · FastAPI · Pydantic · OpenAI 호환 LLM 클라이언트 |
-| Data | PostgreSQL 17 · Redis 7 · ChromaDB · ONNX 임베딩 / 외부 임베딩 API |
-| Infrastructure | AWS EC2 · Docker Compose · Caddy · GitHub Actions · CloudWatch · DB 정기 백업 |
-| Test | Vitest · Playwright · JUnit · Testcontainers · ArchUnit · pytest |
+| **Frontend** | ![React 19](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white) ![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white) ![TanStack Query](https://img.shields.io/badge/TanStack_Query-FF4154?style=for-the-badge&logo=reactquery&logoColor=white) ![React Router](https://img.shields.io/badge/React_Router-CA4245?style=for-the-badge&logo=reactrouter&logoColor=white) ![Zod](https://img.shields.io/badge/Zod-3E67B1?style=for-the-badge&logo=zod&logoColor=white) |
+| **Backend** | ![Java 21](https://img.shields.io/badge/Java_21-007396?style=for-the-badge&logo=openjdk&logoColor=white) ![Spring Boot 4](https://img.shields.io/badge/Spring_Boot_4-6DB33F?style=for-the-badge&logo=springboot&logoColor=white) ![Spring Security](https://img.shields.io/badge/Spring_Security-6DB33F?style=for-the-badge&logo=springsecurity&logoColor=white) ![Spring Data JPA](https://img.shields.io/badge/Spring_Data_JPA-6DB33F?style=for-the-badge&logo=spring&logoColor=white) ![Flyway](https://img.shields.io/badge/Flyway-CC0200?style=for-the-badge&logo=flyway&logoColor=white) |
+| **AI** | ![Python 3.11](https://img.shields.io/badge/Python_3.11-3776AB?style=for-the-badge&logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white) ![Pydantic](https://img.shields.io/badge/Pydantic-E92063?style=for-the-badge&logo=pydantic&logoColor=white) ![OpenAI 호환 LLM](https://img.shields.io/badge/OpenAI_호환_LLM-412991?style=for-the-badge&logo=openai&logoColor=white) |
+| **Data** | ![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL_17-4169E1?style=for-the-badge&logo=postgresql&logoColor=white) ![Redis 7](https://img.shields.io/badge/Redis_7-DC382D?style=for-the-badge&logo=redis&logoColor=white) ![ChromaDB](https://img.shields.io/badge/ChromaDB-FF6F00?style=for-the-badge) ![ONNX 임베딩](https://img.shields.io/badge/ONNX_임베딩-005CED?style=for-the-badge&logo=onnx&logoColor=white) |
+| **Infra** | ![AWS EC2](https://img.shields.io/badge/AWS_EC2-FF9900?style=for-the-badge&logo=amazonec2&logoColor=232F3E) ![Docker Compose](https://img.shields.io/badge/Docker_Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white) ![Caddy](https://img.shields.io/badge/Caddy-1F88C0?style=for-the-badge&logo=caddy&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white) ![CloudWatch](https://img.shields.io/badge/CloudWatch-FF4F8B?style=for-the-badge&logo=amazoncloudwatch&logoColor=white) |
+| **Test** | ![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white) ![Playwright](https://img.shields.io/badge/Playwright-2EAD33?style=for-the-badge) ![JUnit 5](https://img.shields.io/badge/JUnit_5-25A162?style=for-the-badge&logo=junit5&logoColor=white) ![Testcontainers](https://img.shields.io/badge/Testcontainers-2B2B2B?style=for-the-badge) ![ArchUnit](https://img.shields.io/badge/ArchUnit-3A3A41?style=for-the-badge) ![pytest](https://img.shields.io/badge/pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white) |
 
 ## 품질과 자동화
 

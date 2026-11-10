@@ -50,28 +50,6 @@
 .landing__lead { max-width: 390px; font-size: 15px; line-height: 1.9; }
 .landing__actions { margin-top: 8px; }
 .landing__actions .btn { min-height: 54px; padding-inline: 24px; gap: 24px; border-radius: 14px; }
-.landing-example-wrap { padding: 22px; border-radius: 28px; background: var(--bg-paper); border: 1px solid var(--border-default); box-shadow: 0 24px 64px rgb(30 30 45 / 7%); }
-.landing-example { gap: 10px; grid-template-columns: minmax(0, .94fr) 18px minmax(0, 1.12fr); }
-.github-snapshot { background: var(--pastel-blue); border: 0; }
-.github-snapshot .example-heading { border-color: rgb(30 30 45 / 8%); }
-.github-snapshot__commits { background: var(--bg-surface); border-color: transparent; }
-.github-snapshot__commits li + li { border-color: var(--border-default); }
-.github-snapshot__diff { background: var(--pastel-mint); color: var(--text-strong); }
-.landing-example__connector { color: var(--text-strong); }
-.landing-card { border: 0; box-shadow: none; background: var(--bg-surface); }
-.landing-card > .example-heading { background: #252527; color: #FFFFFF; border: 0; }
-.landing-card > .example-heading > span { color: #D5D5DE; }
-.landing-card h2 { font-weight: var(--weight-bold); font-size: 17px; }
-.landing-card__fields { gap: 8px; padding-bottom: 16px; }
-.landing-card__field { padding: 10px; border: 0; border-radius: 12px; background: var(--pastel-blue); }
-.landing-card__field[data-slot='T'] { background: var(--pastel-lavender); }
-.landing-card__field[data-slot='A'] { background: var(--pastel-mint); }
-.landing-card__field[data-slot='R'] { background: var(--pastel-yellow); }
-.landing-card__field p { font-size: 12px; line-height: 1.7; }
-.landing-card__field .star-key { background: var(--bg-surface); }
-/* 흰 상자 위라 기본 글자색(흰색)을 그대로 두면 S·T·A 가 안 보인다. 빈 칸(R)은 흐린 글자를 지킨다 */
-.landing-card__field .star-key:not(.star-key--dropped) { color: var(--text-strong); }
-.landing-card__evidence { background: var(--bg-surface); }
 
 .experience-item.gcard { border-radius: 20px; box-shadow: none; }
 .experience-item:hover { background: var(--bg-paper); border-color: var(--border-strong); }
@@ -92,9 +70,6 @@
   .landing__top { padding-bottom: 18px; }
   .landing__h1 { font-size: clamp(30px, 8.5vw, 40px); }
   .landing__h1 > span { text-decoration-thickness: 9px; }
-  .landing-example-wrap { padding: 12px; border-radius: 20px; box-shadow: none; }
-  .landing-example { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .landing-example__connector { justify-self: center; transform: rotate(90deg); }
   .mobile-nav a[aria-current='page'] { background: var(--pastel-blue); color: var(--text-primary); border-radius: 12px; }
 }
 @media print {

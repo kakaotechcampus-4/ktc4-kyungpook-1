@@ -1,0 +1,105 @@
+/* 첫 화면: 제목 줄이 커밋에서 문장으로 바뀌고, 그 아래 실제 화면이 이어진다. 기능 · 지키는 것 · 마무리는 한 칸 폭(1200px) 가운데 정렬.
+   다른 랜딩 규칙보다 뒤에 읽혀야 해서 마지막에 둔다 */
+.landing { gap: 0; padding: 0; align-items: stretch; justify-content: flex-start; overflow-x: clip; }
+.lp-wrap { width: 100%; max-width: 1200px; margin-inline: auto; padding-inline: 24px; }
+
+/* 위 줄 */
+/* 위 바는 따라 내려온다 — 상자는 본문과 같은 1200px 정렬선에 두고, 화면 폭 바탕은 ::before 가 그린다.
+   첫 화면에선 바탕이 없고, 첫 화면을 지나면 반투명 바탕과 실선이 생긴다 */
+.landing .landing__top { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: 1fr auto; align-items: center; width: 100%; max-width: 1200px; margin: 0 auto; padding: 18px 24px; border: 0; }
+.landing .landing__top::before { content: ''; position: absolute; z-index: -1; top: 0; bottom: 0; left: 50%; width: 100vw; transform: translateX(-50%); border-bottom: 1px solid transparent; transition: background-color .3s ease, border-color .3s ease; }
+.landing[data-top-action="shown"] .landing__top::before { background: color-mix(in srgb, var(--bg-paper) 86%, transparent); backdrop-filter: blur(12px); border-bottom-color: var(--border-default); }
+.landing .landing__top .landing__top-action { display: inline-flex; justify-self: end; transition: opacity .3s ease, visibility .3s; }
+.landing[data-intro="playing"] .landing__top-action, .landing[data-top-action="hidden"] .landing__top-action { opacity: 0; visibility: hidden; }
+
+/* 첫 화면 */
+.landing .landing__hero { grid-template-columns: none; display: flex; flex-direction: column; align-items: center; gap: clamp(44px, 7vh, 72px); width: 100%; max-width: 1200px; margin: 0 auto; padding: clamp(32px, 8vh, 88px) 24px 0; }
+.landing__stage { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; max-width: 760px; text-align: center; }
+.landing .landing__lead { max-width: 560px; margin: 0; color: var(--text-secondary); font-size: 16px; line-height: 26px; word-break: keep-all; }
+.landing .landing__actions { justify-content: center; gap: 22px; margin-top: 4px; }
+.landing__tour { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0; border: 0; background: none; font: inherit; cursor: pointer; color: var(--text-primary); font-size: 14px; text-decoration: underline; text-underline-offset: 4px; }
+.landing__tour:hover { color: var(--text-strong); }
+.landing__permissions { width: 100%; max-width: 560px; text-align: left; }
+.landing__permissions summary { margin-inline: auto; }
+
+.landing-morph { display: grid; grid-template-rows: auto auto; justify-items: center; gap: 22px; max-width: 100%; }
+.landing-morph > p { grid-area: 1 / 1; margin: 0; transition: opacity .9s ease; }
+.landing-morph__commit { align-self: center; max-width: 100%; color: var(--text-tertiary); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 20px; line-height: 30px; overflow-wrap: anywhere; }
+.landing-morph__commit code { color: var(--text-secondary); font: inherit; }
+.landing-morph__sentence { max-width: min(24em, 100%); color: var(--text-primary); font-size: clamp(26px, 2.6vw, 42px); font-weight: var(--weight-heavy); line-height: 1.3; letter-spacing: -.04em; word-break: keep-all; text-wrap: balance; }
+.landing-morph__commit, .landing-morph__sentence { opacity: 0; }
+.landing-morph[data-phase='commit'] .landing-morph__commit, .landing-morph[data-phase='sentence'] .landing-morph__sentence, .landing-morph[data-phase='chip'] .landing-morph__sentence { opacity: 1; }
+/* 문장은 커밋이 거의 사라진 뒤에 떠오른다 — 돌아갈 때는 빈 단계가 같은 간격을 만든다 */
+.landing-morph[data-phase='sentence'] .landing-morph__sentence, .landing-morph[data-phase='chip'] .landing-morph__sentence { transition-delay: .6s; }
+.landing-morph__chip { padding: 3px 12px; border: 1px solid var(--border-default); border-radius: 999px; color: var(--text-secondary); font-size: 12px; line-height: 18px; opacity: 0; transition: opacity .6s ease; }
+.landing-morph__chip code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+.landing-morph[data-phase='chip'] .landing-morph__chip { opacity: 1; }
+
+/* 실제 화면 틀: 지금 테마에 맞는 그림만 보인다 */
+.lp-img { display: block; width: 100%; height: auto; }
+.lp-img--dark { display: none; }
+:root[data-theme="dark"] .lp-img--light { display: none; }
+:root[data-theme="dark"] .lp-img--dark { display: block; }
+.lp-frame { width: 100%; max-width: 1200px; margin: 0; overflow: hidden; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); box-shadow: 0 28px 72px rgb(0 0 0 / 9%); }
+:root[data-theme="dark"] .lp-frame { box-shadow: 0 28px 72px rgb(0 0 0 / 40%); }
+.lp-frame__bar { position: relative; display: flex; align-items: center; gap: 7px; height: 38px; padding-inline: 14px; border-bottom: 1px solid var(--border-default); background: var(--bg-paper); }
+.lp-frame__bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--border-strong); opacity: .6; }
+.lp-frame__bar span { position: absolute; inset-inline: 0; text-align: center; color: var(--text-tertiary); font-size: 12px; line-height: 18px; pointer-events: none; }
+
+/* 기능 세 줄: 글 5칸, 그림 7칸을 번갈아 */
+.lp-claims { max-width: 1320px; display: flex; flex-direction: column; gap: clamp(72px, 11vw, 150px); padding-top: clamp(88px, 12vw, 160px); }
+.lp-reveal { opacity: 0; transform: translateY(16px); transition: opacity .3s ease, transform .3s ease; }
+.lp-reveal--in { opacity: 1; transform: none; }
+.lp-claim { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; align-items: center; }
+.lp-claim__text { grid-column: 1 / span 4; grid-row: 1; }
+.lp-claim__shot { grid-column: 5 / span 8; grid-row: 1; margin: 0; overflow: hidden; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-surface); }
+.lp-claim--flip .lp-claim__text { grid-column: 9 / span 4; }
+.lp-claim--flip .lp-claim__shot { grid-column: 1 / span 8; }
+.lp-claim h2, .lp-section-title, .lp-closing h2 { font-size: clamp(28px, 3.4vw, 40px); font-weight: var(--heading-weight); line-height: 1.25; letter-spacing: -.04em; word-break: keep-all; text-wrap: balance; }
+.lp-claim p { margin-top: 16px; color: var(--text-secondary); font-size: 16px; line-height: 28px; word-break: keep-all; }
+
+/* 지키는 것: 카드가 아니라 줄 목록 */
+.lp-principles { padding-top: clamp(96px, 13vw, 190px); }
+.lp-section-title { text-align: center; }
+.lp-rows { max-width: 1000px; margin: clamp(32px, 5vw, 56px) auto 0; padding: 0; list-style: none; border-bottom: 1px solid var(--border-default); }
+.lp-rows li { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px 24px; padding: 28px 0; border-top: 1px solid var(--border-default); }
+.lp-rows h3 { grid-column: 1 / span 4; font-size: 16px; font-weight: var(--weight-bold); line-height: 28px; word-break: keep-all; }
+.lp-rows p { grid-column: 5 / span 8; color: var(--text-secondary); font-size: 14px; line-height: 24px; word-break: keep-all; }
+
+/* 마무리 */
+.lp-closing { padding-top: clamp(96px, 13vw, 190px); text-align: center; }
+.lp-closing p { margin: 16px auto 0; color: var(--text-secondary); font-size: 16px; line-height: 26px; }
+.lp-closing .landing__actions { margin-top: 28px; }
+
+.lp-footer { margin-top: clamp(96px, 12vw, 160px); border-top: 1px solid var(--border-default); }
+.lp-footer__inner { display: grid; grid-template-columns: 1fr auto; gap: 28px 24px; padding-block: 56px 48px; }
+.lp-footer__about strong { display: block; font-size: 28px; font-weight: var(--heading-weight); line-height: 36px; letter-spacing: -.04em; }
+.lp-footer__about p { margin-top: 8px; color: var(--text-secondary); font-size: 14px; line-height: 22px; }
+.lp-footer__links { display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: flex-end; gap: 8px 22px; }
+.lp-footer__links a { color: var(--text-secondary); font-size: 14px; line-height: 22px; text-decoration: none; }
+.lp-footer__links a:hover { color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
+.lp-footer__copy { grid-column: 1 / -1; color: var(--text-tertiary); font-size: 12px; line-height: 18px; }
+
+@media (max-width: 899px) {
+  .lp-claim { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .lp-claim .lp-claim__text, .lp-claim .lp-claim__shot { grid-column: 1; grid-row: auto; }
+  .lp-rows h3, .lp-rows p { grid-column: 1 / -1; }
+}
+@media (max-width: 767px) {
+  .lp-wrap, .landing .landing__top, .landing .landing__hero { padding-inline: 16px; }
+    .landing .landing__lead { font-size: 14px; line-height: 24px; }
+  .landing .landing__actions { flex-direction: column; align-items: stretch; width: 100%; }
+  .landing__tour { align-self: center; }
+  .landing-morph__commit { font-size: 16px; line-height: 24px; }
+  .lp-frame__bar { height: 30px; }
+  .lp-claims { gap: 72px; padding-top: 72px; }
+  .lp-principles, .lp-closing { padding-top: 72px; }
+  .lp-rows li { padding: 20px 0; }
+  .lp-footer { margin-top: 72px; }
+  .lp-footer__inner { grid-template-columns: minmax(0, 1fr); }
+  .lp-footer__links { justify-content: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp-reveal { opacity: 1; transform: none; transition: none; }
+}
+.lp-frame .lp-img { aspect-ratio: 1440 / 780; object-fit: cover; object-position: top; }

@@ -154,9 +154,23 @@ LLM 은 경험 묶기 · STAR 초안 · 되묻기 · 공고 조건 추출 · 자
 | develop 머지 | 위 네 CI 가 모두 초록일 때만 [deploy](./.github/workflows/deploy.yml) 가 서버에 배포하고, 올라간 뒤 확인에 실패하면 직전 커밋으로 자동 롤백 |
 | 매일 | DB 백업(7일 보관), [사이트 상태 확인](./.github/workflows/uptime.yml), [PR 요약 알림](./.github/workflows/daily-pr-digest.yml) |
 
+**검증 전에는 배포되지 않고, 올라간 뒤 확인에 실패하면 스스로 되돌립니다.** 머지 커밋마다 CI 4개가 다시 돌고, 넷이 모두 초록일 때만 배포 워크플로가 서버를 올립니다. 올라간 뒤 상태 확인에 실패하면 직전 커밋으로 자동 롤백합니다.
+
 <p align="center">
   <img src="./docs/images/readme/deploy.png" width="100%" alt="PR에서 서버까지. 1 PR, 2 CI 4개, 3 develop 머지, 4 배포 게이트(그 커밋의 CI 4개가 모두 초록인지 확인), 5 EC2 배포. 확인에 실패하면 직전 커밋으로 자동 롤백" />
 </p>
+
+<details>
+<summary><strong>운영에서 무엇을 지켜보나 — CloudWatch 로그와 상태 확인</strong></summary>
+
+서버(EC2 1대)의 CPU · 네트워크 그래프를 CloudWatch 로 보고, 컨테이너 다섯(web · backend · ai · db · db-backup)의 로그는 로그 그룹에 스트림 하나씩으로 모읍니다. 10분마다 외부에서 사이트 상태를 확인하고(`uptime.yml`), 매일 DB 를 백업해 7일 보관합니다.
+
+<p align="center">
+  <img src="./docs/images/readme/ec2-monitoring.png" width="100%" alt="EC2 모니터링 1주 그래프: CPU 사용률은 평소 5% 안팎에 배포·정리 때 20%까지, 네트워크 입출력과 패킷 수가 같은 때 튄다" />
+  <img src="./docs/images/readme/cloudwatch-streams.png" width="100%" alt="CloudWatch 로그 그룹의 스트림 다섯 개: gitory-db-1, gitory-ai-1, gitory-backend-1, gitory-web-1, gitory-db-backup-1" />
+</p>
+
+</details>
 
 ## 🚀 직접 실행하기
 

@@ -3555,6 +3555,12 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "cardId" : {
+            "type" : "string"
+          },
+          "cardTitle" : {
+            "type" : "string"
+          },
           "cardTitles" : {
             "items" : {
               "type" : "string"
@@ -3575,7 +3581,13 @@
             "type" : "string"
           },
           "kind" : {
-            "enum" : [ "CARDS_DRAFTED", "REPO_REFRESHED", "ANALYSIS_FAILED", "POSTINGS_MATCHED" ],
+            "enum" : [ "CARDS_DRAFTED", "REPO_REFRESHED", "ANALYSIS_FAILED", "POSTINGS_MATCHED", "LETTER_CARD_SUGGESTED" ],
+            "type" : "string"
+          },
+          "letterId" : {
+            "type" : "string"
+          },
+          "letterTitle" : {
             "type" : "string"
           },
           "postings" : {
@@ -3583,6 +3595,12 @@
               "$ref" : "#/components/schemas/NoticePostingResponse"
             },
             "type" : "array"
+          },
+          "questionId" : {
+            "type" : "string"
+          },
+          "questionText" : {
+            "type" : "string"
           },
           "readAt" : {
             "format" : "date-time",

@@ -397,7 +397,17 @@ describe('⑥ 같은 종이에서 고치기', () => {
     expect(document.querySelector('[data-note-card]')).toBeNull();
     fireEvent.change(screen.getByLabelText('1번 문항 초안'), { target: { value: TEXT.replace(S1, '장애를 크게 줄인 팀이라서.') } });
     expect(document.querySelector('.pedit__mirror mark[data-note]')).toBeNull();
-    expect(screen.getAllByRole('button', { name: /^(근거|겹침|짐작) / }).map((b) => b.textContent)).toEqual(['근거 고침 1', '겹침 없음', '짐작 없음']);
+    expect(screen.getAllByRole('button', { name: /^(근거|겹침|문항|짐작)/ }).map((b) => b.textContent)).toEqual(['근거 고침 1', '겹침 없음', '문항에 맞음', '짐작 없음']);
+  });
+
+  it('문항에서 벗어났다고 표시된 문장은 칩에 문항 벗어남 1 로 보이고, 칩을 누르면 그 문장이 칠해진다', () => {
+    mount(letter({ stage: 'DRAFTED', pollAfterMs: null, questions: [question({ draft: draft(TEXT, [{ sentenceSeq: 1, code: 'OFF_TOPIC', value: null }]) })],
+      steps: { assign: [], draft: [step({ seq: 1, kind: 'MARKED', code: 'OFF_TOPIC', value: null, sentenceSeq: 1, sentence: S1 })] } }));
+    const chip = screen.getByRole('button', { name: '문항 벗어남 1' });
+    expect(chip).toBeEnabled();
+    expect(document.querySelector('.pedit__mirror mark[data-note]')).toHaveClass('phl--marked');
+    fireEvent.click(chip);
+    expect(document.querySelector('.pedit__mirror mark[data-note]')).toHaveClass('phl--focus');
   });
 
   it('전체 복사는 화면에 있는 지금 글로 만든다', async () => {

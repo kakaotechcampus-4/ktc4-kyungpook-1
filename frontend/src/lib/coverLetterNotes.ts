@@ -48,10 +48,11 @@ export function cellLabel(cell: ChecklistCell): string {
   return parts.length ? parts.join(', ') : '통과';
 }
 
-/** ⑥ 종이 아래 칩(#727) — 근거 · 겹침 · 짐작 세 칸만 짧게. 글자 수는 옆 숫자가 말한다 */
-export const DRAFT_CHIP_GROUPS: CheckGroup[] = ['evidence', 'repeat', 'inference'];
+/** ⑥ 종이 아래 칩(#727) — 문장에 걸리는 검사 넷(근거 · 겹침 · 문항 적합 · 짐작)만 짧게. 글자 수는 문항 전체 검사라 옆 숫자가 말한다 */
+export const DRAFT_CHIP_GROUPS: CheckGroup[] = ['evidence', 'repeat', 'fit', 'inference'];
 export function chipLabel(group: CheckGroup, cell: ChecklistCell): string {
   if (group === 'evidence') return cell.marked > 0 ? `근거 확인 ${cell.marked}` : cell.fixed > 0 ? `근거 고침 ${cell.fixed}` : '근거 통과';
+  if (group === 'fit') return cell.marked > 0 ? `문항 벗어남 ${cell.marked}` : cell.fixed > 0 ? `문항 고침 ${cell.fixed}` : '문항에 맞음';
   return cell.marked > 0 ? `${GROUP_LABEL[group]} ${cell.marked}` : `${GROUP_LABEL[group]} 없음`;
 }
 

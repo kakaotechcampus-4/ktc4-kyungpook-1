@@ -20,6 +20,9 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/cards');
     await showCardTiles(page);
     await expect(page.getByRole('link', { name: '경험 카드 만들기' })).toBeVisible();
+    // 타일과 메뉴 표시가 그려진 뒤에 색을 읽는다 — CI 가 느릴 때 아직 없는 요소에서 getComputedStyle 이 터졌다
+    await expect(page.locator('.experience-item').first()).toBeVisible();
+    await expect(page.locator('.menu-item[aria-current=page]')).toBeVisible();
     const palette = await page.evaluate(() => {
       const button = getComputedStyle(document.querySelector('.btn--primary')!);
       const root = getComputedStyle(document.documentElement);

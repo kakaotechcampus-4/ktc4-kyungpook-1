@@ -49,14 +49,14 @@ describe('N1 초안이 끝난 자소서의 다음 걸음', () => {
     );
   };
 
-  it('공고가 있으면 원문 링크와 캘린더 담기가 한 줄로 보인다', async () => {
+  it('공고가 있으면 원문 링크만 보이고, 다음 공고 보기와 캘린더 담기는 없다', async () => {
     mountLetter(POSTING);
     const source = await screen.findByRole('link', { name: /공고 원문에서 지원하기/ });
     expect(source).toHaveAttribute('href', expect.stringMatching(/^https?:\/\//));
     expect(source).toHaveAttribute('target', '_blank');
-    expect(await screen.findByRole('button', { name: '캘린더에 담기' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '다음 공고 보기' })).not.toBeInTheDocument();
-    expect(source.closest('.cl-next')).toContainElement(screen.getByRole('button', { name: '캘린더에 담기' }));
+    expect(screen.queryByRole('button', { name: '캘린더에 담기' })).not.toBeInTheDocument();
+    expect(source.closest('.cl-next')).toBeInTheDocument();
   });
 
   it('공고가 없는 자소서에는 둘 다 없다', async () => {

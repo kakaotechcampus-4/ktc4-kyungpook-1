@@ -13,6 +13,7 @@ export function NextStep({ next, state, announce }: { next: FolderNext; state?: 
       <span className="next-step__icon" aria-hidden><Icon size={20} /></span>
       <p className="next-step__text"><strong>{next.title}</strong><span>{next.sub}</span></p>
       <div className="next-step__actions">
+        {next.more && <ButtonLink to={next.more.to} variant="text">{next.more.label}</ButtonLink>}
         <ButtonLink to={next.action.to} state={state} variant="primary" className="next-step__go">{next.action.label}</ButtonLink>
       </div>
     </section>

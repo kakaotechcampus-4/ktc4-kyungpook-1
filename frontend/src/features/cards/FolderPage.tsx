@@ -8,6 +8,7 @@ import { NextStep } from '@/components/cards/NextStep';
 import { Breadcrumb, Button, ButtonLink, PageTitle, SectionHead, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { ActivityDeleteDialog } from '@/features/activities/ActivityDeleteDialog';
+import { matchSupported } from '@/api/matching';
 import { RepoMatch } from '@/features/match/RepoMatch';
 import { CardGridItem } from '@/features/home/HomePage';
 import { activityMeta } from '@/lib/activityLabels';
@@ -75,7 +76,7 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
   const ordered = [...techCards, ...experienceCards];
   const order = ordered.map((card) => card.id);
   const justConfirmed = !!justId && order.includes(justId);
-  const next = folderNext({ cards: ordered, justConfirmed });
+  const next = folderNext({ cards: ordered, justConfirmed, matchOn: matchSupported(), repoFolder: kind === 'repo' });
   const confirmed = folder.cards.filter((card) => card.status === 'CONFIRMED').length;
   const boardLink = kind === 'repo' ? `/repos/${encodeURIComponent(id ?? '')}/candidates` : null;
   const facts = kind === 'repo' ? `기술 카드 ${techCards.length}장, 경험 카드 ${experienceCards.length}장, 확정 ${confirmed}장` : `카드 ${folder.cards.length}장, 확정 ${confirmed}장`;

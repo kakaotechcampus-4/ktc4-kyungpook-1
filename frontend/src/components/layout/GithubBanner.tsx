@@ -1,4 +1,5 @@
 import { Github } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useMe } from '@/api/queries';
 import { Button } from '@/components/ui';
 import { reconnectGithub } from '@/lib/githubReconnect';
@@ -9,7 +10,9 @@ import { reconnectGithub } from '@/lib/githubReconnect';
  */
 export function GithubBanner() {
   const me = useMe();
-  if (me.data?.github?.connected !== false) return null;
+  const { pathname } = useLocation();
+  // 연결 화면은 같은 안내와 다시 연결 버튼을 화면 안에 두므로 띠를 겹쳐 띄우지 않는다
+  if (me.data?.github?.connected !== false || pathname === '/settings/github') return null;
   return (
     <div className="gh-banner" role="status">
       <Github size={18} aria-hidden className="gh-banner__icon" />

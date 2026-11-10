@@ -4,6 +4,7 @@
 LLM 이 없거나 실패하면 틀 질문으로 대신한다(services.interview_agent.InterviewAgent 참고).
 `POST /internal/interview-measured-sentence`: '재 봤어요' 에 쓴 측정 결과로 R 문장을 다시 쓴다.
 `POST /internal/interview-polished-sentence`: 경험 카드 답을 표현만 다듬는다.
+`POST /internal/interview-replies`: 답을 읽고 처리 방법을 정해 그 칸의 문장을 쓴다.
 `POST /internal/card-themes`: 확정할 때 경험 카드의 자소서 문항 유형을 고른다.
 """
 
@@ -23,6 +24,8 @@ from schemas.interview import (
     CardThemesResult,
     InterviewAnswerRequest,
     InterviewAnswerResult,
+    InterviewReplyRequest,
+    InterviewReplyResult,
     InterviewTurnRequest,
     InterviewTurnResult,
     MeasuredSentenceRequest,
@@ -147,6 +150,32 @@ async def polish_answer(request: PolishedSentenceRequest):
         meta=usage_meta(started, "COMPLETED"),
         error=None,
     )
+
+
+@router.post(
+    "/interview-replies",
+    response_model=Envelope[InterviewReplyResult],
+    summary="되묻기 답을 읽고 판단해 카드 문장 쓰기",
+    description=(
+        "사용자 답을 읽고 APPLY(칸에 쓸 사실이 있음)·ASK_MORE(뭉뚱그림)·OFF_TOPIC(카드와 상관없음)·DONT_KNOW(모름) 중 "
+        "하나로 판단하고, APPLY 면 그 칸의 새 문장과 답이 함께 말한 다른 빈 칸의 문장을 씁니다. 저장하지 않습니다. "
+        "뜻 없는 글자뿐인 답은 LLM 을 부르지 않고 OFF_TOPIC 으로 답합니다. 실패하면 Spring 이 답을 카드에 넣지 않습니다."
+    ),
+    responses={
+        503: {
+            "model": ErrorEnvelope,
+            "description": "LLM_UNAVAILABLE: LLM 설정이 없거나 12초 안에 쓸 만한 답을 받지 못함(retryable=true).",
+        },
+    },
+)
+async def reply_to_answer(request: InterviewReplyRequest):
+    """판단과 문장을 돌려주거나, 받지 못하면 503 을 돌려준다."""
+    started = time.perf_counter()
+    try:
+        result = await _llm.reply(request)
+    except InterviewLLMUnavailable:
+        return _unavailable(started, "답을 처리하지 못했습니다.")
+    return Envelope(success=True, data=result, meta=usage_meta(started, "COMPLETED"), error=None)
 
 
 @router.post(

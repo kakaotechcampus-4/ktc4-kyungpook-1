@@ -318,6 +318,22 @@ export function useAnswerInterview(cardId: string) {
   });
 }
 
+/** 서버가 답을 읽고 카드에 넣은 결과를 돌려준다. 질문 목록까지 새로 받은 뒤에 끝나서, 화면이 옛 질문을 한 번 더 그리지 않는다 */
+export function useReplyInterview(cardId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { turnNo: number; text: string; source: EvidenceType }) =>
+      endpoints.replyInterview(cardId, v.turnNo, { text: v.text, source: v.source }),
+    onSuccess: async (reply) => {
+      qc.setQueryData(keys.card(cardId), reply.card);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: keys.interview(cardId) }),
+        qc.invalidateQueries({ queryKey: keys.versions(cardId) }),
+      ]);
+    },
+  });
+}
+
 export function useSkipInterview(cardId: string) {
   const qc = useQueryClient();
   return useMutation({

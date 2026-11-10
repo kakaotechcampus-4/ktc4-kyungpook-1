@@ -52,7 +52,7 @@ import java.util.stream.Stream;
 @EnableConfigurationProperties(InterviewLimits.class)
 public class InterviewAskService {
 
-    private static final int MAX_ASKS_PER_SLOT = 2;
+    public static final int MAX_ASKS_PER_SLOT = 2;
     private static final Set<TurnOutcome> CLOSING_OUTCOMES = EnumSet.of(TurnOutcome.SKIPPED, TurnOutcome.NOT_MEASURED);
 
     private final CardOwnershipService ownership;

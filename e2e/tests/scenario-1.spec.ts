@@ -145,8 +145,9 @@ test.describe('시나리오 1: 로그인부터 카드 자동 확정과 되묻기
       await expect(page).toHaveURL(/\/interview\?field=T/);
       await expect(page.getByRole('heading', { name: /^Q1\. \S/ })).toBeVisible({ timeout: SLOW });
       await page.getByRole('textbox', { name: '답변' }).fill(ANSWER);
-      await page.getByRole('button', { name: '답변 저장' }).click();
-      await expect(page.getByText('내 답변, 저장됨')).toBeVisible({ timeout: 15_000 });
+      // 답을 읽는 가짜 LLM 이 적은 그대로 넣는다고 답하므로 과제 칸에 답이 그대로 들어간다
+      await page.getByRole('button', { name: '답 보내기' }).click();
+      await expect(page.getByText('과제 칸에 이렇게 넣었어요')).toBeVisible({ timeout: SLOW });
       // 질문이 끝나면 "카드로" 링크를 두지 않아서(AI 가 더 묻지 않기로 하면 열린 질문이 없다) 카드 주소로 바로 간다
       await page.goto(`/cards/${cardId}`);
       // 확정된 카드는 칸이 읽기 줄이라 칸 이름 영역 대신 글로 찾는다. 과제를 채웠으니 안내는 결과 칸만 남는다

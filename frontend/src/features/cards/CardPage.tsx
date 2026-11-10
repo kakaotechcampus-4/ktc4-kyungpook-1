@@ -1,4 +1,4 @@
-import { Copy, ExternalLink, History, ListChecks, Pencil, Printer } from 'lucide-react';
+import { Copy, ExternalLink, History, ListChecks, Pencil } from 'lucide-react';
 import { DraftProgress } from './DraftProgress';
 import { LiveCardDraft } from './LiveCardDraft';
 import { CardNavigation } from './CardNavigation';
@@ -39,7 +39,7 @@ import { cardFolderPath, folderPath } from '@/lib/cardFolders';
  * /cards/:id — 상태로 화면이 갈린다.
  *  generation != null    → D1 초안 생성 중 (Job 폴링) · generation.partial → D3 (E-7)
  *  DRAFT                 → D2 초안 STAR (+ ?mode=edit D6 · ?mode=mask D7 · ?confirm=1 D8 · ?versions=1 E3) · R 비면 D4 (E-6)
- *  CONFIRMED             → E2 읽기 (+ D9 확정 직후 배너 · 복사 · 인쇄)
+ *  CONFIRMED             → E2 읽기 (+ D9 확정 직후 배너 · 복사)
  */
 export function CardPage() {
   const { cardId = '' } = useParams();
@@ -115,6 +115,7 @@ export function CardPage() {
   if (q.isError && !q.data) return <main className="main"><QueryFailure error={q.error} retry={() => q.refetch()} pending={q.isFetching} /><ButtonLink to="/cards" variant="secondary">경험 카드 목록</ButtonLink></main>;
   const card = q.data!;
   const repoName = card.repo ? `${card.repo.owner} / ${card.repo.name}` : null;
+  const sourceCounts = [evidenceCountLabel(card.evidence), card.maskRules.length ? `가린 정보 ${card.maskRules.length}개` : ''].filter(Boolean).join(', ');
   const srcLabel = card.candidate ? candidateRefLabel(card.candidate.type, card.candidate.ref) : card.kind === 'QUALITATIVE' ? '직접 작성' : '카드';
   // 경험 카드 목록 다음에 카드가 든 폴더(레포 또는 활동)가 온다(#522)
   const crumbs = [{ label: '홈', to: '/' }, { label: '경험 카드', to: '/cards' }, ...(card.repo ? [{ label: card.repo.name, to: folderPath.repo(card.repo.id) }] : card.activity ? [{ label: card.activity.name, to: folderPath.activity(card.activity.id) }] : []), { label: srcLabel, href: candidateGithubUrl(card) }];
@@ -125,7 +126,6 @@ export function CardPage() {
   const metadataAction = cardMetadataSupported() ? <button type="button" className="title-edit" aria-label="기본 정보 수정" title="제목과 기간 수정" onClick={() => setMetadataOpen(true)}><Pencil size={18} aria-hidden /></button> : null;
   const metadataDialog = metadataOpen ? <CardMetadataDialog key={card.id} card={card} onClose={() => setMetadataOpen(false)} /> : null;
   const exportMd = () => setCopyOpen(true);
-  const print = () => { track('card_exported', { cardId, format: 'print' }); window.print(); };
   // 확정 카드를 편집 상태로 되돌린다. 칸 연필로 열었으면 되돌린 뒤 그 칸부터 고친다
   const reopenCard = (field?: StarField) => reopen.mutate(undefined, { onSuccess: () => {
     track('card_reopened', { cardId });
@@ -193,23 +193,19 @@ export function CardPage() {
             })}
           </div>
           <aside className="stack card-review-aside" style={{ gap: 16 }}>
-            {/* 오른쪽은 한눈에 읽히는 세 덩어리만: 만든 과정, 출처 두 줄, 카드 관리. 확정일은 제목 아래에 이미 있다 */}
-            <DraftProcess card={card} />
-            <div className="card stack" style={{ gap: 12, padding: '16px 18px' }}>
-              <div className="stack" style={{ gap: 4 }}>
-                <span className="t-12 w-bold c-3">출처</span>
-                <span className="t-12l">
+            {/* 오른쪽은 한눈에 읽히는 두 덩어리만: 만든 과정(바뀐 카드면 작성 이력까지), 출처 두 줄. 확정일은 제목 아래에 이미 있다 */}
+            <DraftProcess card={card} onHistory={() => setSp({ versions: '1' })} />
+            <div className="card stack card-source">
+              <div className="stack" style={{ gap: 6 }}>
+                <h2 className="card-source__title">출처</h2>
+                <span className="card-source__line">
                   {card.activity ? <>활동 <Link className="aside-link" to={folderPath.activity(card.activity.id)}>{card.activity.name}</Link>, </> : null}
                   {card.repo ? <a className="aside-link" href={`https://github.com/${card.repo.owner}/${card.repo.name}`} target="_blank" rel="noreferrer">{repoName}<ExternalLink size={12} aria-hidden /></a> : null}
                   {card.repo && srcLabel ? ', ' : ''}
                   {(() => { const href = candidateGithubUrl(card); return href ? <a className="aside-link" href={href} target="_blank" rel="noreferrer">{srcLabel}<ExternalLink size={12} aria-hidden /></a> : srcLabel; })()}
                   {!card.repo && !srcLabel ? '직접 작성' : null}
                 </span>
-                <span className="t-12 c-2">{evidenceCountLabel(card.evidence, { showZero: true })}{card.maskRules.length ? `, 가린 정보 ${card.maskRules.length}개` : ''}</span>
-              </div>
-              <div className="card-tools">
-                <Button variant="secondary" size="sm" onClick={() => setSp({ versions: '1' })}><History size={15} aria-hidden />{historyActionLabel}</Button>
-                <Button variant="secondary" size="sm" onClick={print} title="면접 직전 복습용 인쇄"><Printer size={15} aria-hidden />인쇄</Button>
+                {sourceCounts && <span className="card-source__count">{sourceCounts}</span>}
               </div>
             </div>
             <CardNavigation cardId={cardId} />

@@ -54,7 +54,7 @@ describe('real-server mode (the endpoint does not exist yet)', () => {
     realMode();
     const server = connectMockServer();
     mountApp([page(<MyPage />, '/settings')], '/settings');
-    await screen.findByRole('link', { name: /GitHub 연결 관리/ });
+    await screen.findByRole('link', { name: /GitHub 연결/ });
     await settle();
     expect(screen.queryByRole('link', { name: /인적사항/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/인적사항/)).not.toBeInTheDocument();

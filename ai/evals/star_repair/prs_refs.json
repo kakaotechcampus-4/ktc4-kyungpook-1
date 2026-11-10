@@ -1,0 +1,469 @@
+{
+ "seed": 20261028,
+ "ours": [
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 72
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 83
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 50
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 98
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 230
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 257
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 278
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 241
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 134
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 136
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 244,
+   "rejected": true
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 296,
+   "rejected": true
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 294
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 263
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 291
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 242
+  }
+ ],
+ "others": [
+  {
+   "repo": "ktc4-pusan-2",
+   "number": 221
+  },
+  {
+   "repo": "ktc4-chonnam-1",
+   "number": 37
+  },
+  {
+   "repo": "ktc4-kyungpook-3",
+   "number": 80
+  },
+  {
+   "repo": "ktc4-kyungpook-4",
+   "number": 26
+  },
+  {
+   "repo": "ktc4-kyungpook-6",
+   "number": 18
+  },
+  {
+   "repo": "ktc4-pusan-1",
+   "number": 62
+  },
+  {
+   "repo": "ktc4-chungnam-2",
+   "number": 708
+  },
+  {
+   "repo": "ktc4-kyungpook-5",
+   "number": 145
+  },
+  {
+   "repo": "ktc4-chungnam-3",
+   "number": 9
+  },
+  {
+   "repo": "ktc4-kyungpook-2",
+   "number": 234
+  },
+  {
+   "repo": "ktc4-chonnam-2",
+   "number": 398
+  },
+  {
+   "repo": "ktc4-pusan-5",
+   "number": 8
+  },
+  {
+   "repo": "ktc4-chungnam-4",
+   "number": 59
+  },
+  {
+   "repo": "ktc4-chungnam-2",
+   "number": 794
+  },
+  {
+   "repo": "ktc4-chungnam-2",
+   "number": 440
+  },
+  {
+   "repo": "ktc4-kangwon-4",
+   "number": 8
+  },
+  {
+   "repo": "ktc4-chonnam-1",
+   "number": 27
+  },
+  {
+   "repo": "ktc4-pusan-4",
+   "number": 82
+  },
+  {
+   "repo": "ktc4-pusan-4",
+   "number": 168
+  },
+  {
+   "repo": "ktc4-kangwon-1",
+   "number": 36
+  },
+  {
+   "repo": "ktc4-pusan-5",
+   "number": 14
+  },
+  {
+   "repo": "ktc4-kangwon-3",
+   "number": 401
+  },
+  {
+   "repo": "ktc4-kangwon-1",
+   "number": 41
+  },
+  {
+   "repo": "ktc4-kyungpook-5",
+   "number": 43
+  },
+  {
+   "repo": "ktc4-kangwon-4",
+   "number": 65
+  },
+  {
+   "repo": "ktc4-chungnam-3",
+   "number": 12
+  },
+  {
+   "repo": "ktc4-kyungpook-2",
+   "number": 194
+  },
+  {
+   "repo": "ktc4-chungnam-1",
+   "number": 150
+  },
+  {
+   "repo": "ktc4-kyungpook-3",
+   "number": 70
+  },
+  {
+   "repo": "ktc4-kyungpook-6",
+   "number": 64
+  },
+  {
+   "repo": "ktc4-chungnam-5",
+   "number": 68
+  },
+  {
+   "repo": "ktc4-chungnam-1",
+   "number": 29
+  },
+  {
+   "repo": "ktc4-kangwon-2",
+   "number": 222
+  },
+  {
+   "repo": "ktc4-chungnam-2",
+   "number": 627
+  },
+  {
+   "repo": "ktc4-chungnam-5",
+   "number": 36
+  },
+  {
+   "repo": "ktc4-chonnam-3",
+   "number": 44
+  },
+  {
+   "repo": "ktc4-kangwon-2",
+   "number": 221
+  },
+  {
+   "repo": "ktc4-kyungpook-6",
+   "number": 38
+  },
+  {
+   "repo": "ktc4-chungnam-4",
+   "number": 114
+  },
+  {
+   "repo": "ktc4-chonnam-3",
+   "number": 58
+  },
+  {
+   "repo": "ktc4-chonnam-3",
+   "number": 96
+  },
+  {
+   "repo": "ktc4-pusan-2",
+   "number": 391
+  },
+  {
+   "repo": "ktc4-kyungpook-2",
+   "number": 118
+  },
+  {
+   "repo": "ktc4-kyungpook-5",
+   "number": 142
+  },
+  {
+   "repo": "ktc4-chungnam-5",
+   "number": 27
+  },
+  {
+   "repo": "ktc4-pusan-4",
+   "number": 37
+  },
+  {
+   "repo": "ktc4-pusan-5",
+   "number": 49
+  },
+  {
+   "repo": "ktc4-kangwon-3",
+   "number": 243
+  },
+  {
+   "repo": "ktc4-pusan-3",
+   "number": 338
+  },
+  {
+   "repo": "ktc4-chungnam-4",
+   "number": 78
+  },
+  {
+   "repo": "ktc4-kyungpook-5",
+   "number": 150
+  },
+  {
+   "repo": "ktc4-chungnam-3",
+   "number": 25
+  },
+  {
+   "repo": "ktc4-chonnam-1",
+   "number": 97
+  },
+  {
+   "repo": "ktc4-pusan-1",
+   "number": 42
+  },
+  {
+   "repo": "ktc4-chonnam-4",
+   "number": 11
+  },
+  {
+   "repo": "ktc4-kyungpook-6",
+   "number": 112
+  },
+  {
+   "repo": "ktc4-kyungpook-3",
+   "number": 43
+  },
+  {
+   "repo": "ktc4-chonnam-3",
+   "number": 94
+  },
+  {
+   "repo": "ktc4-chonnam-4",
+   "number": 10
+  },
+  {
+   "repo": "ktc4-kyungpook-2",
+   "number": 94
+  },
+  {
+   "repo": "ktc4-pusan-2",
+   "number": 307
+  },
+  {
+   "repo": "ktc4-kangwon-1",
+   "number": 45
+  },
+  {
+   "repo": "ktc4-chonnam-2",
+   "number": 369
+  },
+  {
+   "repo": "ktc4-kyungpook-4",
+   "number": 21
+  },
+  {
+   "repo": "ktc4-chonnam-4",
+   "number": 9
+  },
+  {
+   "repo": "ktc4-chonnam-2",
+   "number": 126
+  },
+  {
+   "repo": "ktc4-kyungpook-3",
+   "number": 220
+  },
+  {
+   "repo": "ktc4-kangwon-4",
+   "number": 44
+  },
+  {
+   "repo": "ktc4-kyungpook-4",
+   "number": 8
+  },
+  {
+   "repo": "ktc4-pusan-2",
+   "number": 402
+  },
+  {
+   "repo": "ktc4-chungnam-3",
+   "number": 36
+  },
+  {
+   "repo": "ktc4-chungnam-4",
+   "number": 84
+  },
+  {
+   "repo": "ktc4-pusan-5",
+   "number": 51
+  },
+  {
+   "repo": "ktc4-chungnam-5",
+   "number": 4
+  },
+  {
+   "repo": "ktc4-chungnam-3",
+   "number": 33
+  },
+  {
+   "repo": "ktc4-chonnam-4",
+   "number": 73
+  },
+  {
+   "repo": "ktc4-chungnam-5",
+   "number": 46
+  },
+  {
+   "repo": "ktc4-kangwon-1",
+   "number": 34
+  },
+  {
+   "repo": "ktc4-pusan-3",
+   "number": 31
+  },
+  {
+   "repo": "ktc4-chonnam-3",
+   "number": 77
+  },
+  {
+   "repo": "ktc4-chonnam-1",
+   "number": 42
+  },
+  {
+   "repo": "ktc4-pusan-2",
+   "number": 314
+  },
+  {
+   "repo": "ktc4-pusan-3",
+   "number": 297
+  },
+  {
+   "repo": "ktc4-kyungpook-4",
+   "number": 31
+  },
+  {
+   "repo": "ktc4-kyungpook-3",
+   "number": 176
+  },
+  {
+   "repo": "ktc4-chungnam-1",
+   "number": 39
+  }
+ ],
+ "first_batch": [
+  "ktc4-kyungpook-1#72",
+  "ktc4-kyungpook-1#83",
+  "ktc4-kyungpook-1#50",
+  "ktc4-kyungpook-1#98",
+  "ktc4-kyungpook-1#230",
+  "ktc4-kyungpook-1#257",
+  "ktc4-kyungpook-1#278",
+  "ktc4-kyungpook-1#241",
+  "ktc4-kyungpook-1#134",
+  "ktc4-kyungpook-1#136",
+  "ktc4-kyungpook-1#294",
+  "ktc4-kyungpook-1#263",
+  "ktc4-kyungpook-1#291",
+  "ktc4-kyungpook-1#242",
+  "ktc4-pusan-2#221",
+  "ktc4-chonnam-1#37",
+  "ktc4-kyungpook-3#80",
+  "ktc4-kyungpook-4#26",
+  "ktc4-kyungpook-6#18",
+  "ktc4-pusan-1#62",
+  "ktc4-chungnam-2#708",
+  "ktc4-kyungpook-5#145",
+  "ktc4-chungnam-3#9",
+  "ktc4-kyungpook-2#234",
+  "ktc4-chonnam-2#398",
+  "ktc4-pusan-5#8",
+  "ktc4-chungnam-4#59",
+  "ktc4-chungnam-2#794",
+  "ktc4-chungnam-2#440",
+  "ktc4-kangwon-4#8",
+  "ktc4-chonnam-1#27",
+  "ktc4-pusan-4#82",
+  "ktc4-pusan-4#168",
+  "ktc4-kangwon-1#36",
+  "ktc4-pusan-5#14",
+  "ktc4-kangwon-3#401",
+  "ktc4-kangwon-1#41",
+  "ktc4-kyungpook-5#43",
+  "ktc4-kangwon-4#65",
+  "ktc4-chungnam-3#12",
+  "ktc4-kyungpook-2#194",
+  "ktc4-chungnam-1#150",
+  "ktc4-kyungpook-3#70",
+  "ktc4-kyungpook-6#64",
+  "ktc4-chungnam-5#68",
+  "ktc4-chungnam-1#29",
+  "ktc4-kangwon-2#222",
+  "ktc4-chungnam-2#627",
+  "ktc4-chungnam-5#36",
+  "ktc4-chonnam-3#44"
+ ]
+}

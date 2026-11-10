@@ -1,0 +1,73 @@
+{
+  "case": "되묻기 답을 AI 가 읽고 판단해 카드 문장으로 쓴다",
+  "springToAi": {
+    "path": "/internal/interview-replies",
+    "expectedRequest": {
+      "card_id": 104,
+      "card_title": "배포 시간 줄이기",
+      "star_slot": "A",
+      "question_text": "배포가 늦어질 때 직접 하신 일이 무엇이었나요?",
+      "answer_text": "로그를 보니까 매번 전체를 다시 빌드하고 있길래 바뀐 모듈만 다시 빌드하게 설정을 고쳤어요. 그 뒤로 12분에서 4분으로 줄었어요",
+      "held_answers": ["설정을 좀 고쳤어요"],
+      "slots": [
+        { "star_slot": "S", "body": "배포가 늦어져 팀이 수정 사항을 몰아서 올리던 때였다" },
+        { "star_slot": "T", "body": "배포 시간을 줄여야 했다" },
+        { "star_slot": "A", "body": null },
+        { "star_slot": "R", "body": null }
+      ],
+      "follow_up_allowed": false
+    }
+  },
+  "aiToSpring": {
+    "applied": {
+      "success": true,
+      "data": {
+        "card_id": 104,
+        "verdict": "APPLY",
+        "sentence": "배포 로그를 보고 매번 전체를 다시 빌드하는 것을 확인해, 바뀐 모듈만 다시 빌드하도록 설정을 고쳤다.",
+        "extra": [
+          { "star_slot": "R", "sentence": "배포 시간이 12분에서 4분으로 줄었다." }
+        ],
+        "follow_up": null,
+        "reason": null
+      },
+      "error": null
+    },
+    "askMore": {
+      "success": true,
+      "data": {
+        "card_id": 104,
+        "verdict": "ASK_MORE",
+        "sentence": null,
+        "extra": [],
+        "follow_up": "어떤 설정을 어떻게 바꾸셨는지 한 가지만 더 알려 주세요.",
+        "reason": "어떤 설정을 어떻게 고쳤는지가 빠져 있어요"
+      },
+      "error": null
+    },
+    "offTopic": {
+      "success": true,
+      "data": {
+        "card_id": 104,
+        "verdict": "OFF_TOPIC",
+        "sentence": null,
+        "extra": [],
+        "follow_up": null,
+        "reason": "질문과 상관없는 말이에요"
+      },
+      "error": null
+    },
+    "dontKnow": {
+      "success": true,
+      "data": {
+        "card_id": 104,
+        "verdict": "DONT_KNOW",
+        "sentence": null,
+        "extra": [],
+        "follow_up": null,
+        "reason": null
+      },
+      "error": null
+    }
+  }
+}

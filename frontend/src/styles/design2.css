@@ -40,13 +40,48 @@
 .settings-page { gap: 32px; }
 .profile-summary { display: flex; align-items: center; gap: 20px; min-height: 76px; padding: 4px 2px; }
 .settings-section { padding: 24px; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); box-shadow: none; }
-.settings-row { display: flex; align-items: center; gap: 14px; padding: 15px 0; border-top: 1px solid var(--border-default); }
-.settings-row:first-of-type { border-top: 0; }
-.settings-row--muted { color: var(--text-tertiary); }
-.settings-links { padding-block: 6px; }
-.settings-section.stat-grid { gap: 0; padding: 0; overflow: hidden; }
-.settings-section .stat { min-width: 0; padding: 22px 24px; }
-.settings-section .stat + .stat { border-left: 1px solid var(--border-default); }
+.set-page > * { width: 100%; max-width: 760px; }
+.set-who { display: flex; align-items: center; gap: 16px; }
+.set-who__text { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.set-who__name { font-size: 20px; font-weight: var(--weight-bold); }
+.set-who__sub { font-size: 14px; line-height: 22px; color: var(--text-secondary); }
+.set-group { display: grid; gap: 8px; }
+.set-group > h2 { margin: 0 0 0 4px; font-size: 15px; font-weight: var(--weight-bold); color: var(--text-secondary); }
+.set-list { border: 1px solid var(--border-default); border-radius: 16px; overflow: hidden; background: var(--bg-surface); }
+.set-list > * + * { border-top: 1px solid var(--border-default); }
+.set-row { display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 10px 20px; color: inherit; text-decoration: none; }
+.set-row__text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.set-row__text b { font-size: 16px; font-weight: var(--weight-bold); }
+.set-row__text span { font-size: 14px; line-height: 22px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.set-row__go { font-size: 20px; color: var(--text-secondary); }
+.set-row__link { font-size: 15px; color: var(--text-secondary); white-space: nowrap; }
+.set-row .badge, .set-status .badge { padding: 4px 10px; font-size: 14px; line-height: 20px; }
+.set-row .btn { min-height: 44px; min-width: 72px; font-size: 15px; }
+a.set-row:hover, .set-details > summary:hover { background: var(--bg-subtle); }
+.set-details > summary { cursor: pointer; list-style: none; }
+.set-details > summary::-webkit-details-marker { display: none; }
+.set-details > summary::after { content: '+'; font-size: 20px; color: var(--text-secondary); }
+.set-details[open] > summary::after { content: '−'; }
+.set-details__body { display: grid; gap: 4px; padding: 4px 20px 16px; border-top: 1px solid var(--border-default); }
+.set-details__body .kv { font-size: 15px; line-height: 22px; }
+.set-data__why { font-size: 14px; line-height: 22px; color: var(--text-secondary); }
+.set-logout { justify-self: start; min-height: 48px; padding-inline: 28px; font-size: 15px; }
+.set-card { display: grid; gap: 6px; padding: 20px 22px; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); }
+.set-card h2 { margin: 0; font-size: 17px; font-weight: var(--weight-bold); }
+.set-card p { margin: 0; font-size: 15px; line-height: 24px; color: var(--text-secondary); }
+.set-status, .set-split { display: flex; align-items: center; gap: 16px; }
+.set-status__text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.set-status .btn, .set-split .btn { min-height: 48px; padding-inline: 20px; font-size: 15px; white-space: nowrap; }
+.set-scope { display: grid; grid-template-columns: 1fr 1fr; margin-top: 8px; border: 1px solid var(--border-default); border-radius: 14px; overflow: hidden; }
+.set-scope > div { padding: 16px 18px; }
+.set-scope > div + div { border-left: 1px solid var(--border-default); background: var(--bg-subtle); }
+.set-scope h3 { margin: 0 0 8px; font-size: 15px; font-weight: var(--weight-bold); }
+.set-scope ul { margin: 0; padding: 0; list-style: none; font-size: 15px; line-height: 24px; }
+.set-scope li { position: relative; padding: 4px 0 4px 26px; }
+.set-scope li::before { position: absolute; left: 0; top: 4px; font-weight: var(--weight-bold); }
+.set-scope__yes li::before { content: '✓'; color: var(--text-strong); }
+.set-scope__no li::before { content: '–'; color: var(--text-secondary); }
+.set-card p.set-note { margin-top: 8px; font-weight: var(--weight-bold); color: var(--text-primary); }
 /*
  * 목록 = 테두리 하나짜리 박스 + 칸막이선. 낱장 카드가 아니다.
  * 그래서 행 hover 에서 border 를 건드리면 안 된다 — 칸막이선 하나만 변해 어긋나 보인다.

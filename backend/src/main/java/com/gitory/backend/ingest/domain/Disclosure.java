@@ -17,8 +17,7 @@ public record Disclosure(List<String> reads, List<String> skips, int estimatedSe
 
     private static final List<String> SKIPS = List.of("비공개 저장소", "기본 브랜치가 아닌 브랜치", "저장소 파일 전체 내용");
 
-    public static Disclosure of(RepositorySummary repository, IngestLimits limits, boolean groupingEnabled,
-                                int storedCommits, int storedPullRequests) {
+    public static Disclosure of(RepositorySummary repository, IngestLimits limits, boolean groupingEnabled) {
 
         boolean counted = repository.countedAt() != null;
         List<String> reads = List.of(
@@ -30,19 +29,20 @@ public record Disclosure(List<String> reads, List<String> skips, int estimatedSe
 
         int estimatedSeconds = counted ? estimatedSecondsOf(repository, limits, groupingEnabled) : UNCOUNTED_SECONDS;
 
-        if (!counted || repository.lastAnalyzedAt() == null) {
+        if (!counted || repository.lastAnalyzedAt() == null || repository.analyzedCommitCount() == null
+                || repository.analyzedPrCount() == null) {
             return new Disclosure(reads, SKIPS, estimatedSeconds, null, null, null);
         }
 
-        int newCommits = Math.max(Math.min(repository.commitCount(), limits.maxCommits()) - storedCommits, 0);
-        int newPullRequests = Math.max(collectedPullRequestsOf(repository, limits) - storedPullRequests, 0);
+        int newCommits = Math.max(repository.commitCount() - repository.analyzedCommitCount(), 0);
+        int newPullRequests = Math.max(repository.prCount() - repository.analyzedPrCount(), 0);
 
         return new Disclosure(reads, SKIPS, estimatedSeconds, newCommits, newPullRequests,
                 reanalyzeSecondsOf(repository, limits, groupingEnabled, newCommits, newPullRequests));
 
     }
 
-    // 저장된 커밋·PR 행은 남의 것까지 모두 세므로 같은 범위로 맞춘 전체 수와 견줘 새로 생긴 만큼만 구한다
+    // 저장된 행은 남의 커밋을 빼고 상한에 걸려 GitHub 수와 범위가 달라 지난 정리 때의 GitHub 수와 견준다
     // 새 기록이 없으면 AI 가 경험 그룹화를 건너뛰므로 그 시간은 새 기록이 있을 때만 더한다
     private static int reanalyzeSecondsOf(RepositorySummary repository, IngestLimits limits, boolean groupingEnabled,
                                           int newCommits, int newPullRequests) {

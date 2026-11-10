@@ -508,23 +508,24 @@ class RepoApiTest {
     }
 
     @Test
-    @DisplayName("분석한 저장소 상세는 저장된 커밋·PR 행보다 센 수가 많은 만큼 새 커밋·새 PR 과 다시 분석 예상 시간을 담고, 분석 전에는 모두 null 이다")
+    @DisplayName("분석한 저장소 상세는 지난 정리 때 남긴 GitHub 수보다 센 수가 많은 만큼 새 커밋·새 PR 과 다시 분석 예상 시간을 담고, 분석 전이거나 그때 수가 없으면 모두 null 이다")
     void detailAddsReanalyzeFieldsOnlyAfterAnalysis() throws Exception {
 
         UUID fresh = connectCounted(100L, "fresh");
         UUID analyzed = connectCounted(200L, "analyzed");
-        Long repositoryId = jdbc.queryForObject("SELECT repository_id FROM user_repository WHERE public_id = ?",
-                Long.class, analyzed);
-        jdbc.update("UPDATE user_repository SET last_analyzed_at = '2026-10-05T02:00:00Z' WHERE public_id = ?", analyzed);
-        for (int i = 0; i < 180; i++) {
-            fixtures.insertCommit(repositoryId, "sha" + i);
-        }
-        for (int i = 1; i <= 48; i++) {
-            jdbc.update("INSERT INTO pull_request (repository_id, github_pr_number, title, state, base_branch, head_branch, opened_at) VALUES (?, ?, 'PR', 'CLOSED', 'develop', 'feature', now())",
-                    repositoryId, i);
-        }
+        UUID legacy = connectCounted(300L, "legacy");
+        jdbc.update("""
+                UPDATE user_repository SET last_analyzed_at = '2026-10-05T02:00:00Z',
+                       analyzed_commit_count = 180, analyzed_pr_count = 48
+                WHERE public_id = ?
+                """, analyzed);
+        jdbc.update("UPDATE user_repository SET last_analyzed_at = '2026-10-05T02:00:00Z' WHERE public_id = ?", legacy);
 
         detail(fresh)
+                .andExpect(jsonPath("$.data.disclosure.newCommits").value(nullValue()))
+                .andExpect(jsonPath("$.data.disclosure.newPullRequests").value(nullValue()))
+                .andExpect(jsonPath("$.data.disclosure.reanalyzeSeconds").value(nullValue()));
+        detail(legacy)
                 .andExpect(jsonPath("$.data.disclosure.newCommits").value(nullValue()))
                 .andExpect(jsonPath("$.data.disclosure.newPullRequests").value(nullValue()))
                 .andExpect(jsonPath("$.data.disclosure.reanalyzeSeconds").value(nullValue()));

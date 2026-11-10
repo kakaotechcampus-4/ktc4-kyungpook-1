@@ -2665,7 +2665,7 @@
         "type" : "object"
       },
       "InterviewTurnResponse" : {
-        "description" : "되묻기 질문 하나와 그 답으로, 질문 근거(found·missing)는 아직 만들지 않아 늘 빈 배열이다",
+        "description" : "되묻기 질문 하나와 그 답",
         "properties" : {
           "answer" : {
             "$ref" : "#/components/schemas/InterviewAnswerResponse",
@@ -2685,22 +2685,10 @@
             "enum" : [ "S", "T", "A", "R" ],
             "type" : "string"
           },
-          "found" : {
-            "items" : {
-              "type" : "string"
-            },
-            "type" : "array"
-          },
           "maxTurns" : {
             "description" : "카드 하나에 만들 수 있는 질문의 최대 수",
             "format" : "int32",
             "type" : "integer"
-          },
-          "missing" : {
-            "items" : {
-              "type" : "string"
-            },
-            "type" : "array"
           },
           "options" : {
             "description" : "AI 가 쓴 예상 답변으로, 그대로 고르면 USER_SELECTED 다",

@@ -53,8 +53,8 @@ class InterviewHistoryApiTest {
     private static final UUID OTHERS_CARD = UUID.fromString("22222222-2222-4222-8222-222222222222");
 
     // FE schemas.ts 의 InterviewTurn 이 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
-    private static final String[] TURN_KEYS = {"turnNo", "field", "askedBy", "sourceType", "questionType", "found",
-            "missing", "question", "reason", "options", "answerMode", "outcome", "answer", "remaining", "maxTurns"};
+    private static final String[] TURN_KEYS = {"turnNo", "field", "askedBy", "sourceType", "questionType", "question",
+            "reason", "options", "answerMode", "outcome", "answer", "remaining", "maxTurns"};
 
     @Container
     @ServiceConnection
@@ -215,8 +215,6 @@ class InterviewHistoryApiTest {
                 .containsEntry("askedBy", "FOLLOW_UP")
                 .containsEntry("sourceType", "DIRECT_CARD")
                 .containsEntry("questionType", "FOLLOWUP")
-                .containsEntry("found", List.of())
-                .containsEntry("missing", List.of())
                 .containsEntry("question", "  이 작업에서 맡은 역할은 무엇이었나요?  ")
                 .containsEntry("options", List.of())
                 .containsEntry("answer", null)

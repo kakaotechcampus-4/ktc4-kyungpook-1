@@ -1,30 +1,18 @@
 import { test, expect } from '@playwright/test';
 import { loginAsDemo } from './helpers';
 
-test('공고 상세에서 마감일을 캘린더에 담으면 공고 매칭 화면의 캘린더에 뜨고, 누르면 그 공고로 돌아간다', async ({ page }) => {
+test('공고 매칭 화면의 캘린더는 마감일이 있는 공고를 스스로 띄우고, 일정을 누르면 그 공고로 간다', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/match');
-  // 공고 매칭 화면의 캘린더는 내 카드와 맞는 기업의 마감을 스스로 띄운다 — 담고 빼는 것만 보려고 맞는 기업에 들지 않는 공고를 고른다
-  await page.locator('a[href^="/match/"]').filter({ hasText: /안드로이드/ }).first().click();
-  await expect(page).toHaveURL(/\/match\/[^/?]+/);
-  const detail = new URL(page.url()).pathname;
-  await page.getByRole('button', { name: '캘린더에 담기', exact: true }).click();
-  await expect(page.getByRole('button', { name: '캘린더에서 빼기', exact: true })).toBeVisible();
-  // 담은 일정(기업 이름·날짜)은 브라우저에 저장된다 — 캘린더에는 추천 공고 마감일도 함께 뜰 수 있어 이 일정 하나를 찾아 본다
-  const saved = await page.evaluate(() => {
-    const key = Object.keys(localStorage).find(k => k.startsWith('gitory.job-calendar.v1.'))!;
-    return (JSON.parse(localStorage.getItem(key)!) as { company: string; date: string }[])[0];
-  });
-
-  await page.goto('/match');
-  const event = page.locator('.job-calendar .calendar-event').filter({ hasText: saved.company });
-  await expect(event).toHaveCount(1);
-  // 그 공고의 마감 날짜 칸에 있다
-  const day = page.locator('.job-calendar .calendar-day').filter({ has: page.locator('.calendar-event').filter({ hasText: saved.company }) });
-  await expect(day.locator('.calendar-day__number')).toHaveText(String(Number(saved.date.slice(8))));
-  await event.click();
-  await expect(page).toHaveURL(detail);
-  await page.getByRole('button', { name: '캘린더에서 빼기', exact: true }).click();
-  await page.goto('/match');
   await expect(page.locator('.job-calendar .calendar-day').first()).toBeVisible();
-  await expect(page.locator('.job-calendar .calendar-event').filter({ hasText: saved.company })).toHaveCount(0);
+  // 샘플 공고 가운데 마감일이 11월인 공고(나래랩스 11-07)가 11월 달력에 있고, 마감일 없는 상시 공고(다온페이)는 없다
+  const calendar = page.locator('.job-calendar');
+  for (let i = 0; i < 24 && !(await calendar.getByText('2026년 11월').count()); i += 1) await calendar.getByRole('button', { name: '이전 달' }).click();
+  await expect(calendar.getByText('2026년 11월')).toBeVisible();
+  const event = page.locator('.job-calendar .calendar-event').filter({ hasText: '나래랩스' });
+  await expect(event).toHaveCount(1);
+  await expect(page.locator('.job-calendar .calendar-event').filter({ hasText: '다온페이' })).toHaveCount(0);
+  await event.click();
+  await expect(page).toHaveURL(/\/match\/8a1e5c34-2f7b-4d90-b6c3-5e2f9a7d3b02$/);
+  // 상세에는 더 이상 캘린더에 담는 버튼이 없다 — 마감일이 있으면 이미 달력에 있다
+  await expect(page.getByRole('button', { name: '캘린더에 담기', exact: true })).toHaveCount(0);
 });

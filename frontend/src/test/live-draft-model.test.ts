@@ -502,3 +502,21 @@ describe('#617 서버 글은 글자 그대로만 다룬다', () => {
     expect(slotOf(pb, 'S').full).toBe(text);
   });
 });
+
+describe('#953 서버가 두 장씩 동시에 써도 화면은 한 장씩', () => {
+  it('뒤 카드가 먼저 쓰기 시작해도 보이는 카드가 아직 쓰는 중이면 그 카드를 계속 펼친다', () => {
+    const pb = player([card('a', 'WRITING', four(80)), card('b', 'WRITING', four(80))]);
+    pb.advance(T0 + 1000); // 40자/초라 a 의 상황 칸(80자)을 쓰는 중이다
+    expect(pb.view().current!.cardId).toBe('a');
+    expect(typed(pb, 'S')).toBeGreaterThan(0);
+    expect(typed(pb, 'S')).toBeLessThan(80);
+    pb.advance(T0 + 6000);
+    expect(pb.view().current!.cardId).toBe('a'); // b 가 시작했어도 a 를 끝까지 보인다
+  });
+
+  it('보이는 카드가 서버에서 끝났고 뒤 카드가 이미 쓰기 시작했으면 남은 글을 바로 마치고 넘어간다', () => {
+    const pb = player([card('a', 'DONE', four(40)), card('b', 'WRITING', four(40))]);
+    pb.advance(T0 + 1000);
+    expect(pb.view().current!.cardId).toBe('b');
+  });
+});

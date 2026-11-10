@@ -1,0 +1,44 @@
+{
+ "date": "2026-11-09",
+ "measured_at": "2026-11-09T19:41:37",
+ "eval": "cover_letter",
+ "label": "capB-final",
+ "sample": "가상 사용자 8명",
+ "model": "gpt-5.6-luna",
+ "git_sha": null,
+ "calls": 201,
+ "spend_won": 270.44,
+ "metrics": {
+  "invented_numbers": 0,
+  "unsourced_terms": 0,
+  "over_limit_unmarked": 0,
+  "sparse_blank": "2/6",
+  "a1_hit": "20/24",
+  "skeleton": 8,
+  "avg_ratio_pct": 30,
+  "over_70pct": 0,
+  "questions": 24,
+  "more_blank": 7,
+  "asks": 70,
+  "ai_patterns": 0,
+  "quality": {
+   "total_of_12": 8.04,
+   "scored_questions": 24,
+   "lead": 1.08,
+   "result": 1.38,
+   "concrete": 1.12,
+   "natural": 1.96,
+   "fit": 1.62,
+   "structure": 0.88
+  },
+  "sent_back": {
+   "OFF_TOPIC": 7,
+   "REPEATED": 1,
+   "UNSUPPORTED_CLAIM": 1
+  },
+  "reverted": 0,
+  "left_ai_tone": 0,
+  "failed_calls": 2
+ },
+ "note": "원본 결과 파일에서 뒤늦게 만든 요약 — date 는 원본 파일 시각, git_sha 는 요약을 만든 때의 커밋"
+}

@@ -140,6 +140,7 @@ def main() -> int:
     parser.add_argument("--limit", type=int, help="앞에서부터 이 개수만 돌린다")
     parser.add_argument("--out", type=Path, help="결과 JSON 경로. 생략하면 요약만 출력")
     parser.add_argument("--fake", action="store_true", help="LLM 대신 gold 를 돌려주는 가짜 클라이언트")
+    parser.add_argument("--label", default="run", help="results/history 에 남길 요약 파일의 이름표")
     args = parser.parse_args()
 
     cases = json.loads(CASES_PATH.read_text(encoding="utf-8"))
@@ -148,6 +149,13 @@ def main() -> int:
     result = asyncio.run(run(cases, args.repeat, args.fake))
 
     print(json.dumps(result["summary"], ensure_ascii=False, indent=2))
+    if not args.fake:
+        from evals.common import llm_harness  # noqa: E402
+
+        llm_harness.record_summary(
+            "cover_letter_suggest", args.label, result["summary"], sample=f"사례 {len(cases)}개 x {args.repeat}번",
+            model=os.environ.get("GITORY_COVER_LETTER_SUGGEST_MODEL"), calls=len(result["rows"]),
+            spend_won=result["summary"]["cost_won_total"])
     failed = [row for row in result["rows"] if not passed(row)]
     print(f"\n틀린 것 {len(failed)}개")
     for row in failed:

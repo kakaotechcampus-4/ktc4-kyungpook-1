@@ -36,6 +36,7 @@ import os
 import re
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal, Optional
 
@@ -575,10 +576,12 @@ def report(args: argparse.Namespace) -> None:
         patterns = sum(len(re.findall(p, row["text"])) for result in run["users"] for row in result["questions"]
                        for p in AI_PATTERNS)
         scored = run_dir(args.fake) / f"score-{name}.json"
+        quality = None
         if scored.exists():
             rows = [r["scores"] for r in json.loads(scored.read_text(encoding="utf-8"))["rows"] if r["scores"]]
             means = {item: sum(r[item]["score"] for r in rows) / len(rows) for item in SCORE_ITEMS}
             total = sum(means.values())
+            quality = {"total_of_12": round(total, 2), "scored_questions": len(rows), **{k: round(v, 2) for k, v in means.items()}}
             print(f"  글 품질 {total:.1f}/12 (" + " · ".join(f"{k} {v:.2f}" for k, v in means.items())
                   + f", 채점 {len(rows)}문항) · AI 버릇 문구 {patterns}곳")
         else:
@@ -594,6 +597,18 @@ def report(args: argparse.Namespace) -> None:
               f"되돌림 {sum(1 for s in steps if s['kind'] == 'REVERTED')} · "
               f"검토 실패 {sum(1 for s in steps if s['actor'] == 'SUPERVISOR' and s['kind'] == 'FAILED')} · "
               f"남은 AI_TONE 표시 {left_tone}")
+        if not args.fake:
+            raw_file = run_dir(False) / f"{name}.json"
+            llm_harness.record_summary(
+                "cover_letter", name,
+                {"invented_numbers": invented, "unsourced_terms": terms, "over_limit_unmarked": over_unmarked,
+                 "sparse_blank": f"{sparse_blank}/{sparse_total}", "a1_hit": f"{a1_hit}/{a1_total}", "skeleton": skeleton,
+                 "avg_ratio_pct": round(100 * sum(ratios) / len(ratios)), "over_70pct": sum(1 for r in ratios if r >= 0.7),
+                 "questions": len(ratios), "more_blank": more_blank, "asks": asks, "ai_patterns": patterns,
+                 "quality": quality, "sent_back": sent, "reverted": sum(1 for s in steps if s["kind"] == "REVERTED"),
+                 "left_ai_tone": left_tone, "failed_calls": sum(1 for c in calls if "error" in c)},
+                sample=f"가상 사용자 {len(run['users'])}명", model=run.get("model"), calls=len(calls), spend_won=won,
+                measured_at=datetime.fromtimestamp(raw_file.stat().st_mtime))
         print(f"  비용 {round(won, 1)}원 · 호출 {len(calls)} · 실패 호출 {sum(1 for c in calls if 'error' in c)} · "
               f"사용자당 가장 오래 {round(slowest / 1000)}초")
     for path in run_dir(args.fake).glob("judge-*.json"):

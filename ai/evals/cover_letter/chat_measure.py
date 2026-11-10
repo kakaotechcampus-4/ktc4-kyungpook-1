@@ -25,6 +25,7 @@ import os
 import re
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
@@ -408,11 +409,12 @@ def problem_count(user: dict[str, Any], index: int, row: dict[str, Any]) -> int:
 def report(args: argparse.Namespace) -> None:
     from services.cover_letter_check import countable_length
     data = M.users()
-    columns = {}
+    columns, suffixes = {}, {}
     for suffix, label in (("first", "채팅 전"), ("final", "채팅 뒤"), ("base-answers", "기준판+답")):
         run = M.load_run(f"{args.tag}-{suffix}", args.fake)
         if run:
             columns[label] = run
+            suffixes[label] = suffix
     if not columns:
         sys.exit(f"{args.tag} 실행 결과가 없습니다")
     stats: dict[str, dict[str, Any]] = {}
@@ -431,6 +433,13 @@ def report(args: argparse.Namespace) -> None:
                         "글자 수 상한 대비 평균(%)": round(100 * sum(ratios) / len(ratios)), "남은 빈칸": left,
                         "검사기 문제": problems, "비용(원)": round(sum(c.get("won", 0) for c in calls), 1),
                         "초(사용자당 가장 오래)": round(max(sum(u["timings_ms"].values()) for u in run["users"]) / 1000)}
+        if not args.fake:
+            raw_file = M.run_dir(False) / f"{args.tag}-{suffixes[label]}.json"
+            llm_harness.record_summary(
+                "cover_letter_chat", f"{args.tag}-{suffixes[label]}", stats[label],
+                sample=f"가상 사용자 {len(run['users'])}명, 문항 {count}개 ({label})", model=run.get("model"),
+                calls=len(calls), spend_won=stats[label]["비용(원)"],
+                measured_at=datetime.fromtimestamp(raw_file.stat().st_mtime))
     keys = list(next(iter(stats.values())))
     print("| 항목 | " + " | ".join(stats) + " |")
     print("|---|" + "---|" * len(stats))

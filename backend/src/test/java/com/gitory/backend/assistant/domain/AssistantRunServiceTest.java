@@ -75,6 +75,28 @@ class AssistantRunServiceTest {
     }
 
     @Test
+    @DisplayName("AI 에 보낼 카드 이름표는 가리기 전 제목이 아니라 가리기 규칙을 거친 제목을 쓴다")
+    void cardLabelUsesMaskedTitle() {
+
+        MatchingCard masked = card(1L, "[회사] 결제 장애 대응", null, "과제", "행동", "결과");
+        MatchingCardLabel original = label("토스 결제 장애 대응");
+        given(matchingCards.confirmedOf(USER)).willReturn(List.of(masked));
+        given(matchingCards.labelsOf(any())).willReturn(Map.of(1L, original));
+        given(coverLetters.list(USER)).willReturn(List.of());
+        given(runs.save(any(AssistantRun.class))).willAnswer(invocation -> invocation.getArgument(0));
+        given(repositories.saved(any(), any())).willReturn(List.of());
+
+        service.start(USER, "grow22", "카드 빈 칸 채워 줘");
+
+        ArgumentCaptor<AssistantRun> saved = ArgumentCaptor.forClass(AssistantRun.class);
+        verify(runs).save(saved.capture());
+        assertThat(saved.getValue().getCards())
+                .extracting(CardLabel::cardId, CardLabel::title)
+                .containsExactly(tuple(original.publicId(), "[회사] 결제 장애 대응"));
+
+    }
+
+    @Test
     @DisplayName("카드와 자소서 이름표는 각각 10개까지만 붙인다")
     void labelsAtMostTenCardsAndLetters() {
 

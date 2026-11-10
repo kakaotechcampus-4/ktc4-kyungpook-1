@@ -126,6 +126,7 @@ public class AssistantRunService {
     }
 
     // AI 가 카드 빈 칸을 묻는 도구에 쓰므로 S·T·A·R 중 빈 칸이 하나라도 있는 확정 카드만 최근에 만든 순서로 붙인다
+    // 제목은 AI 로 가므로 labelsOf 의 가리기 전 제목이 아니라 가리기 규칙을 거친 MatchingCard 제목을 쓴다
     private List<CardLabel> cardLabels(Long userId) {
 
         List<MatchingCard> blank = matchingCards.confirmedOf(userId).reversed().stream()
@@ -138,7 +139,7 @@ public class AssistantRunService {
             MatchingCardLabel label = labels.get(card.id());
             if (label != null) {
                 cards.add(new CardLabel(CARD_REF_PREFIX + (cards.size() + 1), label.publicId(),
-                        AssistantTools.clip(label.title(), CARD_TITLE_MAX_LENGTH), missingOf(card)));
+                        AssistantTools.clip(card.title(), CARD_TITLE_MAX_LENGTH), missingOf(card)));
             }
         }
 

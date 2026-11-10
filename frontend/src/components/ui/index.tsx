@@ -187,9 +187,9 @@ export const Breadcrumb = ({ items }: { items: { label: string; to?: string; hre
 );
 /** after = 제목 바로 옆에 붙는 작은 행동(예: 연필). 제목(h1) 밖에 두어 제목의 이름에 섞이지 않는다 */
 export const PageTitle = ({ children, right, sub, lead, after }: { children: ReactNode; right?: ReactNode; sub?: ReactNode; lead?: ReactNode; after?: ReactNode }) => (
-  <div className="stack" style={{ gap: 8 }}>
+  <div className="stack page-header">
     <div className="page-title"><h1>{children}</h1>{after}{right && <span className="page-title__right">{right}</span>}</div>
-    {sub && <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>{sub}</div>}
+    {sub && <div className="row page-header__sub" style={{ gap: 8, flexWrap: 'wrap' }}>{sub}</div>}
     {lead && <p className="page-lead">{lead}</p>}
   </div>
 );

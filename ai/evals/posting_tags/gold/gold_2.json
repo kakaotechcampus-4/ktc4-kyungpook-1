@@ -5,6 +5,7 @@
   "criteria": [
    {
     "i": 5,
+    "q": "8d790d8adebbf85f",
     "general_type": null,
     "techs": [
      "UNREAL",
@@ -15,6 +16,7 @@
    },
    {
     "i": 6,
+    "q": "1622ee11fa4f790d",
     "general_type": null,
     "techs": [
      "UNREAL"
@@ -24,6 +26,7 @@
    },
    {
     "i": 7,
+    "q": "5f1699e7306b837b",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -31,6 +34,7 @@
    },
    {
     "i": 8,
+    "q": "c5d3a9a621fdc642",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -38,6 +42,7 @@
    },
    {
     "i": 9,
+    "q": "111a7ba11b181db0",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -45,6 +50,7 @@
    },
    {
     "i": 10,
+    "q": "65f7341e91614532",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -52,6 +58,7 @@
    },
    {
     "i": 11,
+    "q": "c4940a56e44a4f86",
     "general_type": "OTHER",
     "techs": [],
     "education_level": null,
@@ -59,6 +66,7 @@
    },
    {
     "i": 12,
+    "q": "b84260f8798890d3",
     "general_type": null,
     "techs": [
      "UNREAL"
@@ -68,6 +76,7 @@
    },
    {
     "i": 13,
+    "q": "dcd4cbe8e9c34d9f",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -75,6 +84,7 @@
    },
    {
     "i": 14,
+    "q": "8e6a3c1f019acc45",
     "general_type": "LOCATION",
     "techs": [],
     "education_level": null,
@@ -82,6 +92,7 @@
    },
    {
     "i": 15,
+    "q": "c084f9ae3e9db4cd",
     "general_type": "LOCATION",
     "techs": [],
     "education_level": null,
@@ -95,6 +106,7 @@
   "criteria": [
    {
     "i": 1,
+    "q": "de896cc34ea4878c",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -102,6 +114,7 @@
    },
    {
     "i": 2,
+    "q": "99c98265aac9e569",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -109,6 +122,7 @@
    },
    {
     "i": 3,
+    "q": "9b4b997bb5a1409d",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -116,6 +130,7 @@
    },
    {
     "i": 4,
+    "q": "7f85037427c5d898",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -123,6 +138,7 @@
    },
    {
     "i": 5,
+    "q": "01e1721499405525",
     "general_type": null,
     "techs": [
      "PYTHON",
@@ -134,6 +150,7 @@
    },
    {
     "i": 6,
+    "q": "5589524cb76962b1",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -141,6 +158,7 @@
    },
    {
     "i": 7,
+    "q": "9019045d2d647f83",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -148,6 +166,7 @@
    },
    {
     "i": 8,
+    "q": "8584056ab7a14bcc",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -155,6 +174,7 @@
    },
    {
     "i": 9,
+    "q": "fd4105e6a51c6bfb",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -162,6 +182,7 @@
    },
    {
     "i": 10,
+    "q": "9370410102fa1bfd",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -169,6 +190,7 @@
    },
    {
     "i": 11,
+    "q": "f863da479294bccc",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -176,6 +198,7 @@
    },
    {
     "i": 12,
+    "q": "d78fe35918efdbf2",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -183,6 +206,7 @@
    },
    {
     "i": 13,
+    "q": "f50dcfa49bf1c9ab",
     "general_type": null,
     "techs": [
      "LINUX"
@@ -192,6 +216,7 @@
    },
    {
     "i": 14,
+    "q": "4f551afc81752239",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -199,6 +224,7 @@
    },
    {
     "i": 15,
+    "q": "d8a5e9784a77eb92",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -206,6 +232,7 @@
    },
    {
     "i": 16,
+    "q": "1c4b977700959072",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -236,6 +263,7 @@
   "criteria": [
    {
     "i": 5,
+    "q": "2d6d53efeb784767",
     "general_type": null,
     "techs": [
      "SPRING"
@@ -245,6 +273,7 @@
    },
    {
     "i": 6,
+    "q": "225b095166c90e6a",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -252,6 +281,7 @@
    },
    {
     "i": 7,
+    "q": "2877339214a06020",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -259,6 +289,7 @@
    },
    {
     "i": 8,
+    "q": "ce5a81167f0667a7",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -266,6 +297,7 @@
    },
    {
     "i": 9,
+    "q": "f505e1681a18c2eb",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -273,6 +305,7 @@
    },
    {
     "i": 10,
+    "q": "4c53a6d65b2b710a",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -280,6 +313,7 @@
    },
    {
     "i": 11,
+    "q": "362db8419acbdd4d",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -287,6 +321,7 @@
    },
    {
     "i": 12,
+    "q": "440f283b13570c2e",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -294,6 +329,7 @@
    },
    {
     "i": 13,
+    "q": "592de9d4ce8243a2",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -301,6 +337,7 @@
    },
    {
     "i": 14,
+    "q": "b37116e08a1d421f",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -318,6 +355,7 @@
   "criteria": [
    {
     "i": 4,
+    "q": "33cd416e517d3a7e",
     "general_type": null,
     "techs": [
      "REACT"
@@ -327,6 +365,7 @@
    },
    {
     "i": 5,
+    "q": "c9f7ce49e73f2bf7",
     "general_type": null,
     "techs": [
      "JAVASCRIPT"
@@ -336,6 +375,7 @@
    },
    {
     "i": 6,
+    "q": "477ffa6c3796e364",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -343,6 +383,7 @@
    },
    {
     "i": 7,
+    "q": "408b363889da126d",
     "general_type": null,
     "techs": [
      "PYTHON"
@@ -352,6 +393,7 @@
    },
    {
     "i": 8,
+    "q": "2822408b9f4a7744",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -359,6 +401,7 @@
    },
    {
     "i": 9,
+    "q": "b60e40de208a2cac",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -366,6 +409,7 @@
    },
    {
     "i": 10,
+    "q": "b9a5f6fcf80f4762",
     "general_type": null,
     "techs": [
      "SQL"
@@ -375,6 +419,7 @@
    },
    {
     "i": 11,
+    "q": "ef7f38912cdc2b7c",
     "general_type": null,
     "techs": [
      "MONGODB",
@@ -385,6 +430,7 @@
    },
    {
     "i": 12,
+    "q": "a30d512ee8168612",
     "general_type": null,
     "techs": [
      "DOCKER"
@@ -394,6 +440,7 @@
    },
    {
     "i": 13,
+    "q": "efea5f404bf1dcd6",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -401,6 +448,7 @@
    },
    {
     "i": 14,
+    "q": "6c5d4b63c41a730c",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -408,6 +456,7 @@
    },
    {
     "i": 15,
+    "q": "2dfa5931f1fabc4c",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -415,6 +464,7 @@
    },
    {
     "i": 16,
+    "q": "f5fa6a9cdad01d2b",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -422,6 +472,7 @@
    },
    {
     "i": 17,
+    "q": "2ac7999ab37be3bd",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -429,6 +480,7 @@
    },
    {
     "i": 18,
+    "q": "ffaeec793db1e1c6",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -436,6 +488,7 @@
    },
    {
     "i": 19,
+    "q": "b80534f0a14edb04",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -449,6 +502,7 @@
   "criteria": [
    {
     "i": 3,
+    "q": "01e27895bea0a972",
     "general_type": null,
     "techs": [
      "JAVA",
@@ -461,6 +515,7 @@
    },
    {
     "i": 4,
+    "q": "552b60b7bd1175b3",
     "general_type": null,
     "techs": [
      "KAFKA"
@@ -470,6 +525,7 @@
    },
    {
     "i": 5,
+    "q": "3534a4b571de707c",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -477,6 +533,7 @@
    },
    {
     "i": 6,
+    "q": "9f417c2b43d4732e",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -484,6 +541,7 @@
    },
    {
     "i": 7,
+    "q": "f9f6439ef1bfc90c",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -491,6 +549,7 @@
    },
    {
     "i": 8,
+    "q": "58a61c10b828e153",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -498,6 +557,7 @@
    },
    {
     "i": 9,
+    "q": "09ea9c311174c1d4",
     "general_type": null,
     "techs": [
      "AWS",
@@ -508,6 +568,7 @@
    },
    {
     "i": 10,
+    "q": "43948e57c4fe0dc7",
     "general_type": null,
     "techs": [
      "ELASTICSEARCH",
@@ -518,6 +579,7 @@
    },
    {
     "i": 11,
+    "q": "fd390231ba04e9a2",
     "general_type": null,
     "techs": [
      "AWS"
@@ -527,6 +589,7 @@
    },
    {
     "i": 12,
+    "q": "b6d0490d9d5944dc",
     "general_type": null,
     "techs": [
      "MSA"
@@ -536,6 +599,7 @@
    },
    {
     "i": 13,
+    "q": "f412fac41b73a0fd",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -543,6 +607,7 @@
    },
    {
     "i": 14,
+    "q": "e2a6a14f64724601",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -550,6 +615,7 @@
    },
    {
     "i": 15,
+    "q": "b430d99672755412",
     "general_type": "OTHER",
     "techs": [],
     "education_level": null,
@@ -557,6 +623,7 @@
    },
    {
     "i": 16,
+    "q": "b430d99672755412",
     "general_type": "MILITARY",
     "techs": [],
     "education_level": null,
@@ -570,6 +637,7 @@
   "criteria": [
    {
     "i": 4,
+    "q": "0905ce34ad80d2b7",
     "general_type": "EDUCATION",
     "techs": [],
     "education_level": "BACHELOR",
@@ -577,6 +645,7 @@
    },
    {
     "i": 5,
+    "q": "b9bafff30713478f",
     "general_type": null,
     "techs": [
      "PYTHON",
@@ -587,6 +656,7 @@
    },
    {
     "i": 6,
+    "q": "f866c46b64aa79ba",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -594,6 +664,7 @@
    },
    {
     "i": 7,
+    "q": "500d31bc8cbd583f",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -601,6 +672,7 @@
    },
    {
     "i": 8,
+    "q": "ffcfc5141fad2469",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -608,6 +680,7 @@
    },
    {
     "i": 9,
+    "q": "1c8edec9461df501",
     "general_type": null,
     "techs": [
      "KUBERNETES",
@@ -618,6 +691,7 @@
    },
    {
     "i": 10,
+    "q": "10b1ecc2f780b006",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -625,6 +699,7 @@
    },
    {
     "i": 11,
+    "q": "5a58ac6ca3bce298",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -632,6 +707,7 @@
    },
    {
     "i": 12,
+    "q": "36c145f016ac21cc",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -639,6 +715,7 @@
    },
    {
     "i": 13,
+    "q": "a4e3f61d1a31774e",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -652,6 +729,7 @@
   "criteria": [
    {
     "i": 5,
+    "q": "e0d0a22e55767372",
     "general_type": "EDUCATION",
     "techs": [],
     "education_level": "BACHELOR",
@@ -659,6 +737,7 @@
    },
    {
     "i": 6,
+    "q": "2e83663283d3e360",
     "general_type": null,
     "techs": [
      "C",
@@ -670,6 +749,7 @@
    },
    {
     "i": 7,
+    "q": "40621bc25547b8f7",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -677,6 +757,7 @@
    },
    {
     "i": 8,
+    "q": "5eeb67c82afb5771",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -684,6 +765,7 @@
    },
    {
     "i": 9,
+    "q": "edb5341f1e10600c",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -691,6 +773,7 @@
    },
    {
     "i": 10,
+    "q": "a4f516ab92de7630",
     "general_type": "EDUCATION",
     "techs": [],
     "education_level": "MASTER",
@@ -698,6 +781,7 @@
    },
    {
     "i": 11,
+    "q": "8cd547b46c1473a0",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -705,6 +789,7 @@
    },
    {
     "i": 12,
+    "q": "e57277ad98f9c834",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -712,6 +797,7 @@
    },
    {
     "i": 13,
+    "q": "9c24ddeae2876639",
     "general_type": null,
     "techs": [
      "CPP"
@@ -721,6 +807,7 @@
    },
    {
     "i": 14,
+    "q": "1e70d4f22f88d31b",
     "general_type": null,
     "techs": [
      "PYTORCH",
@@ -731,6 +818,7 @@
    },
    {
     "i": 15,
+    "q": "b5d971b89e231404",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -738,6 +826,7 @@
    },
    {
     "i": 16,
+    "q": "6c8e6b9f73f99466",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -759,6 +848,7 @@
   "criteria": [
    {
     "i": 3,
+    "q": "0520c88b870f9b65",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -766,6 +856,7 @@
    },
    {
     "i": 4,
+    "q": "96ebb8332b306ca9",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -773,6 +864,7 @@
    },
    {
     "i": 5,
+    "q": "d644effa53b40d3f",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -780,6 +872,7 @@
    },
    {
     "i": 6,
+    "q": "c56aeb3d05f63ff3",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -787,6 +880,7 @@
    },
    {
     "i": 7,
+    "q": "a74aa0ca5aee0dd3",
     "general_type": null,
     "techs": [
      "PYTHON",
@@ -799,6 +893,7 @@
    },
    {
     "i": 8,
+    "q": "037cec36f512029d",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -806,6 +901,7 @@
    },
    {
     "i": 9,
+    "q": "37d1621f44fddad6",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -813,6 +909,7 @@
    },
    {
     "i": 10,
+    "q": "0fae82ea819859ac",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -826,6 +923,7 @@
   "criteria": [
    {
     "i": 7,
+    "q": "220e7f95c3ddf358",
     "general_type": null,
     "techs": [
      "CPP"
@@ -835,6 +933,7 @@
    },
    {
     "i": 8,
+    "q": "5810d49d132ac139",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -842,6 +941,7 @@
    },
    {
     "i": 9,
+    "q": "02ea128540b4b680",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -849,6 +949,7 @@
    },
    {
     "i": 10,
+    "q": "d26ce73fd2902125",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -856,6 +957,7 @@
    },
    {
     "i": 11,
+    "q": "425d9fb2318a668f",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -863,6 +965,7 @@
    },
    {
     "i": 12,
+    "q": "f37f8ae08f429032",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -870,6 +973,7 @@
    },
    {
     "i": 13,
+    "q": "a889fd9f3e4b0fe8",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -877,6 +981,7 @@
    },
    {
     "i": 14,
+    "q": "15cce2c9705fe807",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -884,6 +989,7 @@
    },
    {
     "i": 15,
+    "q": "50d2eb324a37d48f",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -891,6 +997,7 @@
    },
    {
     "i": 16,
+    "q": "b2cbcb214d7b32a0",
     "general_type": null,
     "techs": [
      "LINUX",
@@ -901,6 +1008,7 @@
    },
    {
     "i": 17,
+    "q": "672ccfe8bc9508c7",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -914,6 +1022,7 @@
   "criteria": [
    {
     "i": 4,
+    "q": "cd3f8ad624527a88",
     "general_type": null,
     "techs": [
      "C",
@@ -924,6 +1033,7 @@
    },
    {
     "i": 5,
+    "q": "2eca0543c6c816fb",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -931,6 +1041,7 @@
    },
    {
     "i": 6,
+    "q": "720d510c0dc85371",
     "general_type": null,
     "techs": [
      "LINUX"
@@ -940,6 +1051,7 @@
    },
    {
     "i": 7,
+    "q": "e5e07ee9d43e943b",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -947,6 +1059,7 @@
    },
    {
     "i": 8,
+    "q": "c3f6dde9391b29c2",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -954,6 +1067,7 @@
    },
    {
     "i": 9,
+    "q": "a1c7d1d49f237e97",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -961,6 +1075,7 @@
    },
    {
     "i": 10,
+    "q": "fe9a571a26f0bb4a",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -968,6 +1083,7 @@
    },
    {
     "i": 11,
+    "q": "6a52e679e66ac087",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -975,6 +1091,7 @@
    },
    {
     "i": 12,
+    "q": "6891895402983cb3",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -982,6 +1099,7 @@
    },
    {
     "i": 13,
+    "q": "a184bfed9ba0d363",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -989,6 +1107,7 @@
    },
    {
     "i": 14,
+    "q": "cf73942d23392b54",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -996,6 +1115,7 @@
    },
    {
     "i": 15,
+    "q": "77349915222b484b",
     "general_type": "LOCATION",
     "techs": [],
     "education_level": null,
@@ -1003,6 +1123,7 @@
    },
    {
     "i": 16,
+    "q": "c73121038bebc348",
     "general_type": "MILITARY",
     "techs": [],
     "education_level": null,
@@ -1016,6 +1137,7 @@
   "criteria": [
    {
     "i": 5,
+    "q": "90020931f56033c3",
     "general_type": "EDUCATION",
     "techs": [],
     "education_level": "BACHELOR",
@@ -1023,6 +1145,7 @@
    },
    {
     "i": 6,
+    "q": "ce18175d91e1ef42",
     "general_type": null,
     "techs": [
      "RUST",
@@ -1034,6 +1157,7 @@
    },
    {
     "i": 7,
+    "q": "d69457705d04eb10",
     "general_type": null,
     "techs": [
      "RUST"
@@ -1043,6 +1167,7 @@
    },
    {
     "i": 8,
+    "q": "2035b96e8a4de853",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1050,6 +1175,7 @@
    },
    {
     "i": 9,
+    "q": "afb6d8b76209943f",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1057,6 +1183,7 @@
    },
    {
     "i": 10,
+    "q": "7d633899f7f57159",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1064,6 +1191,7 @@
    },
    {
     "i": 11,
+    "q": "6d6a2feac1a48577",
     "general_type": "LOCATION",
     "techs": [],
     "education_level": null,
@@ -1077,6 +1205,7 @@
   "criteria": [
    {
     "i": 8,
+    "q": "661a361da96c3e96",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1084,6 +1213,7 @@
    },
    {
     "i": 9,
+    "q": "bbed13f800524988",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1091,6 +1221,7 @@
    },
    {
     "i": 10,
+    "q": "cffbb48bf4266240",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1098,6 +1229,7 @@
    },
    {
     "i": 11,
+    "q": "e82f7952c061b82a",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1105,6 +1237,7 @@
    },
    {
     "i": 12,
+    "q": "da29eb5180aaf34e",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1112,6 +1245,7 @@
    },
    {
     "i": 13,
+    "q": "125a728152c4d50f",
     "general_type": null,
     "techs": [
      "NODEJS",
@@ -1122,6 +1256,7 @@
    },
    {
     "i": 14,
+    "q": "aed02377bca6838f",
     "general_type": null,
     "techs": [
      "GRAPHQL"
@@ -1131,6 +1266,7 @@
    },
    {
     "i": 15,
+    "q": "8330eb9e9d003aac",
     "general_type": null,
     "techs": [
      "REACT"
@@ -1146,6 +1282,7 @@
   "criteria": [
    {
     "i": 9,
+    "q": "fee296b88638ac8e",
     "general_type": null,
     "techs": [
      "PYTHON",
@@ -1157,6 +1294,7 @@
    },
    {
     "i": 10,
+    "q": "d62f9137ac9f15ca",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1164,6 +1302,7 @@
    },
    {
     "i": 11,
+    "q": "7e419a31439bf372",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1171,6 +1310,7 @@
    },
    {
     "i": 12,
+    "q": "73b6e119863388b2",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1178,6 +1318,7 @@
    },
    {
     "i": 13,
+    "q": "1524758d883d23ad",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1185,6 +1326,7 @@
    },
    {
     "i": 14,
+    "q": "dd14241436125c98",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1192,6 +1334,7 @@
    },
    {
     "i": 15,
+    "q": "20416b7dacb00b50",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1214,6 +1357,7 @@
   "criteria": [
    {
     "i": 4,
+    "q": "9d3dc7225f2b6c81",
     "general_type": null,
     "techs": [
      "PYTHON",
@@ -1226,6 +1370,7 @@
    },
    {
     "i": 5,
+    "q": "993471bbafa780a1",
     "general_type": null,
     "techs": [
      "SQL"
@@ -1235,6 +1380,7 @@
    },
    {
     "i": 6,
+    "q": "86fd7748fcf8b995",
     "general_type": null,
     "techs": [
      "GRPC"
@@ -1244,6 +1390,7 @@
    },
    {
     "i": 7,
+    "q": "82798bda6b8b2b5f",
     "general_type": null,
     "techs": [
      "CI_CD"
@@ -1253,6 +1400,7 @@
    },
    {
     "i": 8,
+    "q": "b1dffafff08f270e",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1260,6 +1408,7 @@
    },
    {
     "i": 9,
+    "q": "2a6411f544eeb32a",
     "general_type": "EDUCATION",
     "techs": [],
     "education_level": null,
@@ -1267,6 +1416,7 @@
    },
    {
     "i": 10,
+    "q": "c106398f9ad44196",
     "general_type": null,
     "techs": [
      "CI_CD"
@@ -1276,6 +1426,7 @@
    },
    {
     "i": 11,
+    "q": "2d099fd9fb958716",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1283,6 +1434,7 @@
    },
    {
     "i": 12,
+    "q": "4f69763886db9091",
     "general_type": "LOCATION",
     "techs": [],
     "education_level": null,
@@ -1290,6 +1442,7 @@
    },
    {
     "i": 13,
+    "q": "2efccc457edfd6b8",
     "general_type": "LOCATION",
     "techs": [],
     "education_level": null,
@@ -1297,6 +1450,7 @@
    },
    {
     "i": 14,
+    "q": "fdec4b76f872a1ad",
     "general_type": "LOCATION",
     "techs": [],
     "education_level": null,
@@ -1310,6 +1464,7 @@
   "criteria": [
    {
     "i": 4,
+    "q": "d5998c9d77c7a249",
     "general_type": "EDUCATION",
     "techs": [],
     "education_level": "MASTER",
@@ -1317,6 +1472,7 @@
    },
    {
     "i": 5,
+    "q": "8e2a98b7e75502d5",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1324,6 +1480,7 @@
    },
    {
     "i": 6,
+    "q": "a3860ce15280eaf9",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1331,6 +1488,7 @@
    },
    {
     "i": 7,
+    "q": "0cb181c8671473c7",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1338,6 +1496,7 @@
    },
    {
     "i": 8,
+    "q": "b60a678bfb8a8833",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1345,6 +1504,7 @@
    },
    {
     "i": 9,
+    "q": "b9f2a978d12b7436",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1352,6 +1512,7 @@
    },
    {
     "i": 10,
+    "q": "3ad05576eebb7c57",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1359,6 +1520,7 @@
    },
    {
     "i": 11,
+    "q": "87737165f5d0787a",
     "general_type": "LOCATION",
     "techs": [],
     "education_level": null,
@@ -1366,6 +1528,7 @@
    },
    {
     "i": 12,
+    "q": "005233a3070da263",
     "general_type": "LOCATION",
     "techs": [],
     "education_level": null,
@@ -1379,6 +1542,7 @@
   "criteria": [
    {
     "i": 5,
+    "q": "1b0ac1c1bcbbd651",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1386,6 +1550,7 @@
    },
    {
     "i": 6,
+    "q": "f33c40ea8674a34f",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1393,6 +1558,7 @@
    },
    {
     "i": 7,
+    "q": "065233de5d7770e7",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1400,6 +1566,7 @@
    },
    {
     "i": 8,
+    "q": "3626bbaab48671f2",
     "general_type": null,
     "techs": [
      "PYTHON",
@@ -1411,6 +1578,7 @@
    },
    {
     "i": 9,
+    "q": "8580eb0eab5af23c",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1418,6 +1586,7 @@
    },
    {
     "i": 10,
+    "q": "b517e58064e52f1e",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1425,6 +1594,7 @@
    },
    {
     "i": 11,
+    "q": "06bad5a87492e7ab",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1432,6 +1602,7 @@
    },
    {
     "i": 12,
+    "q": "6edddb9b8f755ab4",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1439,6 +1610,7 @@
    },
    {
     "i": 13,
+    "q": "015c678df3123100",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1446,6 +1618,7 @@
    },
    {
     "i": 14,
+    "q": "ff5ac621c4b13b12",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1459,6 +1632,7 @@
   "criteria": [
    {
     "i": 5,
+    "q": "b638df16cf784cd0",
     "general_type": null,
     "techs": [
      "ANDROID"
@@ -1468,6 +1642,7 @@
    },
    {
     "i": 6,
+    "q": "1b4dae9b47057bd3",
     "general_type": null,
     "techs": [
      "C",
@@ -1480,6 +1655,7 @@
    },
    {
     "i": 7,
+    "q": "fabf175657e21e19",
     "general_type": null,
     "techs": [
      "LINUX"
@@ -1489,6 +1665,7 @@
    },
    {
     "i": 8,
+    "q": "da8acad5725930a4",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1496,6 +1673,7 @@
    },
    {
     "i": 9,
+    "q": "a53df18e45917425",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1503,6 +1681,7 @@
    },
    {
     "i": 10,
+    "q": "c01366601d060818",
     "general_type": null,
     "techs": [
      "LINUX"
@@ -1512,6 +1691,7 @@
    },
    {
     "i": 11,
+    "q": "42d15370f823342b",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1519,6 +1699,7 @@
    },
    {
     "i": 12,
+    "q": "661216d71a55bbac",
     "general_type": null,
     "techs": [
      "ANDROID",
@@ -1535,6 +1716,7 @@
   "criteria": [
    {
     "i": 2,
+    "q": "0955589a8c779457",
     "general_type": null,
     "techs": [
      "SPRING"
@@ -1544,6 +1726,7 @@
    },
    {
     "i": 3,
+    "q": "435e7723e28fed8b",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1551,6 +1734,7 @@
    },
    {
     "i": 4,
+    "q": "354cef1de2cb579b",
     "general_type": null,
     "techs": [
      "DOCKER",
@@ -1561,6 +1745,7 @@
    },
    {
     "i": 5,
+    "q": "61d57d28410146d8",
     "general_type": null,
     "techs": [
      "AWS"
@@ -1570,6 +1755,7 @@
    },
    {
     "i": 6,
+    "q": "777735c36b7f0696",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1577,6 +1763,7 @@
    },
    {
     "i": 7,
+    "q": "433833095c6ef3de",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1584,6 +1771,7 @@
    },
    {
     "i": 8,
+    "q": "e2f146fd9d35997e",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1591,6 +1779,7 @@
    },
    {
     "i": 9,
+    "q": "063c4c09fbce6539",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1598,6 +1787,7 @@
    },
    {
     "i": 10,
+    "q": "5c7c38099f22233d",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1605,6 +1795,7 @@
    },
    {
     "i": 11,
+    "q": "66e36a09a081e259",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1612,6 +1803,7 @@
    },
    {
     "i": 12,
+    "q": "287408851d21497f",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1625,6 +1817,7 @@
   "criteria": [
    {
     "i": 6,
+    "q": "2a08e83d3ecae0c2",
     "general_type": "EDUCATION",
     "techs": [],
     "education_level": "BACHELOR",
@@ -1632,6 +1825,7 @@
    },
    {
     "i": 7,
+    "q": "b90d9849544d70ee",
     "general_type": null,
     "techs": [
      "CPP",
@@ -1642,6 +1836,7 @@
    },
    {
     "i": 8,
+    "q": "b90d9849544d70ee",
     "general_type": null,
     "techs": [
      "CPP",
@@ -1652,6 +1847,7 @@
    },
    {
     "i": 9,
+    "q": "78132e641cf2ec99",
     "general_type": null,
     "techs": [
      "PYTORCH",
@@ -1662,6 +1858,7 @@
    },
    {
     "i": 10,
+    "q": "465937e87b437760",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1669,6 +1866,7 @@
    },
    {
     "i": 11,
+    "q": "b4a0166228219720",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1676,6 +1874,7 @@
    },
    {
     "i": 12,
+    "q": "47e53b680f2d08bd",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1683,6 +1882,7 @@
    },
    {
     "i": 13,
+    "q": "aa184d0d4b3c13aa",
     "general_type": "EDUCATION",
     "techs": [],
     "education_level": "MASTER",
@@ -1690,6 +1890,7 @@
    },
    {
     "i": 14,
+    "q": "66fc3d90d1208563",
     "general_type": "LOCATION",
     "techs": [],
     "education_level": null,
@@ -1703,6 +1904,7 @@
   "criteria": [
    {
     "i": 10,
+    "q": "e22533c8957cfd5e",
     "general_type": "EDUCATION",
     "techs": [],
     "education_level": "MASTER",
@@ -1710,6 +1912,7 @@
    },
    {
     "i": 11,
+    "q": "559d5ef55c3871fd",
     "general_type": null,
     "techs": [
      "PYTHON",
@@ -1720,6 +1923,7 @@
    },
    {
     "i": 12,
+    "q": "49879ec1d0ecffd3",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1727,6 +1931,7 @@
    },
    {
     "i": 13,
+    "q": "80672b0838bc6476",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1734,6 +1939,7 @@
    },
    {
     "i": 14,
+    "q": "7e925a31ef9f65bd",
     "general_type": null,
     "techs": [
      "PYTORCH"
@@ -1743,6 +1949,7 @@
    },
    {
     "i": 15,
+    "q": "38a40a2cfc4b3d6c",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1750,6 +1957,7 @@
    },
    {
     "i": 16,
+    "q": "0344d56338fadb31",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1757,6 +1965,7 @@
    },
    {
     "i": 17,
+    "q": "4673d7e5678660b9",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1764,6 +1973,7 @@
    },
    {
     "i": 18,
+    "q": "5ad15735f680b5d3",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1771,6 +1981,7 @@
    },
    {
     "i": 19,
+    "q": "066929c0378da38b",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1778,6 +1989,7 @@
    },
    {
     "i": 20,
+    "q": "1e70425e6e87be1f",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1785,6 +1997,7 @@
    },
    {
     "i": 21,
+    "q": "0e3355b67fd07b1d",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1792,6 +2005,7 @@
    },
    {
     "i": 22,
+    "q": "e08b424c8bf7de44",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1805,6 +2019,7 @@
   "criteria": [
    {
     "i": 5,
+    "q": "1f763e5081ebb5b8",
     "general_type": "EDUCATION",
     "techs": [],
     "education_level": "BACHELOR",
@@ -1812,6 +2027,7 @@
    },
    {
     "i": 6,
+    "q": "298c73cbdc63dfbc",
     "general_type": null,
     "techs": [
      "C",
@@ -1822,6 +2038,7 @@
    },
    {
     "i": 7,
+    "q": "009270e95e308e01",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1829,6 +2046,7 @@
    },
    {
     "i": 8,
+    "q": "552eacd079a3fd71",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1836,6 +2054,7 @@
    },
    {
     "i": 9,
+    "q": "e6f4a0e7aaa95388",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1843,6 +2062,7 @@
    },
    {
     "i": 10,
+    "q": "2868813b90194fa3",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1850,6 +2070,7 @@
    },
    {
     "i": 11,
+    "q": "6d6a2feac1a48577",
     "general_type": "LOCATION",
     "techs": [],
     "education_level": null,
@@ -1872,6 +2093,7 @@
   "criteria": [
    {
     "i": 4,
+    "q": "2726224382ade593",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1879,6 +2101,7 @@
    },
    {
     "i": 5,
+    "q": "5fb95b7427ebc729",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1886,6 +2109,7 @@
    },
    {
     "i": 6,
+    "q": "69b0ef75bc212793",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1893,6 +2117,7 @@
    },
    {
     "i": 7,
+    "q": "42f323aef4bf2c5e",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1900,6 +2125,7 @@
    },
    {
     "i": 8,
+    "q": "c976d127a843cbde",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1907,6 +2133,7 @@
    },
    {
     "i": 9,
+    "q": "3b3a528071fff09c",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1914,6 +2141,7 @@
    },
    {
     "i": 10,
+    "q": "7cc89aee9f6ee817",
     "general_type": null,
     "techs": [
      "GCP"
@@ -1923,6 +2151,7 @@
    },
    {
     "i": 11,
+    "q": "fa074a334c6a2bfb",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1936,6 +2165,7 @@
   "criteria": [
    {
     "i": 8,
+    "q": "dc73e9a42766ca57",
     "general_type": null,
     "techs": [
      "PYTHON"
@@ -1945,6 +2175,7 @@
    },
    {
     "i": 9,
+    "q": "ec9f43cb60a496ed",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1952,6 +2183,7 @@
    },
    {
     "i": 10,
+    "q": "461082b374576a7c",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1959,6 +2191,7 @@
    },
    {
     "i": 11,
+    "q": "dc79db91388041e9",
     "general_type": null,
     "techs": [
      "LLM"
@@ -1968,6 +2201,7 @@
    },
    {
     "i": 12,
+    "q": "3575c5ea5b2e871f",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1975,6 +2209,7 @@
    },
    {
     "i": 13,
+    "q": "272daf9dcb867fdb",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1982,6 +2217,7 @@
    },
    {
     "i": 14,
+    "q": "31dd313d48c835a8",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1989,6 +2225,7 @@
    },
    {
     "i": 15,
+    "q": "37520e9eb86731dc",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -1996,6 +2233,7 @@
    },
    {
     "i": 16,
+    "q": "85044792d3339ea5",
     "general_type": "EDUCATION",
     "techs": [],
     "education_level": "MASTER",
@@ -2003,6 +2241,7 @@
    },
    {
     "i": 17,
+    "q": "04a1298519db8d4c",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2010,6 +2249,7 @@
    },
    {
     "i": 18,
+    "q": "b809e05b5513b20f",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2017,6 +2257,7 @@
    },
    {
     "i": 19,
+    "q": "dc82a86de9e3229f",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2024,6 +2265,7 @@
    },
    {
     "i": 20,
+    "q": "f859e69db91d8c06",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2031,6 +2273,7 @@
    },
    {
     "i": 21,
+    "q": "fc78ecc6748dd930",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2038,6 +2281,7 @@
    },
    {
     "i": 22,
+    "q": "51dcd4d48fa89096",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2045,6 +2289,7 @@
    },
    {
     "i": 23,
+    "q": "3471936a952ca5af",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2052,6 +2297,7 @@
    },
    {
     "i": 24,
+    "q": "d2c92020dfebcc02",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2075,6 +2321,7 @@
   "criteria": [
    {
     "i": 5,
+    "q": "88bf31bde3f03292",
     "general_type": null,
     "techs": [
      "GO",
@@ -2087,6 +2334,7 @@
    },
    {
     "i": 6,
+    "q": "74b0d4a2e5947dcb",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2094,6 +2342,7 @@
    },
    {
     "i": 7,
+    "q": "134eabdd2404b588",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2101,6 +2350,7 @@
    },
    {
     "i": 8,
+    "q": "15ac3a8770bcdbee",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2108,6 +2358,7 @@
    },
    {
     "i": 9,
+    "q": "434a2d2b315ac00b",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2115,6 +2366,7 @@
    },
    {
     "i": 10,
+    "q": "50193343e95ca124",
     "general_type": null,
     "techs": [
      "CI_CD"
@@ -2124,6 +2376,7 @@
    },
    {
     "i": 11,
+    "q": "159f091871dd5327",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2131,6 +2384,7 @@
    },
    {
     "i": 12,
+    "q": "7129428611e542e0",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2138,6 +2392,7 @@
    },
    {
     "i": 13,
+    "q": "7e8d22878a092065",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2145,6 +2400,7 @@
    },
    {
     "i": 14,
+    "q": "265d614d073e4c4a",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2152,6 +2408,7 @@
    },
    {
     "i": 15,
+    "q": "80363c53bbc5550b",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2159,6 +2416,7 @@
    },
    {
     "i": 16,
+    "q": "587b673cd7ed5a28",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2166,6 +2424,7 @@
    },
    {
     "i": 17,
+    "q": "fae0edd470785ae7",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2179,6 +2438,7 @@
   "criteria": [
    {
     "i": 3,
+    "q": "14f6a91e9dec3176",
     "general_type": null,
     "techs": [
      "REACT"
@@ -2188,6 +2448,7 @@
    },
    {
     "i": 4,
+    "q": "0218fb0858bb5bb6",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2195,6 +2456,7 @@
    },
    {
     "i": 5,
+    "q": "8b712a5117039462",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2202,6 +2464,7 @@
    },
    {
     "i": 6,
+    "q": "ec61f093e699599e",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2209,6 +2472,7 @@
    },
    {
     "i": 7,
+    "q": "b549d92f0dac8748",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2216,6 +2480,7 @@
    },
    {
     "i": 8,
+    "q": "cf51384d3ad2ca7e",
     "general_type": null,
     "techs": [
      "NEXTJS"
@@ -2225,6 +2490,7 @@
    },
    {
     "i": 9,
+    "q": "92e74cd26e3ece4e",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2232,6 +2498,7 @@
    },
    {
     "i": 10,
+    "q": "851350832789b06a",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2239,6 +2506,7 @@
    },
    {
     "i": 11,
+    "q": "02e8da1d11171a9f",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2246,6 +2514,7 @@
    },
    {
     "i": 12,
+    "q": "fe0ce3b42a009717",
     "general_type": null,
     "techs": [],
     "education_level": null,
@@ -2253,6 +2522,7 @@
    },
    {
     "i": 13,
+    "q": "dc753374ba08d8c5",
     "general_type": "OTHER",
     "techs": [],
     "education_level": null,
@@ -2260,6 +2530,7 @@
    },
    {
     "i": 14,
+    "q": "2c88d0f4efbf5545",
     "general_type": "OTHER",
     "techs": [],
     "education_level": null,

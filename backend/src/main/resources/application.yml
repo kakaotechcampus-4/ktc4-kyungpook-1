@@ -330,6 +330,14 @@ gitory:
     cover-letter-turn:
       per-minute: 20
       per-day: 200
+    # 문항 이야기를 열 때 쓸 만한 카드·레포 기록을 LLM 으로 고르는 호출이라 첨삭과 같게 둔다
+    cover-letter-suggest:
+      per-minute: 3
+      per-day: 30
+    # 고른 카드로 문항 한 개를 처음부터 다시 쓰는 호출이라 첨삭과 같게 둔다
+    cover-letter-rewrite:
+      per-minute: 3
+      per-day: 30
     # 공고 상세 '이 공고와 맞춰 보기'. 아직 판단하지 않은 카드가 남아 AI 를 부를 때만 센다
     match-judgement:
       per-minute: 10
@@ -346,6 +354,9 @@ gitory:
     assistant:
       per-minute: 5
       per-day: 50
+    # 문제 신고. 글을 받아 저장만 하므로 하루 한도만 둔다
+    feedback:
+      per-day: 10
 
 logging:
   level:

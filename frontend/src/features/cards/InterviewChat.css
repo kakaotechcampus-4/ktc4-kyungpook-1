@@ -4,7 +4,7 @@
  */
 .iv__head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
 .iv__title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; }
-.iv__title strong { font-size: 16px; line-height: 24px; font-weight: 700; color: var(--text-primary); }
+.iv__title strong { font-size: 16px; line-height: 24px; font-weight: var(--weight-bold); color: var(--text-primary); }
 .iv__title span { font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
 
 .iv__panel .chat-bub { font-size: 15px; }
@@ -17,6 +17,27 @@
 .iv__sub span { font-variant-numeric: tabular-nums; }
 /* 패널의 작은 버튼(카드로, 건너뛰기)도 13px 아래로 내려가지 않게 한다 */
 .iv__panel .btn--sm { font-size: 13px; }
+
+/* 읽은 답을 카드에 넣은 말풍선 — 칸마다 테두리 상자 하나 */
+.iv__panel .chat-bub:has(.iv-put) { width: 88%; }
+.iv-put { display: flex; flex-direction: column; gap: 10px; }
+.iv-put__title { margin: 0; font-size: 15px; line-height: 24px; font-weight: var(--weight-bold); color: var(--text-primary); }
+.iv-put__lead { align-self: flex-start; margin: -4px 0 0; font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
+.iv-put__box { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 14px; border: 1px solid var(--border-default); border-radius: 14px; background: var(--bg-surface); }
+.iv-put__box p { margin: 0; font-size: 15px; line-height: 1.6; }
+.iv-put__box--edit { align-items: stretch; border-color: var(--border-selected); box-shadow: var(--focus); }
+.iv-put__box--edit .chat-tag { align-self: flex-start; }
+.iv-put__area { width: 100%; min-height: 84px; padding: 0; border: 0; background: transparent; font: inherit; font-size: 15px; line-height: 1.6; color: var(--text-primary); resize: vertical; }
+.iv-put__area:focus-visible { outline: none; }
+.iv-put__bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.iv-put__bar .btn { font-size: 14px; }
+.iv-put__count { margin-left: auto; font-size: 13px; line-height: 20px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.iv-put__hint { margin: 0; font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
+.iv-put__hint--bad { color: var(--state-failed-text); }
+.iv__helper { margin: 0; font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
+/* 왼쪽 카드에서 방금 넣은 칸 — 이름 옆 표시와 부드러운 밑줄 강조 */
+.iv__put-tag { display: inline-block; padding: 1px 9px; border-radius: var(--radius-full); background: var(--state-open-bg); font-size: 13px; line-height: 20px; font-weight: var(--weight-bold); color: var(--state-open-text); }
+.star__text.iv__put-text { background: linear-gradient(transparent 62%, var(--state-open-bg) 62%); width: fit-content; max-width: 100%; }
 
 @media (min-width: 1101px) {
   .iv { grid-template-columns: minmax(0, 1fr) 440px; }

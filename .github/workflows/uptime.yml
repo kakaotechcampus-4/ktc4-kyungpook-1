@@ -1,0 +1,68 @@
+# 서버가 통째로 멈추면 서버 안의 healthcheck 와 로그 경보도 같이 멈춰서 아무도 모른다
+# 그래서 GitHub 쪽에서 공개 주소로 들어가 보고, 상태가 바뀔 때만 Discord 로 알린다
+name: 사이트 상태 확인
+
+on:
+  schedule:
+    # 정각은 GitHub 예약이 몰려 늦게 시작된다
+    - cron: '3/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SITE: gitory.duckdns.org
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: deploy/post-deploy-check.sh
+          sparse-checkout-cone-mode: false
+
+      # 배포 중에 잠깐 끊기는 것은 넘기려고 30초 간격으로 세 번 본다
+      - name: 공개 주소로 홈·화면 파일·서버 응답·로그인 주소 확인
+        id: check
+        env:
+          CHECK_ATTEMPTS: 3
+          CHECK_INTERVAL: 30
+        run: |
+          bash deploy/post-deploy-check.sh "$SITE" public | tee check.log
+          exit "${PIPESTATUS[0]}"
+
+      # 멈춰 있는 동안 10분마다 같은 알림이 쌓이지 않게, 직전 실행과 결과가 다를 때만 보낸다
+      - name: 상태가 바뀌었으면 Discord 로 알림
+        if: always() && steps.check.outcome != 'skipped'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_KTC }}
+          NOW: ${{ steps.check.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          prev="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow uptime.yml --status completed --limit 1 \
+            --json conclusion --jq '.[0].conclusion // ""')"
+          if [ "$NOW" = failure ] && [ "$prev" != failure ]; then
+            why="$(grep -o '사이트 확인 실패: .*' check.log | tail -1 | cut -c1-300)"
+            text="[사이트 상태] $SITE 가 열리지 않아요. ${why:-원인은 실행 기록에서 확인해 주세요.} $RUN_URL"
+          elif [ "$NOW" = success ] && [ "$prev" = failure ]; then
+            text="[사이트 상태] $SITE 가 다시 열려요."
+          else
+            echo "직전 실행($prev)과 같아서 알리지 않는다."
+            exit 0
+          fi
+          if [ -z "$WEBHOOK" ]; then
+            echo "::warning::DISCORD_WEBHOOK_KTC 가 없어 알리지 못했다."
+            exit 0
+          fi
+          # 알림이 실패해도 실행 결과는 사이트 상태만 따른다 (다음 실행이 직전 결과를 보고 판단한다)
+          jq -n --arg content "$text" '{content: $content}' \
+            | curl -sS -m 10 -o /dev/null -H 'Content-Type: application/json' -d @- "$WEBHOOK" \
+            || echo "::warning::Discord 로 보내지 못했다."

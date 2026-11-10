@@ -36,7 +36,7 @@ RUN_DIR = _AI_ROOT / "evals" / "results" / "interview_asks"
 TEMPLATES = HERE.parent / "experience_interview" / "templates.json"
 REPEAT = HERE / "repeat.json"
 TAG_PREFIX = "interview-asks"
-CALL_CAP = 80
+CALL_CAP = int(os.getenv("GITORY_EVAL_CALL_CAP", "80"))
 MODEL = "gpt-5.6-luna"
 HYPOTHESIS = re.compile(r"[인건]가요")
 

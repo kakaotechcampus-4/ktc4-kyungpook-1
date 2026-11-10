@@ -13,6 +13,7 @@ import { Notices } from './Notices';
 import { PANEL_TABS, PanelTabs, tabId, tabPanelId, type PanelTab } from './PanelTabs';
 import { PolishTab, type Flag, type PolishView } from './PolishTab';
 import './panel.css';
+import { buttonClass } from '@/components/ui';
 
 /** 첨삭 요청은 하나지만 '살펴보는 중'을 이만큼 보인 뒤 '고치는 중'으로 넘긴다 */
 export const POLISH_STEP_MS = 600;
@@ -184,7 +185,7 @@ export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, on
         {sheet && (
           <aside className="clp clp-scroll clp--sheet" aria-label={label}>
             <span className="clp-grab" aria-hidden />
-            {head(<button type="button" className="btn btn--text clp-head__x" aria-label="닫기" onClick={() => setSheet(null)}><X size={18} aria-hidden /></button>)}
+            {head(<button type="button" className={buttonClass('text', undefined, 'clp-head__x')} aria-label="닫기" onClick={() => setSheet(null)}><X size={18} aria-hidden /></button>)}
             <section className="clp-card">{body(sheet)}</section>
           </aside>
         )}

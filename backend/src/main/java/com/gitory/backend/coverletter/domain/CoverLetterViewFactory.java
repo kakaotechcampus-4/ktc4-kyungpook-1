@@ -113,7 +113,8 @@ class CoverLetterViewFactory {
                 question.getCharLimit(), question.getTheme(), cardRef(labelOf(labels, question.getPrimaryCardId())),
                 primaryCardDeleted, cardRef(labelOf(labels, question.getSupportingCardId())), question.getAssignedBy(),
                 question.getPickReason(), considered, materials(question.getPrimaryCardId(), labels, slots, remembered),
-                asks(question), draft(question), writing, question.getPolish(), question.getPolishAppliedCount());
+                asks(question), draft(question), writing, question.getPolish(), question.getPolishAppliedCount(),
+                question.getSuggestions());
 
     }
 

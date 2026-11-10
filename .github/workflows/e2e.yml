@@ -1,7 +1,8 @@
 name: e2e
 # 브라우저로 로그인부터 카드 확정까지 한 흐름을 실제 스택(db·ai·backend·web)에 돌린다.
-#   GitHub 와 LLM 만 e2e/fakes 가짜로 바꾼다. 필수 체크도 배포 조건(deploy.yml 의 gate)도 아니다 —
-#   오래 걸리거나 흔들릴 때 머지와 배포가 같이 막히지 않게 하려는 것이다.
+#   GitHub 와 LLM 만 e2e/fakes 가짜로 바꾼다. 필수 체크는 아니지만 배포 조건이다 —
+#   develop 에 올라온 커밋에서도 돌고, deploy.yml 의 gate 가 이 결과까지 성공해야 배포한다.
+#   흔들려서 실패하면 Actions 에서 다시 실행한다. 성공으로 끝나면 배포가 이어진다.
 #   필수 체크로 올릴 때는 backend-ci.yml 처럼 항상 돌고 job 으로 건너뛰는 구조로 바꾼다.
 #   self-hosted 러너(gitory-deploy)는 쓰지 않는다. 바깥 PR 코드가 운영 서버에서 돌면 안 된다.
 on:
@@ -14,6 +15,14 @@ on:
       - 'deploy/Caddyfile'
       - 'contracts/**'
       - '.github/workflows/e2e.yml'
+  # 서비스 코드가 바뀐 커밋만 본다. e2e/ 나 deploy/ 만 바뀐 커밋까지 넣으면 CI 없이 이 시험만으로 배포가 나간다.
+  push:
+    branches: [develop]
+    paths:
+      - 'backend/**'
+      - 'ai/**'
+      - 'frontend/**'
+      - 'contracts/**'
   workflow_dispatch:
 
 permissions:

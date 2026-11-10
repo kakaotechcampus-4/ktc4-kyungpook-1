@@ -188,7 +188,7 @@ class GapFillServiceTest {
         assertThat(started).hasSize(1);
         verify(rateLimiter, times(1)).acquire(RateLimitedAction.MATCH_GAP_FILL, USER, 1);
 
-        unused.add(new UnusedCandidate(7L, UUID.randomUUID(), "주문 큐", "이유", List.of()));
+        unused.add(new UnusedCandidate(7L, UUID.randomUUID(), "주문 큐", "이유", List.of(), 0));
         service.start(POSTING_ID, USER, LOGIN);
         assertThat(started).hasSize(2);
         verify(rateLimiter, times(2)).acquire(RateLimitedAction.MATCH_GAP_FILL, USER, 1);
@@ -271,7 +271,7 @@ class GapFillServiceTest {
         UUID pay = repo(7L, "grow22", "pay", true);
         UUID repo = repo(8L, "grow22", "shop", false);
         UUID candidate = UUID.randomUUID();
-        unused.add(new UnusedCandidate(7L, candidate, "주문 큐 만들기", "이유", List.of("feat: 큐")));
+        unused.add(new UnusedCandidate(7L, candidate, "주문 큐 만들기", "이유", List.of("feat: 큐"), 0));
         UUID draft = draftCard(21L, "캐시 도입");
         answer(List.of(proposed(first, GapFillAction.CREATE_CARD, candidate),
                 proposed(second, GapFillAction.CONTINUE_CARD, draft),

@@ -75,7 +75,7 @@ test('카드가 차례로 채워지고, 읽는 동안은 커서만, 글은 일�
 
   // Job 이 끝나도 마지막 카드를 다 펼친 뒤에야 완성된 카드로 넘어간다
   await expect(slot(page, 'R')).toHaveAttribute('data-phase', 'DONE', { timeout: 30_000 });
-  await expect(page.locator('.live-card__state')).toHaveText('다 썼어요');
+  await expect(page.locator('.live-card__state')).toHaveText('다 썼어요', { timeout: 15_000 }); // 서버가 끝났다고 알린 뒤에야 바뀌므로 R 칸이 다 보인 뒤에도 몇 초 걸린다
   await expect(page.getByText('카드 초안 2 / 2장')).toBeVisible();
   await expect(generationHeading(page)).toBeVisible(); // 다 쓴 모습을 잠깐 보여 준다
   await expect(generationHeading(page)).toHaveCount(0, { timeout: 10_000 });
@@ -107,5 +107,5 @@ test('동작 줄이기를 켜면 글을 펼치지 않고 오는 대로 한 번�
   expect(await page.evaluate(() => (window as unknown as { __partial: boolean }).__partial)).toBe(false);
   // 한 장만 썼으면 그 카드에 머물고, 쓴 과정이 카드 상세 오른쪽 '만든 과정'에도 남아 있다
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await expect(page.getByRole('region', { name: '만든 과정' }).getByRole('button', { name: '자세히' })).toBeVisible();
+  await expect(page.getByRole('region', { name: '만든 과정' }).getByRole('button', { name: '자세히 보기' })).toBeVisible();
 });

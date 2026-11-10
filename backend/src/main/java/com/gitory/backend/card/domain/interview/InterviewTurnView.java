@@ -21,7 +21,9 @@ public record InterviewTurnView(
 
     static InterviewTurnView of(InterviewTurn turn, InterviewSourceType sourceType, int maxTurns) {
 
-        InterviewAnswer answer = turn.isAnswered()
+        boolean answerShown = turn.isAnswered()
+                || (turn.getOutcome() == TurnOutcome.INSUFFICIENT && turn.getAnswerSource() != null);
+        InterviewAnswer answer = answerShown
                 ? new InterviewAnswer(turn.getAnswerText(), turn.getAnswerSource(), turn.getAnswerOriginal())
                 : null;
 

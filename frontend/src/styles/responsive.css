@@ -13,8 +13,6 @@
 .modal__close { flex-shrink: 0; min-width: var(--control-touch-size); min-height: var(--control-touch-size); }
 .modal__body { min-height: 0; }
 .modal__head, .modal__foot { flex-shrink: 0; }
-.interview-evidence summary { cursor: pointer; min-height: var(--control-touch-size); display: list-item; padding-block: var(--space-12); color: var(--text-secondary); font-size: var(--text-meta-size); }
-.interview-evidence[open] .found { margin-bottom: var(--space-12); }
 .skeleton { max-width: 100%; }
 .settings-section > .row { flex-wrap: wrap; gap: var(--space-8); }
 .user-avatar__fallback { font-size: 16px; }
@@ -31,9 +29,6 @@
 .manual-save-row > .btn { flex-shrink: 0; }
 .settings-data-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; }
 .settings-data-copy { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: center; gap: 16px; }
-.settings-permission { display: grid; grid-template-columns: 100px minmax(0, 1fr) auto; gap: 16px; }
-.collection-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto auto; align-items: center; gap: 16px; }
-.collection-row__name { overflow-wrap: anywhere; }
 .recall-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .recall-actions__buttons { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .repo-row__stats { display: flex; flex-wrap: wrap; gap: 4px 12px; }
@@ -53,10 +48,6 @@
   .manual-metadata__title { grid-column: 1 / -1; }
   .card-page-header { grid-template-columns: minmax(0, 1fr); }
   .card-page-header__actions { justify-content: flex-start; }
-  .collection-row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; }
-  .collection-row__name { grid-column: 1; grid-row: 1; }
-  .collection-row__result { grid-column: 2; grid-row: 1; text-align: right; }
-  .collection-row__metrics, .collection-row__date { grid-column: 1 / -1; }
 }
 .candidate-board__actions { gap: 8px; flex-wrap: wrap; }
 .candidate-board .toolbar.card { border: 0; box-shadow: none; background: transparent; padding: 0; }
@@ -126,7 +117,7 @@ body { overflow-x: hidden; }
   color: var(--text-secondary);
   font-size: 11px;
   line-height: 16px;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
 .landing__h1 { max-width: 620px; font-size: clamp(40px, 4vw, 58px); line-height: 1.18; }
 .landing__lead { max-width: 560px; font-size: 16px; line-height: 28px; }
@@ -138,7 +129,7 @@ body { overflow-x: hidden; }
   cursor: pointer;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   list-style-position: inside;
 }
 .landing__permissions[open] summary { margin-bottom: 12px; }
@@ -201,7 +192,7 @@ body { overflow-x: hidden; }
     background: color-mix(in srgb, var(--bg-surface) 96%, transparent);
     backdrop-filter: blur(16px);
   }
-  .mobile-nav a { display: flex; min-width: 0; min-height: 48px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 10px; color: var(--text-tertiary); font-size: 12px; font-weight: 600; }
+  .mobile-nav a { display: flex; min-width: 0; min-height: 48px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 10px; color: var(--text-tertiary); font-size: 12px; font-weight: var(--weight-bold); }
   .mobile-nav a[aria-current="page"] { background: var(--nav-active-bg); color: var(--nav-active-text); }
   .main { --main-px: 16px; --main-pb: 24px; gap: 16px; padding: 20px var(--main-px) var(--main-pb); }
   /* Match the actual padding so the shared footer cannot pull content under itself. */
@@ -221,10 +212,6 @@ body { overflow-x: hidden; }
   .star-read__row { padding: 20px 16px; }
   .settings-data-copy { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .settings-data-row { gap: 12px; align-items: start; }
-  .settings-permission { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; }
-  .settings-permission__scope { grid-column: 1; grid-row: 1; }
-  .settings-permission__state { grid-column: 2; grid-row: 1; }
-  .settings-permission__copy { grid-column: 1 / -1; }
   .profile-summary > .grow { min-width: 0; overflow-wrap: anywhere; }
   .recall-actions__buttons { width: 100%; justify-content: flex-end; }
   .card-page-header__actions .btn { flex: 1 1 auto; }
@@ -234,20 +221,19 @@ body { overflow-x: hidden; }
   .two-col,
   .two-col--340,
   .iv,
-  .cmp,
-  .found,
-  .stat-grid { grid-template-columns: minmax(0, 1fr); }
+  .cmp { grid-template-columns: minmax(0, 1fr); }
   .experience-item.gcard { min-height: 0; padding: 22px 18px; }
   .status-tabs { gap: 20px; overflow-x: auto; }
   .settings-page { gap: 28px; }
   .profile-summary { gap: 16px; min-height: 68px; padding: 0; }
   .settings-section { padding: 20px; }
-  .settings-row { align-items: flex-start; flex-wrap: wrap; }
-  .settings-section.stat-grid { grid-template-columns: repeat(2, 1fr); padding: 0; }
-  .settings-section .stat { padding: 20px; }
-  .settings-section .stat + .stat { border-left: 0; }
-  .settings-section .stat:nth-child(even) { border-left: 1px solid var(--border-default); }
-  .settings-section .stat:nth-child(n + 3) { border-top: 1px solid var(--border-default); }
+  .set-row { padding-inline: 16px; }
+  .set-details__body { padding-inline: 16px; }
+  .set-logout { justify-self: stretch; }
+  .set-status, .set-split { flex-wrap: wrap; }
+  .set-status .btn, .set-split .btn { width: 100%; }
+  .set-scope { grid-template-columns: minmax(0, 1fr); }
+  .set-scope > div + div { border-left: 0; border-top: 1px solid var(--border-default); }
   .iv__panel { position: static; padding: 14px; }
   .iv__canvas { min-height: 0; }
   .page-title { align-items: flex-start; }
@@ -275,6 +261,9 @@ body { overflow-x: hidden; }
   .sticky-footer { bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom)); flex-wrap: wrap; padding: 10px var(--main-px); gap: 8px; min-height: 0; }
   .sticky-footer__text { flex-basis: 100%; }
   .sticky-footer__actions { width: 100%; }
+  /* 카드 상세는 설명 줄과 버튼 줄이 하단 메뉴 위에 쌓여 화면의 30% 가까이를 덮었다 — 버튼이 할 일을 말하므로 버튼 한 줄만 남기고 설명은 화면 읽기에만 준다(#920) */
+  .sticky-footer--compact .sticky-footer__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .sticky-footer--compact .sticky-footer__actions { flex-wrap: nowrap; }
   .sticky-footer .btn { flex: 1 1 auto; }
   .dim { align-items: flex-end; padding: 12px; }
   .modal { max-height: calc(100svh - 24px); max-height: calc(100dvh - 24px); border-radius: 16px; overflow: hidden; }
@@ -284,11 +273,11 @@ body { overflow-x: hidden; }
   .modal__foot-text { flex-basis: 100%; }
   .modal__foot .btn { flex: 1 1 auto; }
 
-  .landing { display: flex; gap: 32px; padding: 18px 18px 44px; }
+  .landing { display: flex; gap: 20px; padding: 18px 18px 44px; }
   .landing__top { width: 100%; }
   .landing__top .btn { display: none; }
-  .landing__hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; align-items: start; }
-  .landing__copy { gap: 16px; }
+  .landing__hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; } /* 로그인 동의 문구가 들어와도 예시 카드가 첫 화면에 보이게 */
+  .landing__copy { gap: 12px; }
   .landing__eyebrow { font-size: 11px; }
   .landing__h1 { font-size: clamp(30px, 9vw, 40px); line-height: 1.22; }
   .landing__lead { font-size: 14px; line-height: 24px; }
@@ -310,6 +299,11 @@ body { overflow-x: hidden; }
   .landing { padding-inline: 14px; }
   .btn { white-space: normal; text-align: center; }
   .note { flex-direction: column; }
+  /* 320px 탭바 여섯 칸에서 다섯 글자 '마이페이지'만 칸 끝에 붙는다 — 마지막 칸을 조금 넓히고(나머지는 세 글자 이하) 바깥 여백을 줄인다(#920).
+     칸 수는 AppShell 이 인라인 grid 로 정해, 여기서는 flex 로 바꿔 칸 수와 상관없이 마지막 칸만 넓힌다 */
+  .mobile-nav { display: flex; padding-inline: 4px; }
+  .mobile-nav a { flex: 1 1 0; }
+  .mobile-nav a:last-child { flex-grow: 1.35; }
 }
 
 @media print {
@@ -325,9 +319,6 @@ body { overflow-x: hidden; }
 
 /* Follow-up composition shares the existing spacing and control tokens. */
 .star__edit.btn { min-height: var(--control-touch-size); }
-.settings-storage summary { cursor: pointer; min-height: var(--control-touch-size); display: flex; align-items: center; gap: var(--space-8); font-size: 14px; font-weight: 600; }
-.settings-storage summary::after { content: '+'; margin-left: auto; }
-.settings-storage[open] summary::after { content: '−'; }
 .landing-example-wrap { min-width: 0; }
 .landing-card__preview, .landing-example__toggle.btn { display: none; }
 @media (max-width: 767px) {

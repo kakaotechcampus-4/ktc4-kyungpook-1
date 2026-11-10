@@ -1,0 +1,11 @@
+/* 디자인 기본값 견본(/__ui) — 목에서만 */
+.ui-show { display: flex; flex-direction: column; gap: 36px; }
+.ui-show section { display: flex; flex-direction: column; gap: 12px; }
+.ui-show h2 { margin: 0; font-size: 20px; font-weight: var(--weight-heavy); }
+.ui-show__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.ui-show__cell { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 16px; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); }
+.ui-show__row { flex-wrap: wrap; gap: 8px; align-items: center; }
+.ui-show__weight { margin: 0; font-size: 20px; }
+.ui-show__cells { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; max-width: 520px; overflow: hidden; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--border-default); }
+.ui-show__slot { position: relative; padding: 24px 18px; background: var(--bg-surface); font-size: 14px; }
+.ui-show__slot.is-now::after { content: ''; position: absolute; inset: 6px; border: 2px solid var(--border-selected); border-radius: var(--radius-md); pointer-events: none; }

@@ -11,9 +11,10 @@
 |---|---|
 | 서버 | 카테캠이 팀당 EC2 1대 제공 (2026-08-31 ~ 2026-11-20). t3.medium 4GB · Ubuntu 24.04 · 50GB · 서울 리전 고정 |
 | 접속 | Session Manager (22 포트를 열지 않음) |
-| 주소 | `https://<EIP 대시 표기>.sslip.io` (예: EIP `1.2.3.4` → `1-2-3-4.sslip.io`). 실제 주소는 팀 채널 공지 |
+| 주소 | `https://gitory.duckdns.org` (옛 주소 `https://<EIP 대시 표기>.sslip.io` 로 들어오면 새 주소의 같은 경로로 넘긴다) |
 | 구성 | 단일 VM + docker compose. Caddy 가 `/`→프론트, `/api`→Spring 으로 경로 분기 (같은 오리진) |
-| 배포 | `develop` 머지 → GitHub Actions(self-hosted runner) 가 서버에서 다시 빌드·기동 |
+| 배포 | `develop` 머지 → CI 와 전체 서비스 E2E 시험 통과 → GitHub Actions(self-hosted runner) 가 서버에서 다시 빌드·기동 → 실제 주소로 확인, 안 열리면 직전 커밋으로 되돌림 |
+| 상태 확인 | GitHub Actions 가 10분마다 서버 밖에서 공개 주소로 들어가 보고, 멈추거나 다시 열리면 팀 Discord 로 알림 |
 | 담당 | 곽태훈 (스펙 담당표에서는 BE 리드의 몫이었으나 9월 말부터 곽태훈이 진행) |
 
 ### 하려는 일 → 읽을 곳
@@ -187,27 +188,49 @@ fork PR 이 워크플로를 바꿔 `runs-on: self-hosted` 로 실행하면 그 �
 
 컨테이너 6개(db · db-backup · ai · redis · backend · web)의 로그는 Docker `awslogs` 드라이버로 CloudWatch 로그 그룹 `/gitory`(서울 리전)에 간다. EC2 인스턴스 역할(`ktc-ec2-ssm-profile`, `CloudWatchAgentServerPolicy` 연결)로 보내므로 서버에 키를 두지 않는다. 보는 방법은 [장애 확인](#6-장애-확인).
 
-- 보관: 로그 그룹 `/gitory` → 작업 → 보존 설정 편집 → 7일.
-- 에러 경보:
-  1. `/gitory` → 지표 필터 생성을 아래 패턴 4개로 네 번 한다. 넷 다 지표 이름 `GitoryErrors`, 지표 값 1, 기본값 0 으로 같은 지표에 더한다. 만들 때마다 같은 화면의 "패턴 테스트"로 아래 예시 줄에 맞는지 확인한다.
+- 보관: 7일. `aws logs put-retention-policy --log-group-name /gitory --retention-in-days 7` 로 맞춘다. 개인정보처리방침에 적은 서버 로그 보관 기간과 같아야 한다.
+- 에러 경보: 콘솔 왼쪽 아래의 CloudShell 에서 만든다. 같은 이름으로 다시 실행하면 덮어쓴다.
+  1. 지표 필터 6개. 앞의 다섯은 지표 `GitoryErrors`, 마지막 하나는 `GitoryLlmUnavailable` 로 센다(네임스페이스 `Gitory`, 지표 값 1, 기본값 0).
+     ```bash
+     NS=Gitory; LG=/gitory
+     mf() { aws logs put-metric-filter --log-group-name $LG --filter-name "$1" --filter-pattern "$2" --metric-transformations metricName=$3,metricNamespace=$NS,metricValue=1,defaultValue=0; }
+     mf gitory-error 'ERROR -"duplicate key"' GitoryErrors
+     mf gitory-traceback 'Traceback' GitoryErrors
+     mf gitory-job-failed '?"INTERNAL_ERROR" ?"GITHUB_UNAVAILABLE" ?"AI_UNAVAILABLE"' GitoryErrors
+     mf gitory-db-backup-failed '"DB 백업 실패"' GitoryErrors
+     mf gitory-llm-permanent '"code=LLM_UNAVAILABLE" "retryable=false"' GitoryErrors
+     mf gitory-llm-any '"code=LLM_UNAVAILABLE"' GitoryLlmUnavailable
+     ```
      - `ERROR -"duplicate key"`: 에러 줄. 동시 요청을 DB 유니크 제약으로 막는 정상 흐름(분석 접수 등 4곳)에서 db 와 backend 가 남기는 `ERROR: duplicate key ...` 는 뺀다.
      - `Traceback`: ai 의 예외 스택.
      - `?"INTERNAL_ERROR" ?"GITHUB_UNAVAILABLE" ?"AI_UNAVAILABLE"`: Job 이 실패로 끝날 때 backend 가 WARN 으로 남기는 에러 코드.
      - `"DB 백업 실패"`: db-backup 의 실패 줄 ([백업·복구](#7-백업복구)).
+     - `"code=LLM_UNAVAILABLE" "retryable=false"`: ai 가 LLM 키·권한·모델 이름 문제처럼 다시 해도 안 되는 실패를 남기는 줄. traceback 없이 한 줄이라 위 패턴에 걸리지 않는다.
+     - `"code=LLM_UNAVAILABLE"`: ai 의 LLM·임베딩 실패 전부. 호출 한도 초과나 연결 실패는 잠깐 그러다 풀리기도 해서 따로 세고, 아래에서 15분에 5번 이상일 때만 알린다(2026-11-09 에 본 지난 1주의 최대가 15분에 3번).
      - CloudWatch 패턴은 `?`(또는)와 `-`(빼기)를 한 패턴에 같이 쓰면 `?` 항목이 무시되므로, 하나로 합치지 않고 나눈다. 한 줄이 여러 필터에 걸려 두 번 세어져도 경보는 1 이상이라 결과는 같다.
-     - 패턴 테스트에 넣을 줄 모양 (앞 날짜는 생략). 걸려야 하는 줄: `ERROR 1 --- [gitory-backend] [   scheduling-1] c.g.b.job.domain.JobRunner : ...`, `Traceback (most recent call last):`, `카드 초안 Job 12 을 INTERNAL_ERROR 로 끝낸다`, `분석 Job 84 을 AI_UNAVAILABLE 로 끝낸다`, `DB 백업 실패: pg_dump: error: connection to server at "db" (172.18.0.2), port 5432 failed: ...`
+     - 패턴은 `aws logs test-metric-filter --filter-pattern '<패턴>' --log-event-messages '<줄>' --query 'length(matches)'` 로 확인한다(앞 날짜는 생략). 걸려야 하는 줄: `ERROR 1 --- [gitory-backend] [   scheduling-1] c.g.b.job.domain.JobRunner : ...`, `Traceback (most recent call last):`, `카드 초안 Job 12 을 INTERNAL_ERROR 로 끝낸다`, `분석 Job 84 을 AI_UNAVAILABLE 로 끝낸다`, `DB 백업 실패: pg_dump: error: connection to server at "db" (172.18.0.2), port 5432 failed: ...`, `STAR 초안 생성 실패: path=/internal/analysis/star code=LLM_UNAVAILABLE retryable=false exc=LLMNonRetryableError cause=AuthenticationError root=AuthenticationError github_status=- ms=412`
+     - `공고 색인 실패: path=/internal/matching/postings/index code=LLM_UNAVAILABLE retryable=true exc=EmbeddingError cause=RateLimitError root=RateLimitError github_status=- ms=1203` 은 마지막 패턴에만 걸려야 한다.
      - 걸리면 안 되는 줄: `UTC [123] ERROR:  duplicate key value violates unique constraint "uq_job_active"`(db), `ERROR 1 --- [gitory-backend] [nio-8080-exec-3] o.h.engine.jdbc.spi.SqlExceptionHelper : ERROR: duplicate key value violates unique constraint "uq_job_active"`(backend)
-  2. CloudWatch → 경보 생성 → 지표 `GitoryErrors` 합계, 5분, 1 이상 → SNS 주제를 새로 만들어 팀 이메일을 구독시키고 메일의 확인 링크를 누른다.
+  2. 알림 주제와 경보 2개. `<메일 주소>` 를 받을 주소로 바꾸고, 받은 메일의 Confirm subscription 을 눌러야 알림이 온다. 받는 사람을 더할 때는 `aws sns subscribe` 줄만 다시 한다.
+     ```bash
+     T=$(aws sns create-topic --name gitory-alerts --query TopicArn --output text)
+     aws sns subscribe --topic-arn "$T" --protocol email --notification-endpoint "<메일 주소>"
+     aws cloudwatch put-metric-alarm --alarm-name gitory-errors --alarm-description "서버 에러 줄이 5분 안에 1번 이상 찍혔어요" --namespace Gitory --metric-name GitoryErrors --statistic Sum --period 300 --evaluation-periods 1 --threshold 1 --comparison-operator GreaterThanOrEqualToThreshold --treat-missing-data notBreaching --alarm-actions "$T"
+     aws cloudwatch put-metric-alarm --alarm-name gitory-llm-unavailable --alarm-description "LLM 실패가 15분 안에 5번 이상 찍혔어요" --namespace Gitory --metric-name GitoryLlmUnavailable --statistic Sum --period 900 --evaluation-periods 1 --threshold 5 --comparison-operator GreaterThanOrEqualToThreshold --treat-missing-data notBreaching --alarm-actions "$T"
+     ```
+  3. 확인: `aws cloudwatch set-alarm-state --alarm-name gitory-errors --state-value ALARM --state-reason "연결 확인"` 으로 한 번 울려 메일이 오는지 본다. 경보는 다음 평가 때 스스로 돌아간다.
 
 ## 4. 평소 배포
 
 ### 자동 배포 (develop 머지)
 
-`develop` 에 머지된 커밋의 CI(backend CI · AI CI · frontend)가 **모두 성공하면** `.github/workflows/deploy.yml` 이 서버에서 돈다(서버 runner 설치는 [처음 배포의 runner 설치](#runner-설치-자동-배포용)). 이미지 빌드는 테스트를 건너뛰므로(`-x test`) CI 가 실패한 커밋은 배포하지 않는다.
+`develop` 에 머지된 커밋의 CI(backend CI · AI CI · frontend)와 전체 서비스 E2E 시험(e2e)이 **모두 성공하면** `.github/workflows/deploy.yml` 이 서버에서 돈다(서버 runner 설치는 [처음 배포의 runner 설치](#runner-설치-자동-배포용)). 이미지 빌드는 테스트를 건너뛰므로(`-x test`) CI 가 실패한 커밋은 배포하지 않는다.
 
 0. gate job 이 그 커밋의 CI 를 모두 확인한다. 아직 도는 CI 가 있으면 넘기고 마지막 CI 가 끝날 때 배포한다. 실패한 CI 가 있으면 배포 워크플로도 실패로 표시된다
+   - E2E 시험이 흔들려 실패하면 배포가 나가지 않는다. Actions 의 그 `e2e` 실행에서 Re-run failed jobs 를 누르고, 성공으로 끝나면 배포가 이어진다. 수동 실행도 develop 의 가장 최근 `e2e` 가 성공이어야 한다.
+   - 서비스 코드 커밋이 몇 분 안에 연달아 들어오면 앞 커밋의 `e2e` 는 취소되고 그 커밋은 건너뛴다. 뒤 커밋이 앞 코드를 포함하므로 뒤 커밋이 배포되면 된다.
 1. 서버의 `~/gitory` 를 그 커밋으로 맞춘다 (`git checkout --force --detach <sha>` — `deploy/.env` 는 gitignore 라 남는다). 바꾸기 전에 지금 돌던 커밋을 적어 둔다. 서버에 이미 같거나 더 새 커밋이 있으면 되돌리지 않고 넘긴다
-2. `docker compose up -d --build --wait` — 모든 서비스가 healthy 가 될 때까지 기다린다. 5분 안에 안 되면 실패
+2. `docker compose up -d --build --wait` — 모든 서비스가 healthy 가 될 때까지 기다린다. 5분 안에 안 되면 실패. healthy 가 되면 `deploy/post-deploy-check.sh` 가 실제 주소로 홈, 화면 파일, 서버 응답, GitHub 로그인 주소를 확인한다
 3. 2 가 실패하면 1 에서 적어 둔 직전 커밋으로 되돌려 같은 방식으로 다시 올린다 ([롤백](#5-롤백))
 4. 컨테이너 상태를 출력하고, 성공하면 오래된 이미지·빌드 캐시를 정리한다
 
@@ -268,6 +291,14 @@ healthy 라서 자동으로 되돌리지 않은 경우다.
 
 ## 6. 장애 확인
 
+### 사이트가 멈췄는지 — 자동
+
+`.github/workflows/uptime.yml` 이 10분마다 GitHub 쪽에서 공개 주소로 들어가 본다. 배포 뒤 확인과 같은 스크립트(`deploy/post-deploy-check.sh`)로 홈, 화면 파일, 서버 응답, GitHub 로그인 주소를 본다.
+
+- 30초 간격으로 세 번 모두 실패하면 팀 Discord 로 알리고, 다시 열리면 한 번 더 알린다. 멈춰 있는 동안에는 같은 알림을 되풀이하지 않는다.
+- 서버 안의 healthcheck 와 CloudWatch 경보는 서버가 통째로 멈추면 같이 멈춘다. 그래서 서버 밖에서 따로 본다.
+- 알림을 받으면 Actions 의 그 실행에서 어느 확인이 실패했는지 보고, 아래 순서로 서버를 본다.
+
 ### 서버에서
 
 ```bash
@@ -279,6 +310,7 @@ docker compose restart backend                 # 서비스 하나 재시작
 
 - Session Manager 기본 셸이 `sh` 라서 접속하면 `bash` → `sudo -iu ubuntu` 를 먼저 실행한다.
 - 여러 줄을 붙여넣으면 마지막 줄이 Enter 를 쳐야 실행돼 출력이 잘려 보인다. 블록 끝에 `echo "== 끝"` 을 두면 끝을 알 수 있다.
+- 사용자가 화면에서 보낸 문제 신고는 DB 에만 있고 팀 알림에는 번호만 온다. 최근 것부터 읽는다: `docker compose exec -T db psql -U gitory -d gitory -P pager=off -c "SELECT id, created_at, path, message FROM feedback ORDER BY id DESC LIMIT 20;"`. 알림이 오려면 서버 `deploy/.env` 에 `GITORY_ALERT_WEBHOOK_URL` 이 있어야 한다.
 - 메모리: 4개 합계 약 650MB (backend 약 535MB). 빌드 중에는 더 쓰지만 swap 4GB 가 있다.
 - 인스턴스를 stop/start 해도 EIP 라 주소가 유지된다. 컨테이너는 `restart: unless-stopped` 라 Docker 가 뜨면 같이 뜬다.
 

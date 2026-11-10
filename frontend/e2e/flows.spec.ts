@@ -28,20 +28,17 @@ test('E-2 요청 한도 — partial 을 명시하고 읽은 범위의 후보를 
   await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled();
 });
 
-test('되묻기 — 보기에서 고른 답도 그대로 저장되고 칸이 채워진다', async ({ page }) => {
+test('되묻기 — 보기에서 고른 답도 읽어서 카드 문장으로 칸이 채워진다', async ({ page }) => {
   await login(page);
   await page.goto('/cards/card_01/interview?field=T');
-  await page.getByText('질문 근거 보기', { exact: true }).click();
-  await expect(page.getByText('코드에서 찾은 것')).toBeVisible();
   const selectedAnswer = (await page.locator('.chip--option').first().textContent())!;
   await page.locator('.chip--option').first().click();
-  await page.getByRole('button', { name: '답변 저장', exact: true }).click();
-  await expect(page.locator('.toast')).toContainText('답변을 저장했어요');
+  await page.getByRole('button', { name: '답 보내기', exact: true }).click();
+  await expect(page.getByText('과제 칸에 이렇게 넣었어요')).toBeVisible();
   const savedCard = await page.evaluate(async () => (await (await fetch('/api/cards/card_01')).json()).data);
-  expect(savedCard.version.task).toBe(selectedAnswer);
+  expect(savedCard.version.task).toBe(selectedAnswer.replace(/했어요$/, '했다')); // 읽는 API 가 말투를 카드 문장으로 바꿔 넣는다
   expect(savedCard.evidence.some((entry: { field: string; type: string }) => entry.field === 'T' && entry.type === 'USER_SELECTED')).toBe(true);
   // 내부 enum 이 화면에 새지 않는다
-  await expect(page.getByText('선택한 답변, 저장됨')).toBeVisible();
   await expect(page.getByText('USER_SELECTED')).toHaveCount(0);
   // 답하면 칸을 정하지 않고 다음 질문을 요청한다(#418). 이 카드는 T 가 마지막 빈 칸이라 AI 가 스스로 끝낸다
   await expect(page.getByText('추가 질문을 마쳤어요')).toBeVisible();

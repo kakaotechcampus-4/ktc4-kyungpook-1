@@ -5,8 +5,6 @@
 :root { --radius-lg: 16px; --radius-xl: 20px; --shadow-card: 0 10px 30px rgba(0, 0, 0, .05); }
 .card { box-shadow: var(--shadow-card); }
 .card--paper { box-shadow: none; }
-.btn--outline { color: var(--text-strong); border-color: var(--border-strong); }
-.btn--outline:hover:not(:disabled) { background: var(--bg-subtle); }
 .modal { border-radius: 20px; }
 .iconbox { border-radius: 10px; }
 
@@ -17,9 +15,9 @@
 .sidebar__top { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 12px; min-height: 44px; }
 .sidebar__toggle { width: var(--control-touch-size); height: var(--control-touch-size); flex-shrink: 0; border-radius: var(--control-radius); display: grid; place-items: center; color: var(--text-tertiary); }
 .sidebar__toggle:hover { background: var(--bg-subtle); color: var(--text-primary); }
-.menu-item { padding: 9px 12px; border-radius: 10px; font-weight: 500; color: var(--sidebar-text); gap: 10px; }
+.menu-item { padding: 9px 12px; border-radius: 10px; font-weight: var(--weight-regular); color: var(--sidebar-text); gap: 10px; }
 .menu-item svg { color: var(--text-secondary); }
-.menu-item[aria-current="page"] { background: var(--nav-active-bg); color: var(--sidebar-text); font-weight: 600; }
+.menu-item[aria-current="page"] { background: var(--nav-active-bg); color: var(--sidebar-text); font-weight: var(--weight-bold); }
 .menu-item[aria-current="page"] svg { color: var(--nav-active-text); }
 .menu-group__title { padding: 10px 12px 6px; font-size: 11px; }
 .sidebar__recent { padding: 12px 12px 0; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--border-default); margin-top: 6px; }
@@ -31,7 +29,7 @@
 .sidebar__email { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
 .sidebar__gear { margin-left: auto; color: var(--text-tertiary); width: 28px; height: 28px; display: grid; place-items: center; border-radius: 10px; }
 .sidebar__gear:hover { background: var(--bg-subtle); color: var(--text-primary); }
-.sidebar__status { display: flex; align-items: center; gap: 8px; margin: 4px 4px 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-default); font-size: 12px; font-weight: 600; color: var(--text-strong); }
+.sidebar__status { display: flex; align-items: center; gap: 8px; margin: 4px 4px 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-default); font-size: 12px; font-weight: var(--weight-bold); color: var(--text-strong); }
 .sidebar__status i { width: 7px; height: 7px; border-radius: 50%; background: var(--bg-ink-solid); }
 .shell--rail .brand .brand-logo--wordmark, .shell--rail .menu-group__title, .shell--rail .menu-item span, .shell--rail .sidebar__recent, .shell--rail .sidebar__profile > div, .shell--rail .sidebar__gear, .shell--rail .sidebar__status { display: none; }
 .shell--rail .menu-item { justify-content: center; min-height: var(--control-touch-size); padding: 10px; }
@@ -49,15 +47,15 @@
 .list-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .list-head .right { display: flex; gap: 8px; align-items: center; }
 .illus { width: 84px; height: 84px; border-radius: 16px; background: var(--bg-surface); border: 1px solid var(--border-default); display: grid; place-items: center; color: var(--text-tertiary); position: relative; }
-.illus::after { content: '+'; position: absolute; right: -8px; bottom: -8px; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-ink-solid); color: var(--text-on-ink); display: grid; place-items: center; font-weight: 700; }
+.illus::after { content: '+'; position: absolute; right: -8px; bottom: -8px; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-ink-solid); color: var(--text-on-ink); display: grid; place-items: center; font-weight: var(--weight-bold); }
 
 /* ───────── 위저드 모달: 좌측 스텝 레일 ───────── */
 .wizard { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 20px; }
 .wizard__steps { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
 .wstep { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-tertiary); }
-.wstep__no { width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; border: 1px solid var(--step-idle-border); display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--step-idle-bg); color: var(--step-idle-text); }
+.wstep__no { width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; border: 1px solid var(--step-idle-border); display: grid; place-items: center; font-size: 12px; font-weight: var(--weight-bold); background: var(--step-idle-bg); color: var(--step-idle-text); }
 .wstep--done .wstep__no { border-color: transparent; background: var(--bg-inset); color: var(--text-strong); }
-.wstep--now { color: var(--text-primary); font-weight: 600; }
+.wstep--now { color: var(--text-primary); font-weight: var(--weight-bold); }
 .wstep--now .wstep__no { border-color: var(--bg-ink-solid); background: var(--bg-ink-solid); color: var(--text-on-ink); }
 @media (max-width: 720px) { .wizard { grid-template-columns: 1fr; } .wizard__steps { flex-direction: row; } }
 
@@ -70,7 +68,7 @@
 .iv__q { font-size: 16px; line-height: 24px; font-weight: var(--heading-weight); }
 .iv__qd { font-size: 12px; color: var(--text-secondary); line-height: 19px; }
 .star-read__row--now { outline: 2px solid var(--border-selected); outline-offset: -2px; border-radius: 10px; }
-.iv__fold { display: none; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-decoration: underline; }
+.iv__fold { display: none; font-size: 12px; font-weight: var(--weight-bold); color: var(--text-secondary); text-decoration: underline; }
 @media (max-width: 1100px) {
   .iv { grid-template-columns: 1fr; }
   /* 좁은 화면에서는 질문과 입력칸이 먼저다. 미리보기는 접어 두고 필요할 때만 편다. */

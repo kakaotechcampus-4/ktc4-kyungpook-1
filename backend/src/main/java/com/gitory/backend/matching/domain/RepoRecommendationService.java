@@ -113,7 +113,7 @@ public class RepoRecommendationService {
                 .limit(SHOWN_COMPANIES)
                 .map(Scored::company)
                 .toList();
-        save(userId, userRepositoryId, allFailed, shown);
+        save(userId, userRepositoryId, allFailed, shown, live.finishedSnapshot());
         live.finish();
 
     }
@@ -214,11 +214,12 @@ public class RepoRecommendationService {
     public void markFailed(Long userId, Long userRepositoryId) {
 
         liveLog.drop(userRepositoryId);
-        save(userId, userRepositoryId, true, List.of());
+        save(userId, userRepositoryId, true, List.of(), null);
 
     }
 
-    private void save(Long userId, Long userRepositoryId, boolean allFailed, List<RecommendedCompany> shown) {
+    private void save(Long userId, Long userRepositoryId, boolean allFailed, List<RecommendedCompany> shown,
+                      RepoRecommendationLive process) {
 
         Instant now = Instant.now(clock);
         transaction.executeWithoutResult(status -> {
@@ -227,12 +228,12 @@ public class RepoRecommendationService {
                 if (allFailed) {
                     saved.get().fail(now);
                 } else {
-                    saved.get().refresh(shown, now);
+                    saved.get().refresh(shown, process, now);
                 }
                 return;
             }
             recommendations.save(allFailed ? RepoRecommendation.failed(userId, userRepositoryId, now)
-                    : RepoRecommendation.ready(userId, userRepositoryId, shown, now));
+                    : RepoRecommendation.ready(userId, userRepositoryId, shown, process, now));
         });
 
     }

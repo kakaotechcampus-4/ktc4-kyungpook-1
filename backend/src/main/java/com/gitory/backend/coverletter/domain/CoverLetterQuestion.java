@@ -87,6 +87,9 @@ public class CoverLetterQuestion {
 
     private int polishAppliedCount;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<Suggestion> suggestions;
+
     public static CoverLetterQuestion of(Long coverLetterId, int seq, String text, int charLimit) {
 
         CoverLetterQuestion question = new CoverLetterQuestion();
@@ -254,6 +257,13 @@ public class CoverLetterQuestion {
     public void discardPolish() {
 
         polish = null;
+
+    }
+
+    /** 빈 목록도 물어본 결과라 저장하며, 한 번 저장하면 문항을 열 때 다시 묻지 않는다 */
+    public void suggest(List<Suggestion> suggestions) {
+
+        this.suggestions = new ArrayList<>(suggestions);
 
     }
 

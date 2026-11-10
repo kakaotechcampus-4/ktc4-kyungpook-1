@@ -45,6 +45,9 @@ public class RepoRecommendation {
     @JdbcTypeCode(SqlTypes.JSON)
     private List<RecommendedCompany> previousCompanies;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    private RepoRecommendationLive process;
+
     private Instant computedAt;
 
     private Instant staleSince;
@@ -52,8 +55,15 @@ public class RepoRecommendation {
     public static RepoRecommendation ready(Long userId, Long userRepositoryId, List<RecommendedCompany> companies,
                                            Instant now) {
 
+        return ready(userId, userRepositoryId, companies, null, now);
+
+    }
+
+    public static RepoRecommendation ready(Long userId, Long userRepositoryId, List<RecommendedCompany> companies,
+                                           RepoRecommendationLive process, Instant now) {
+
         RepoRecommendation recommendation = new RepoRecommendation(userId, userRepositoryId);
-        recommendation.refresh(companies, now);
+        recommendation.refresh(companies, process, now);
         return recommendation;
 
     }
@@ -72,11 +82,15 @@ public class RepoRecommendation {
         this.companies = new ArrayList<>();
     }
 
-    /** 바꾸기 전 기업은 previousCompanies 에 남겨, 이번 계산에서 새로 든 기업을 가릴 수 있게 한다 */
-    public void refresh(List<RecommendedCompany> companies, Instant now) {
+    /**
+     * 바꾸기 전 기업은 previousCompanies 에 남겨, 이번 계산에서 새로 든 기업을 가릴 수 있게 한다
+     * 끝난 진행은 서버가 다시 떠 메모리가 비어도 화면이 고른 과정을 다시 보여 줄 수 있게 기업과 함께 저장한다
+     */
+    public void refresh(List<RecommendedCompany> companies, RepoRecommendationLive process, Instant now) {
 
         this.previousCompanies = this.companies;
         this.companies = new ArrayList<>(companies);
+        this.process = process;
         this.computedAt = now;
         this.status = staleSince == null ? RepoRecommendationStatus.READY : RepoRecommendationStatus.COMPUTING;
 

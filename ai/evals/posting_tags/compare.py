@@ -1,7 +1,9 @@
 """공고 뽑기 결과(기술 이름표·일반 조건 종류·학력)를 정답과 견줘 숫자를 낸다. 판정 파일이 있으면 갈린 곳은 판정을 정답으로 쓴다.
 
-gold/gold_*.json 은 [{key, team_techs, criteria:[{i, general_type, techs, education_level, education_exempt}]}] 이고
+gold/gold_*.json 은 [{key, team_techs, criteria:[{i, q, general_type, techs, education_level, education_exempt}]}] 이고
 adjudicated.json 은 정답과 AI 가 갈린 곳의 판정이다. 정답에 없는 공고는 건너뛴다. LLM 을 부르지 않는다.
+i 는 정답을 만들 때 뽑은 결과의 조건 번호이고 q 는 그 조건 원문 문장의 지문이다. 다시 뽑으면 조건 수와 순서가 달라지므로
+정답과는 q 로 짝짓고, 짝이 없는 조건은 세지 않고 몇 개인지만 알린다.
 
     cd ai
     python evals/posting_tags/compare.py evals/results/posting_tags/results.jsonl
@@ -11,7 +13,9 @@ adjudicated.json 은 정답과 AI 가 갈린 곳의 판정이다. 정답에 없�
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -23,6 +27,32 @@ def load_gold(gold_dir: Path) -> dict:
         for g in json.loads(f.read_text(encoding="utf-8")):
             gold[g["key"]] = g
     return gold
+
+
+def mark(quote: str) -> str:
+    """조건 원문 문장의 지문으로, 공고 글을 저장소에 두지 않고도 다시 뽑은 결과와 정답의 조건을 짝짓게 한다."""
+    return hashlib.sha1(re.sub(r"\s+", " ", quote or "").strip().encode("utf-8")).hexdigest()[:16]
+
+
+def pair(crit: list[dict], gold_criteria: list[dict]) -> dict[int, dict]:
+    """AI 조건 번호마다 짝이 된 정답 조건을 돌려준다. 정답의 i 는 판정 파일이 쓰는 번호라 그대로 둔다.
+
+    같은 원문을 조건 둘 이상으로 나눈 묶음은 정답과 AI 의 순서가 다를 수 있어, 그 안에서는 일반 조건 종류가 같은 것끼리 짝짓는다.
+    """
+    ai_by_mark: dict[str, list[int]] = {}
+    for i, c in enumerate(crit):
+        ai_by_mark.setdefault(mark(c["source_quote"]), []).append(i)
+    gold_by_mark: dict[str, list[dict]] = {}
+    for c in gold_criteria:
+        gold_by_mark.setdefault(c["q"], []).append(c)
+    paired: dict[int, dict] = {}
+    for quote_mark, same in gold_by_mark.items():
+        pool = list(same)
+        for i, gold_i in zip(ai_by_mark.get(quote_mark, []), sorted(c["i"] for c in same)):
+            pick = next((x for x in pool if x.get("general_type") == crit[i].get("general_type")), pool[0])
+            pool.remove(pick)
+            paired[i] = {**pick, "i": gold_i}
+    return paired
 
 
 def main() -> None:
@@ -43,6 +73,7 @@ def main() -> None:
     gen_total = gen_wrong = 0
     gen_wrong_postings = set()
     edu_total = edu_level_ok = edu_exempt_ok = 0
+    gold_total = gold_unpaired = 0
     disagreements = []
 
     for r in rows:
@@ -53,25 +84,15 @@ def main() -> None:
         if g is None:
             continue
         crit = r["result"]["criteria"]
-        gold_by_i = {c["i"]: c for c in g["criteria"]}
-        # 같은 원문을 조건 둘 이상으로 나눈 경우 정답과 AI 의 순서가 다를 수 있어, 그 묶음 안에서는 일반 조건 종류가 같은 것끼리 짝짓는다
-        by_quote = {}
-        for i in gold_by_i:
-            by_quote.setdefault(crit[i]["source_quote"], []).append(i)
-        for same in (v for v in by_quote.values() if len(v) > 1):
-            pool = [gold_by_i[i] for i in same]
-            for i in same:
-                pick = next((x for x in pool if x.get("general_type") == crit[i].get("general_type")), pool[0])
-                pool.remove(pick)
-                gold_by_i[i] = {**pick, "i": i}
+        paired = pair(crit, g["criteria"])
+        gold_total += len(g["criteria"]); gold_unpaired += len(g["criteria"]) - len(paired)
 
-        def final(kind: str, i, ai_value, gold_value):
+        def final(kind: str, gold_i, ai_value, gold_value, quote=None):
             """갈리면 판정을 따르고, 판정이 없으면 정답을 따른다."""
             if ai_value == gold_value:
                 return gold_value
-            dk = f"{key}#{i}#{kind}"
-            disagreements.append({"id": dk, "key": key, "i": i, "kind": kind,
-                                  "quote": crit[i]["source_quote"] if isinstance(i, int) else None,
+            dk = f"{key}#{gold_i}#{kind}"
+            disagreements.append({"id": dk, "key": key, "i": gold_i, "kind": kind, "quote": quote,
                                   "ai": ai_value, "gold": gold_value})
             return adjudicated.get(dk, gold_value)
 
@@ -82,11 +103,12 @@ def main() -> None:
         team_fp += len(set(ai_team) - set(right_team)); team_fn += len(set(right_team) - set(ai_team))
 
         for i, c in enumerate(crit):
-            if c["criterion_type"] == "RESPONSIBILITY" or i not in gold_by_i:
+            if c["criterion_type"] == "RESPONSIBILITY" or i not in paired:
                 continue
-            gc = gold_by_i[i]
+            gc = paired[i]
+            gold_i, quote = gc["i"], c["source_quote"]
             # 일반 조건 구분
-            right_gen = final("general_type", i, c.get("general_type"), gc.get("general_type"))
+            right_gen = final("general_type", gold_i, c.get("general_type"), gc.get("general_type"), quote)
             gen_total += 1
             if c.get("general_type") != right_gen:
                 gen_wrong += 1
@@ -94,15 +116,15 @@ def main() -> None:
             # 기술 이름표: 정답상 기술 조건인 것만
             if right_gen is None:
                 ai_tags = sorted(c.get("techs", []))
-                right_tags = final("techs", i, ai_tags, sorted(gc.get("techs", [])))
+                right_tags = final("techs", gold_i, ai_tags, sorted(gc.get("techs", [])), quote)
                 tag_ai += len(ai_tags); tag_gold += len(right_tags)
                 tag_fp += len(set(ai_tags) - set(right_tags)); tag_fn += len(set(right_tags) - set(ai_tags))
             # 학력: 정답상 학력 조건인 것만
             if right_gen == "EDUCATION":
                 edu_total += 1
-                right_level = final("education_level", i, c.get("education_level"), gc.get("education_level"))
-                right_exempt = final("education_exempt", i, bool(c.get("education_exempt")),
-                                     bool(gc.get("education_exempt")))
+                right_level = final("education_level", gold_i, c.get("education_level"), gc.get("education_level"), quote)
+                right_exempt = final("education_exempt", gold_i, bool(c.get("education_exempt")),
+                                     bool(gc.get("education_exempt")), quote)
                 edu_level_ok += int(c.get("education_level") == right_level)
                 edu_exempt_ok += int(bool(c.get("education_exempt")) == right_exempt)
 
@@ -118,6 +140,7 @@ def main() -> None:
         "학력 수준 맞음": pct(edu_level_ok, edu_total),
         "학력 예외 맞음": pct(edu_exempt_ok, edu_total),
         "갈린 곳": len(disagreements),
+        "정답과 짝이 없는 조건": pct(gold_unpaired, gold_total),
     }
     print(json.dumps(report, ensure_ascii=False, indent=1))
     if dis_out:

@@ -53,7 +53,7 @@ describe('경험 카드 폴더 묶기 (#522)', () => {
 
   it('앞판의 작은 글: 기술 카드와 경험 카드가 둘 다 있는 폴더만 두 장 수를 나눠 적고, 한 종류뿐이면 없고, 빈 폴더는 만들러 들어오게 한다', () => {
     const byKey = Object.fromEntries(buildFolders(cards, activities).map((f) => [f.key, folderCounts(f)]));
-    expect(byKey).toEqual({ 'activity:a_empty': '아직 카드가 없어요 · 열어서 만들기', 'repo:r_fts': null, 'activity:a_club': null, 'repo:r_auth': '기술 1 · 경험 1', direct: null });
+    expect(byKey).toEqual({ 'activity:a_empty': '아직 카드가 없어요', 'repo:r_fts': null, 'activity:a_club': null, 'repo:r_auth': '기술 1, 경험 1', direct: null });
   });
 
   it('레포 폴더의 설명은 레포 목록에서 레포 id 로 이어 붙이고, 목록이 없거나 설명이 없으면 null 이며 활동·직접 폴더에는 설명이 없다', () => {
@@ -94,9 +94,9 @@ describe('경험 카드 폴더 묶기 (#522)', () => {
   it('링크 이름에 소유자, 이름, 장 수, 설명, 작은 글, 기술이 모두 들어 있다(보이는 글이 이름에 들어 있어야 한다)', () => {
     const repos = [repoRow('r_auth', { description: 'Spring Boot 인증 서비스', descriptionSource: 'GITHUB' })];
     const folders = Object.fromEntries(buildFolders(cards, activities, repos).map((f) => [f.key, f]));
-    expect(folderLabel(folders['repo:r_auth'])).toBe('레포 hong-dev, auth-service, 카드 2장, 확인할 카드 2장, Spring Boot 인증 서비스, 기술 1 · 경험 1, 기술 Java, Spring');
+    expect(folderLabel(folders['repo:r_auth'])).toBe('레포 hong-dev, auth-service, 카드 2장, 확인할 카드 2장, Spring Boot 인증 서비스, 기술 1, 경험 1, 기술 Java, Spring');
     expect(folderLabel(folders['repo:r_fts'])).toBe('레포 TaeHuiKKIM, free-tier-sleep, 카드 1장, 확인할 카드 1장, 기술 TypeScript');
-    expect(folderLabel(folders['activity:a_empty'])).toBe('활동, 공모전과 해커톤, 해커톤 참가, 카드 0장, 아직 카드가 없어요 · 열어서 만들기');
+    expect(folderLabel(folders['activity:a_empty'])).toBe('활동, 공모전과 해커톤, 해커톤 참가, 카드 0장, 아직 카드가 없어요');
     expect(folderLabel(folders['activity:a_club'])).toBe('활동, 동아리, 교내 개발 동아리, 카드 2장, 확인할 카드 1장');
     expect(folderLabel(folders.direct)).toBe('레포와 활동 없이 쓴 카드, 직접 쓴 카드, 카드 1장, 확인할 카드 1장');
   });

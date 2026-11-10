@@ -6,11 +6,13 @@ import {
 } from '@/api/coverLetters';
 import { errorView, isDailyRateLimit } from '@/api/errorView';
 import { Bubble, ChatFrom, Composer } from '@/components/chat/Chat';
+import { scrollChatTo } from '@/components/chat/chatScroll';
 import { Button } from '@/components/ui';
 import { ITEM_LABEL, THEME_LABEL } from '@/lib/coverLetterCopy';
 import { splitSentences } from '@/lib/draftPaper';
 import { blanksIn } from '@/lib/draftText';
 import { useReducedMotion } from '@/lib/useLiveText';
+import { SuggestionBox } from './SuggestionBox';
 
 /** 답으로 다시 쓴 글은 '다시 쓰는 중'을 이만큼 보인 뒤 종이에 넣는다 — 요청은 하나라 기다림을 두 단계로 나눠 보인다 */
 export const FILL_REVEAL_MS = 600;
@@ -82,8 +84,8 @@ export function FillTab({ letter, activeId, texts, onText, talk, onTalked, onSho
   const questionOf = (id: string) => letter.questions.find((x) => x.id === id);
   const lastAi = [...turns].reverse().find((t) => t.role === 'AI');
   const topic = lastAi ? questionOf(lastAi.questionId) : undefined;
-  // 답을 받을 질문이 열려 있는지 — FILLED 는 답을 받은 말이고 DONE 은 그 문항을 끝낸 말이라 둘 다 열린 질문이 아니다
-  const waiting = !!lastAi && lastAi.status !== 'DONE' && lastAi.status !== 'FILLED';
+  // 답을 받을 질문이 열려 있는지 — DONE 은 그 문항을 끝낸 말이고, FILLED 는 답을 받은 말이지만 item 이 있으면 같은 말에서 다음 항목을 물은 것이라 열린 질문이다
+  const waiting = !!lastAi && lastAi.status !== 'DONE' && (lastAi.status !== 'FILLED' || lastAi.item != null);
   const busy = open.isPending || reply.isPending || skip.isPending || save.isPending;
   const canSend = waiting && !busy && rewriting == null;
   const active = questionOf(activeId) ?? letter.questions[0];
@@ -100,10 +102,11 @@ export function FillTab({ letter, activeId, texts, onText, talk, onTalked, onSho
 
   // 다 쓴 글을 종이에 넣기 전에 탭을 옮겨도 종이는 서버 글을 따라가야 한다 — 남은 넣기를 바로 한다
   useEffect(() => () => { reveal.current?.(); }, []);
-  // 새 말풍선이 붙으면 패널만 맨 아래로 굴린다(페이지는 그대로)
+  // 새 말풍선이 붙으면 패널만 굴린다(페이지는 그대로) — 위에 붙은 머리 줄 높이만큼 띄워 새 말의 첫 줄이 가리지 않게 한다
   useEffect(() => {
-    const box = threadRef.current?.closest<HTMLElement>('.clp-scroll');
-    box?.scrollTo?.({ top: box.scrollHeight, behavior: reduced ? 'auto' : 'smooth' });
+    const thread = threadRef.current;
+    const box = thread?.closest<HTMLElement>('.clp-scroll');
+    if (thread && box) scrollChatTo(box, thread, { pad: (box.querySelector<HTMLElement>('.clp-head')?.offsetHeight ?? 44) + 8, smooth: !reduced });
   }, [turns.length, busy, sending, rewriting, failure, filled, reduced]);
 
   // auto 는 스스로 여는 질문 — 첫 질문(first)은 아직 손대지 않은 대화라 입력 칸으로 포커스를 옮기지 않는다
@@ -165,7 +168,8 @@ export function FillTab({ letter, activeId, texts, onText, talk, onTalked, onSho
         setFilled((s) => ({ ...s, [fill.seq]: { questionId: topic.id, sentence: newSentence(before, after) } }));
         setRewriting(null);
         setWaitAbove(null);
-        setMoveOn(topic.id);
+        // 다시 쓴 말이 다음 항목까지 물었으면(item) 이 문항에 머물러 답을 받는다
+        if (fill.item == null) setMoveOn(topic.id);
       };
       reveal.current = place;
       setRewriting(fill.seq);
@@ -187,7 +191,7 @@ export function FillTab({ letter, activeId, texts, onText, talk, onTalked, onSho
     return (
       <>
         <p className="clp-note clp-note--error" role="alert">대화를 불러오지 못했어요</p>
-        <Button variant="outline" onClick={() => void turnsQ.refetch()}>다시 불러오기</Button>
+        <Button variant="secondary" onClick={() => void turnsQ.refetch()}>다시 불러오기</Button>
       </>
     );
   }
@@ -225,6 +229,7 @@ export function FillTab({ letter, activeId, texts, onText, talk, onTalked, onSho
   if (turns.length === 0 && !busy && !firstQ) {
     return (
       <>
+        <SuggestionBox key={active.id} letter={letter} question={active} onText={onText} />
         <p className="clp-lead">{letter.questions.some(hasBlank) ? '비어 있는 곳을 한 번에 하나씩 물어봐요' : '빈 곳이 없어요. 더 다듬고 싶은 문항이 있으면 얘기해 주세요.'}</p>
         {failure && <p className="clp-note clp-note--error" role="alert">{failure.message} {retryButton}</p>}
         <Button size="xl" className="clp-block" onClick={() => start(active.id)}>Q{active.seq} 얘기하기</Button>
@@ -233,6 +238,8 @@ export function FillTab({ letter, activeId, texts, onText, talk, onTalked, onSho
   }
   return (
     <div className="clp-chat">
+      {/* 중심 카드가 없는 문항을 열었을 때만 — 대화보다 위에 둔다 */}
+      <SuggestionBox key={active.id} letter={letter} question={active} onText={onText} />
       <div className="chat-thread" ref={threadRef}>
         {turns.map(bubble)}
         {sending && <Bubble side="me" enter>{sending}</Bubble>}

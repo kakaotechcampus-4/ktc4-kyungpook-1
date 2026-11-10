@@ -142,3 +142,9 @@ def test_prompt_has_no_blank_template_sentence() -> None:
     assert "빈칸 틀을 씁니다" not in QUESTION_PROMPT
     assert QUESTION_PROMPT.count("___") == 1
     assert "사용자가 채울 빈칸(___)이 있는 틀은 쓰지 않습니다." in QUESTION_PROMPT
+
+
+def test_prompt_puts_the_thin_answer_rule_first() -> None:
+    """얇은 답을 다시 묻는 규칙이 다른 규칙보다 먼저이고, 다시 물을 때는 빠진 사실 하나를 묻는다고 적혀 있다."""
+    assert "이 순서가 다른 규칙보다 먼저입니다." in QUESTION_PROMPT
+    assert "그 답에서 빠진 사실 하나" in QUESTION_PROMPT

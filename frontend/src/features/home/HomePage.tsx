@@ -7,7 +7,7 @@ import { matchSupported, useStartOverallRecommendation } from '@/api/matching';
 import { knownNotices, useNotices } from '@/api/notifications';
 import { useCheckRepoUpdates, useMarkRepoUpdateSeen, useRepoUpdates } from '@/api/repoUpdates';
 import type { CardSummary } from '@/api/schemas';
-import { KindIcon } from '@/components/ui';
+import { KindIcon, TitleCount } from '@/components/ui';
 import { CardStatusMark } from '@/components/cards/CardStatusMark';
 import { cardKindLabel } from '@/lib/labels';
 import { summarySource, summaryDetail } from '@/lib/cardSummaryView';
@@ -115,10 +115,10 @@ export function HomePage() {
           ) : (
             <div>
               <p className="home3-date">{todayLabel()}</p>
-              <div className="page-title"><h1>지원할 곳{items.length > 0 && <span className="home3-n home3-tnum" aria-hidden>{items.length}</span>}</h1></div>
+              <div className="page-title"><h1>지원할 곳{items.length > 0 && <TitleCount n={items.length} />}</h1></div>
               <p className="home3-lede">
-                {newCount > 0 && <><b>새 공고 {newCount}곳</b> · </>}
-                {items.length === 0 ? '아직 모인 공고가 없어요' : items.length === 1 ? '내 카드와 맞는 공고를 모았어요' : '내 카드와 맞는 공고를 마감이 가까운 순서로 모았어요'}
+                {newCount > 0 && <><b>새 공고 {newCount}곳</b>, </>}
+                {items.length === 0 ? '아직 모인 공고가 없어요' : '내 카드와 맞는 공고예요'}
               </p>
             </div>
           )}
@@ -142,7 +142,7 @@ export function CardGridItem({ c, cardOrder, just }: { c: CardSummary; cardOrder
       {just && <span className="sr-only">방금 확정한 카드</span>}
       <div className="experience-item__meta">
         <KindIcon kind={c.kind} size={24} />
-        <span>{[origin, c.period && periodLabel(c.period)].filter(Boolean).join(' · ')}</span>
+        <span>{[origin, c.period && periodLabel(c.period)].filter(Boolean).join(', ')}</span>
       </div>
       <h3 className="gcard__title">{c.title}</h3>
       {c.preview !== undefined && (c.preview

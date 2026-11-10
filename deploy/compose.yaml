@@ -171,6 +171,7 @@ services:
       - "443:443/udp"
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:?deploy/.env 에 SITE_ADDRESS 가 필요하다}
+      LEGACY_SITE_ADDRESS: ${LEGACY_SITE_ADDRESS:-legacy.localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # 인증서를 보관한다. 지우면 재발급하는데, Let's Encrypt 발급 횟수 제한에 걸릴 수 있다.

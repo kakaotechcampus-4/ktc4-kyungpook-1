@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAnswerRecall, useRecall, useRepo } from '@/api/queries';
-import { Breadcrumb, Button, Chip, Note, PageTitle, Skeleton, Textarea } from '@/components/ui';
+import { Breadcrumb, Button, ButtonLink, Chip, Note, PageTitle, Skeleton, Textarea } from '@/components/ui';
 import { track } from '@/lib/track';
 import { toast } from '@/lib/toast';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
@@ -85,14 +85,14 @@ function RecallSession({ repoId }: { repoId: string }) {
             <div key={d.path} className={`card dir-card ${active ? 'card--selected' : ''}`}>
               <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
                 <span className="repo-ctx__icon" style={{ width: 16, height: 16, borderRadius: 4 }} aria-hidden />
-                <span className="w-600" style={{ fontSize: 16 }}>{d.path}</span>
+                <span className="w-bold" style={{ fontSize: 16 }}>{d.path}</span>
                 <span className="t-12 c-3">변경 파일 {d.filesChanged}개, 내 커밋 {d.myCommits}개</span>
                 <Button variant="text" size="sm" className="right" onClick={() => goTo(i)}>{done.has(d.path) ? '답함' : active ? '답하는 중' : '펼치기'}</Button>
               </div>
               <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>{d.files.map((f) => <Chip key={f} fill>{f}</Chip>)}</div>
               {active && (
                 <div className="stack" style={{ gap: 10, padding: '14px 16px', borderRadius: 10, background: 'var(--bg-canvas)' }}>
-                  <span id={`recall-question-${i}`} className="w-600" style={{ fontSize: 16, lineHeight: '23px' }}>{d.question}</span>
+                  <span id={`recall-question-${i}`} className="w-bold" style={{ fontSize: 16, lineHeight: '23px' }}>{d.question}</span>
                   {done.has(d.path) ? (
                     <span className="t-12 c-2">이미 후보로 만들었어요 — 다른 디렉터리를 골라 주세요.</span>
                   ) : (
@@ -116,7 +116,7 @@ function RecallSession({ repoId }: { repoId: string }) {
           );
         })}
       </div>
-      <div className="row"><Link to={`/repos/${repoId}/candidates`} className="btn btn--outline">후보 보드로</Link></div>
+      <div className="row"><ButtonLink to={`/repos/${repoId}/candidates`} variant="secondary">후보 보드로</ButtonLink></div>
       {blocker.state === 'blocked' && <ConfirmActionDialog title="입력한 내용을 버리고 이동할까요?" sub="후보로 만들기를 누르지 않은 입력은 저장되지 않아요. 이미 보낸 요청은 끝까지 처리될 수 있어요." body={<p>계속 작성하려면 이 화면에 머물러 주세요.</p>} actionLabel="입력 버리고 이동" danger onClose={() => blocker.reset()} onConfirm={() => blocker.proceed()} />}
     </main>
   );

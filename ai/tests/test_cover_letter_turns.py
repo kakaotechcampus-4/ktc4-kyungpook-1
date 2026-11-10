@@ -55,10 +55,12 @@ class TurnClient:
 
 def _out(status: str = "ASKING", *, item: Optional[str] = "ACTION", evidence: Optional[int] = 2,
          question: str = QUESTION, example: str = EXAMPLE, ack: str = "", answer: Optional[TurnAnswerOutput] = None,
-         covered: tuple = ()) -> TurnOutput:
-    asking = status == "ASKING"
+         covered: tuple = (), answers: Optional[list[TurnAnswerOutput]] = None, ask: bool = False) -> TurnOutput:
+    """ask 는 FILLED 이면서 다음 항목도 묻는 말(고른 카드 없는 문항에서 꼭 있어야 하는 항목이 남았을 때)."""
+    asking = status == "ASKING" or ask
     return TurnOutput(status=status, ack=ack, item=item if asking else None, evidence=evidence if asking else None,
-                      question=question if asking else "", example=example if asking else "", answer=answer,
+                      question=question if asking else "", example=example if asking else "",
+                      answers=answers if answers is not None else ([answer] if answer is not None else []),
                       covered=[CoveredOutput(evidence=number, quote=quote) for number, quote in covered])
 
 
@@ -75,11 +77,12 @@ def _user(seq: int, text: str, qid: int = QID) -> dict:
     return {"seq": seq, "role": "USER", "question_id": qid, "text": text}
 
 
-def _payload(trigger: str = "OPEN", thread: Optional[list] = None, *, blanks: tuple = (BLANK,), **extra: Any) -> dict:
+def _payload(trigger: str = "OPEN", thread: Optional[list] = None, *, blanks: tuple = (BLANK,), card: Optional[dict] = CARD,
+             theme: str = "GROWTH", text: str = "직무 역량을 키우기 위해 노력한 경험을 적어 주세요", **extra: Any) -> dict:
     return {
         "cover_letter_id": 12, "job_role": "백엔드 개발", "memo": None, "posting": None,
-        "question": {"question_id": QID, "text": "직무 역량을 키우기 위해 노력한 경험을 적어 주세요", "char_limit": 700,
-                     "question_theme": "GROWTH", "primary_card": CARD, "answers": [], "current_text": CURRENT,
+        "question": {"question_id": QID, "text": text, "char_limit": 700,
+                     "question_theme": theme, "primary_card": card, "answers": [], "current_text": CURRENT,
                      "blanks": list(blanks), "missing_evidence": []},
         "others": [], "thread": thread or [], "trigger": trigger, **extra,
     }
@@ -105,14 +108,14 @@ def test_user_reply_without_users_last_turn_is_rejected_with_400() -> None:
 
 
 def test_turn_api_returns_message_and_status(monkeypatch: pytest.MonkeyPatch) -> None:
-    """채팅 턴 API 는 message·answer·status 를 공통 응답 형식으로 돌려준다."""
+    """채팅 턴 API 는 message·answers·status 를 공통 응답 형식으로 돌려준다."""
     monkeypatch.setattr(cover_letters_api, "_turns", CoverLetterTurns(TurnClient(_out())))
 
     response = TestClient(app).post("/internal/cover-letter-turns", json=_payload())
 
     body = response.json()
     assert response.status_code == 200
-    assert (body["data"]["status"], body["data"]["message"]["item"], body["data"]["answer"]) == ("ASKING", "ACTION", None)
+    assert (body["data"]["status"], body["data"]["message"]["item"], body["data"]["answers"]) == ("ASKING", "ACTION", [])
 
 
 def test_llm_failure_returns_503_llm_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -133,7 +136,7 @@ def test_open_asks_one_question_in_three_lines_with_an_example() -> None:
     result, _ = _next(client)
 
     lines = result.message.text.splitlines()
-    assert (result.status, result.message.item, result.message.question_id, result.answer) == ("ASKING", "ACTION", QID, None)
+    assert (result.status, result.message.item, result.message.question_id, result.answers) == ("ASKING", "ACTION", QID, [])
     assert len(lines) <= 3 and lines[-1].endswith(f"(예: {EXAMPLE})")
     assert client.payloads[0]["blanks"] == [BLANK]
 
@@ -185,7 +188,7 @@ def test_follow_up_is_not_blocked_by_a_covered_quote() -> None:
 
     result, _ = _next(client, _payload("USER_REPLY", thread, blanks=()))
 
-    assert (len(client.payloads), result.status, result.message.item) == (1, "ASKING", "TRIGGER")
+    assert (len(client.payloads), result.status, result.message.item) == (1, "FILLED", "TRIGGER")
 
 
 def test_thin_reply_gets_a_follow_up_on_the_same_item() -> None:
@@ -197,7 +200,7 @@ def test_thin_reply_gets_a_follow_up_on_the_same_item() -> None:
 
     result, _ = _next(client, _payload("USER_REPLY", thread))
 
-    assert (result.status, result.answer.sufficient, result.message.item) == ("ASKING", False, "ACTION")
+    assert (result.status, result.answers[0].sufficient, result.message.item) == ("FILLED", False, "ACTION")
     assert result.message.text == "책을 읽으셨군요. 어떤 책을 어떻게 읽었는지 한 줄만 더 알려 주세요. (예: 매주 글 하나를 읽고 작은 예제로 따라 했어요)"
     assert client.payloads[0]["follow_up_allowed"] is True
 
@@ -212,7 +215,7 @@ def test_third_follow_up_is_not_asked_and_the_reply_is_taken() -> None:
     result, _ = _next(client, _payload("USER_REPLY", thread))
 
     assert client.payloads[0]["follow_up_allowed"] is False
-    assert (result.status, result.answer.text) == ("FILLED", "매주 조회 성능 글을 읽었다.")
+    assert (result.status, result.answers[0].text) == ("FILLED", "매주 조회 성능 글을 읽었다.")
     assert result.message.text.endswith(FILLED_LINE.format(qid=QID))
 
 
@@ -237,8 +240,8 @@ def test_sufficient_reply_is_filled_with_a_declarative_answer() -> None:
 
     result, ended_by = _next(client, _payload("USER_REPLY", thread))
 
-    assert (result.status, result.answer.item, result.answer.sufficient, ended_by) == ("FILLED", "ACTION", True, "COMPLETED")
-    assert result.answer.text == "매주 조회 성능 글을 하나씩 읽고 작은 예제로 따라 해 봤다."
+    assert (result.status, result.answers[0].item, result.answers[0].sufficient, ended_by) == ("FILLED", "ACTION", True, "COMPLETED")
+    assert result.answers[0].text == "매주 조회 성능 글을 하나씩 읽고 작은 예제로 따라 해 봤다."
     assert result.message.text == f"꾸준히 따라 해 보셨군요.\n{FILLED_LINE.format(qid=QID)}"
 
 
@@ -251,7 +254,7 @@ def test_sufficient_answer_is_filled_even_if_the_model_asks_the_next_item() -> N
 
     result, _ = _next(client, _payload("USER_REPLY", thread))
 
-    assert (result.status, result.message.item, len(client.payloads)) == ("FILLED", "ACTION", 1)
+    assert (result.status, result.message.item, len(client.payloads)) == ("FILLED", None, 1)
 
 
 def test_ack_joins_the_first_question_line_so_the_bubble_stays_within_three_lines() -> None:
@@ -273,7 +276,7 @@ def test_answer_not_ending_in_da_is_asked_again() -> None:
 
     result, _ = _next(client, _payload("USER_REPLY", thread))
 
-    assert (len(client.payloads), result.answer.text) == (2, "매주 조회 성능 글을 읽었다.")
+    assert (len(client.payloads), result.answers[0].text) == (2, "매주 조회 성능 글을 읽었다.")
 
 
 @pytest.mark.parametrize("invented", ["3개월 동안 매주 조회 성능 글을 읽었다.", "매주 Redis 글을 읽었다."], ids=["number", "latin"])
@@ -287,7 +290,7 @@ def test_answer_with_facts_the_user_did_not_say_falls_back_to_the_users_words(in
     result, ended_by = _next(client, _payload("USER_REPLY", thread))
 
     assert len(client.payloads) == 2
-    assert (result.status, result.answer.text, ended_by) == ("FILLED", "매주 조회 성능 글을 읽었어요", "PARTIAL")
+    assert (result.status, result.answers[0].text, ended_by) == ("FILLED", "매주 조회 성능 글을 읽었어요", "PARTIAL")
 
 
 def test_fifth_question_is_not_asked() -> None:
@@ -297,7 +300,7 @@ def test_fifth_question_is_not_asked() -> None:
 
     result, _ = _next(client, _payload("OPEN", thread))
 
-    assert (result.status, result.message.text, result.answer, client.payloads) == ("DONE", DONE_CAP, None, [])
+    assert (result.status, result.message.text, result.answers, client.payloads) == ("DONE", DONE_CAP, [], [])
 
 
 def test_reply_to_the_fourth_question_is_taken_instead_of_asking_again() -> None:
@@ -309,7 +312,7 @@ def test_reply_to_the_fourth_question_is_taken_instead_of_asking_again() -> None
 
     result, _ = _next(client, _payload("USER_REPLY", thread))
 
-    assert (result.status, result.answer.text) == ("FILLED", "매주 조회 성능 글을 읽었다.")
+    assert (result.status, result.answers[0].text) == ("FILLED", "매주 조회 성능 글을 읽었다.")
 
 
 def test_skip_ends_the_question_without_calling_the_model() -> None:
@@ -329,7 +332,7 @@ def test_instruction_like_reply_is_redirected_without_calling_the_model(reply: s
 
     result, _ = _next(client, _payload("USER_REPLY", [_ai(1), _user(2, reply)]))
 
-    assert (result.status, result.answer, client.payloads) == ("OFF_TOPIC", None, [])
+    assert (result.status, result.answers, client.payloads) == ("OFF_TOPIC", [], [])
     assert result.message.text == f"{REDIRECT.format(qid=QID)}\n{QUESTION}"
 
 
@@ -349,7 +352,7 @@ def test_off_topic_from_the_model_uses_the_fixed_redirect() -> None:
 
     result, _ = _next(client, _payload("USER_REPLY", [_ai(1), _user(2, "오늘 날씨 어때요?")]))
 
-    assert (result.status, result.answer, result.message.item) == ("OFF_TOPIC", None, "ACTION")
+    assert (result.status, result.answers, result.message.item) == ("OFF_TOPIC", [], None)
     assert result.message.text == f"{REDIRECT.format(qid=QID)}\n{QUESTION}"
 
 
@@ -359,3 +362,181 @@ def test_invalid_answers_twice_without_a_usable_answer_raise() -> None:
 
     with pytest.raises(CoverLetterLLMUnavailable):
         _next(client)
+
+
+OPEN_QUESTION = "협업 중 의견이 갈린 일이 있었다면 한두 문장으로 알려 주세요.\n그 일이 이 문항에 가장 잘 맞는 재료가 돼요."
+OPEN_EXAMPLE = "팀원과 일정 순서를 두고 의견이 갈렸는데 먼저 쪼개서 보여 주고 합의했어요."
+COLLAB = {"theme": "COLLABORATION", "text": "협업 중 의견 차이를 해결한 경험을 적어 주세요", "card": None}
+
+
+def _open_out(**kwargs: Any) -> TurnOutput:
+    return _out(item=None, evidence=None, question=OPEN_QUESTION, example=OPEN_EXAMPLE, **kwargs)
+
+
+def test_open_without_card_or_answers_asks_one_open_question() -> None:
+    """R1: 고른 카드도 받은 답도 없으면 항목 하나가 아니라 쓸 만한 일을 열어서 묻고, 말풍선 항목은 null 이다."""
+    client = TurnClient(_open_out())
+
+    result, _ = _next(client, _payload(blanks=(), **COLLAB))
+
+    assert (result.status, result.message.item, result.answers) == ("ASKING", None, [])
+    assert result.message.text.endswith(f"(예: {OPEN_EXAMPLE})")
+    assert client.payloads[0]["open_question"] is True
+
+
+def test_open_question_that_asks_a_single_item_is_asked_again() -> None:
+    """R1: 열린 질문을 해야 하는데 상황 같은 항목 하나를 물으면 한 번 더 받는다."""
+    client = TurnClient(_out(item="SITUATION", evidence=None, question=OPEN_QUESTION, example=OPEN_EXAMPLE), _open_out())
+
+    result, _ = _next(client, _payload(blanks=(), **COLLAB))
+
+    assert (len(client.payloads), result.message.item) == (2, None)
+
+
+def test_open_with_a_primary_card_still_asks_a_specific_item() -> None:
+    """R2: 고른 카드가 있으면 열린 질문이 아니라 지금처럼 항목 하나를 묻는다."""
+    client = TurnClient(_out())
+
+    result, _ = _next(client)
+
+    assert (client.payloads[0]["open_question"], result.message.item) == (False, "ACTION")
+
+
+def test_reply_with_situation_action_and_result_fills_all_three_without_asking() -> None:
+    """R3: 한 번의 말에 상황·행동·결과가 다 있으면 세 항목을 받고 FILLED, 더 묻지 않는다."""
+    said = "일정 순서를 두고 의견이 갈렸어요. 먼저 쪼개서 보여 줬어요. 결국 합의했어요."
+    thread = [_ai(1, OPEN_QUESTION, None), _user(2, said)]
+    answers = [_answer("일정 순서를 두고 의견이 갈렸다.", True, "SITUATION"), _answer("먼저 쪼개서 보여 줬다.", True, "ACTION"),
+               _answer("결국 합의했다.", True, "RESULT")]
+    client = TurnClient(_out("FILLED", ack="합의까지 하셨군요.", answers=answers))
+
+    result, _ = _next(client, _payload("USER_REPLY", thread, blanks=(), **COLLAB))
+
+    assert (result.status, result.message.item, [a.item for a in result.answers]) == (
+        "FILLED", None, ["SITUATION", "ACTION", "RESULT"])
+    assert result.message.text == f"합의까지 하셨군요.\n{FILLED_LINE.format(qid=QID)}"
+
+
+def test_reply_missing_the_result_fills_two_items_and_asks_for_the_result() -> None:
+    """R4: 상황·행동만 있으면 두 항목을 받고(FILLED) 꼭 있어야 하는 결과를 이어서 묻는다."""
+    said = "일정 순서를 두고 의견이 갈렸어요. 먼저 쪼개서 보여 줬어요."
+    thread = [_ai(1, OPEN_QUESTION, None), _user(2, said)]
+    answers = [_answer("일정 순서를 두고 의견이 갈렸다.", True, "SITUATION"), _answer("먼저 쪼개서 보여 줬다.", True, "ACTION")]
+    client = TurnClient(_out("FILLED", ask=True, item="RESULT", evidence=None, ack="쪼개서 보여 주셨군요.",
+                             question="그래서 어떻게 정리됐는지 알려 주세요.", example="다음 날 순서를 합의했어요", answers=answers))
+
+    result, _ = _next(client, _payload("USER_REPLY", thread, blanks=(), **COLLAB))
+
+    assert (result.status, result.message.item, [a.item for a in result.answers]) == ("FILLED", "RESULT", ["SITUATION", "ACTION"])
+    assert client.payloads[0]["required_missing"] == ["SITUATION", "ACTION", "RESULT"]
+
+
+def test_filled_that_skips_a_missing_required_item_is_asked_again() -> None:
+    """R4: 결과가 남았는데 묻지 않고 끝내려 하면 한 번 더 받는다."""
+    thread = [_ai(1, OPEN_QUESTION, None), _user(2, "일정 순서를 두고 갈렸고 먼저 쪼개서 보여 줬어요")]
+    answers = [_answer("일정 순서를 두고 갈렸다.", True, "SITUATION"), _answer("먼저 쪼개서 보여 줬다.", True, "ACTION")]
+    done = _out("FILLED", ack="알겠어요.", answers=answers)
+    asks = _out("FILLED", ask=True, item="RESULT", evidence=None, question="그래서 어떻게 됐는지 알려 주세요.", answers=answers)
+    client = TurnClient(done, asks)
+
+    result, _ = _next(client, _payload("USER_REPLY", thread, blanks=(), **COLLAB))
+
+    assert (len(client.payloads), result.message.item) == (2, "RESULT")
+
+
+def test_reply_with_a_primary_card_accepts_several_items_at_once() -> None:
+    """R5: 고른 카드가 있는 문항도 한 번의 말에서 여러 항목을 받고, 다음 질문은 다시 쓴 글을 보고 연다."""
+    thread = [_ai(1), _user(2, "책을 읽고 따라 해 봤어요. 그 뒤 조회가 빨라졌어요")]
+    answers = [_answer("책을 읽고 따라 해 봤다.", True, "ACTION"), _answer("조회가 빨라졌다.", True, "RESULT")]
+    client = TurnClient(_out("FILLED", ack="따라 해 보셨군요.", answers=answers))
+
+    result, _ = _next(client, _payload("USER_REPLY", thread))
+
+    assert (result.status, [a.item for a in result.answers], result.message.item) == ("FILLED", ["ACTION", "RESULT"], None)
+
+
+def test_one_item_with_invented_number_falls_back_while_the_other_keeps_its_summary() -> None:
+    """R6: 한 항목의 정리에 말하지 않은 숫자가 있어 다시 받아도 그러면 그 항목만 사용자의 말로 바꾸고 다른 항목은 정리를 둔다."""
+    said = "일정 순서를 두고 의견이 갈렸어요. 먼저 쪼개서 보여 줬어요."
+    thread = [_ai(1, OPEN_QUESTION, None), _user(2, said)]
+    bad = _out("FILLED", ack="그러셨군요.", ask=True, item="RESULT", evidence=None, question="결과를 알려 주세요.",
+               answers=[_answer("일정 순서를 두고 의견이 갈렸다.", True, "SITUATION"), _answer("3일 안에 먼저 쪼개서 보여 줬다.", True, "ACTION")])
+    client = TurnClient(bad, bad)
+
+    result, ended_by = _next(client, _payload("USER_REPLY", thread, blanks=(), **COLLAB))
+
+    texts = {a.item: a.text for a in result.answers}
+    assert len(client.payloads) == 2 and ended_by == "PARTIAL"
+    assert texts == {"SITUATION": "일정 순서를 두고 의견이 갈렸다.", "ACTION": said}
+
+
+def test_open_question_counts_toward_the_four_question_cap() -> None:
+    """R7: 열린 질문도 문항 질문 4개 중 하나라 이미 4번 물었으면 OPEN 해도 LLM 을 부르지 않고 DONE 이다."""
+    thread = [_ai(1, OPEN_QUESTION, None)] + [_ai(seq) for seq in range(2, 5)] + [_ai(5, item="RESULT")]
+    client = TurnClient()
+
+    result, _ = _next(client, _payload("OPEN", thread, blanks=(), **COLLAB))
+
+    assert (result.status, result.answers, client.payloads) == ("DONE", [], [])
+
+
+def test_filled_with_empty_answers_is_asked_again() -> None:
+    """R8: FILLED 인데 정리한 답이 하나도 없으면 한 번 더 받는다."""
+    thread = [_ai(1, OPEN_QUESTION, None), _user(2, "일정 순서를 두고 갈렸어요")]
+    client = TurnClient(_out("FILLED", ack="그러셨군요."), _out("FILLED", ask=True, item="ACTION", evidence=None, ack="그러셨군요.", answers=[_answer("일정 순서를 두고 갈렸다.", True, "SITUATION")]))
+
+    result, _ = _next(client, _payload("USER_REPLY", thread, blanks=(), **COLLAB))
+
+    assert (len(client.payloads), len(result.answers)) == (2, 1)
+
+
+def test_duplicate_items_in_the_models_answers_are_returned_once() -> None:
+    """같은 항목 답이 둘이면 먼저 나온 것 하나만 돌려준다(Spring 이 같은 항목 두 번을 거절한다)."""
+    thread = [_ai(1), _user(2, "책을 읽었어요")]
+    twice = [_answer("책을 읽었다.", True), _answer("글을 읽었다.", True)]
+    client = TurnClient(_out("FILLED", ack="읽으셨군요.", answers=twice))
+
+    result, _ = _next(client, _payload("USER_REPLY", thread))
+
+    assert [(a.item, a.text) for a in result.answers] == [("ACTION", "책을 읽었다.")]
+
+
+def test_open_trigger_never_returns_answers_even_if_the_model_gives_some() -> None:
+    """OPEN 에서는 모델이 답을 담아 보내도 answers 는 빈 목록이다."""
+    client = TurnClient(_out(answer=_answer("책을 읽었다.", True)))
+
+    result, _ = _next(client)
+
+    assert result.answers == []
+
+
+def test_turn_with_answers_that_still_asks_is_filled_not_asking() -> None:
+    """받은 답이 있으면 다음 질문을 하더라도 status 는 FILLED 다(Spring 은 FILLED 일 때만 답을 저장한다)."""
+    thread = [_ai(1), _user(2, "책을 읽었어요")]
+    client = TurnClient(_out(ack="읽으셨군요.", answer=_answer("책을 읽었다.", False)))
+
+    result, _ = _next(client, _payload("USER_REPLY", thread))
+
+    assert (result.status, len(result.answers), result.message.item) == ("FILLED", 1, "ACTION")
+
+
+def test_filled_turn_that_asked_an_item_counts_as_an_ask_toward_the_cap() -> None:
+    """질문 수는 ASKING 만이 아니라 묻는 항목이 있는 FILLED 턴도 세어, 4번 물었으면 OPEN 해도 DONE 이다."""
+    thread = [_ai(1, OPEN_QUESTION, None), _ai(2, status="FILLED"), _ai(3, item="RESULT", status="FILLED"),
+              _ai(4, "받았어요.", None, "FILLED"), _ai(5, item="LEARNING")]
+    client = TurnClient()
+
+    result, _ = _next(client, _payload("OPEN", thread, blanks=(), **COLLAB))
+
+    assert (result.status, client.payloads) == ("DONE", [])
+
+
+def test_reply_after_the_open_question_is_read_with_no_asked_item() -> None:
+    """열린 질문(ASKING, 항목 없음) 뒤의 답은 asked_item 이 null 인 채로 모델에 가고, 꼬리 질문 수도 0 으로 센다."""
+    thread = [_ai(1, OPEN_QUESTION, None), _user(2, "일정 순서를 두고 갈렸어요")]
+    client = TurnClient(_out("FILLED", ack="그러셨군요.", answers=[_answer("일정 순서를 두고 갈렸다.", True, "SITUATION")],
+                             ask=True, item="ACTION", evidence=None, question="그때 어떻게 하셨는지 알려 주세요."))
+
+    result, _ = _next(client, _payload("USER_REPLY", thread, blanks=(), **COLLAB))
+
+    assert (client.payloads[0]["asked_item"], client.payloads[0]["follow_up_allowed"], result.message.item) == (None, True, "ACTION")

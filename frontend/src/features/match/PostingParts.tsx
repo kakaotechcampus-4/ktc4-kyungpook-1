@@ -3,16 +3,12 @@ import type { MatchTarget } from "@/api/matching";
 import { techLabels } from "@/lib/cardTags";
 import { deadlineOf, postingFacts } from "./model";
 
-/** 직무 · 경력 · 학력 한 줄. 값이 하나도 없으면 그리지 않는다 */
+/** 직무, 경력, 학력 한 줄(쉼표). 칩은 기술 이름에만 쓴다 — 칩은 "내 카드와 겹치는지" 표시가 붙는 것, 이 줄은 공고 조건 설명이다(#918) */
 export function PostingFacts({ item }: { item: MatchTarget }) {
   const facts = postingFacts(item);
   if (facts.length === 0) return null;
   return (
-    <p className="posting-facts">
-      {facts.map((fact) => (
-        <span key={fact}>{fact}</span>
-      ))}
-    </p>
+    <p className="posting-facts">{facts.join(', ')}</p>
   );
 }
 

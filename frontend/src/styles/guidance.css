@@ -4,9 +4,6 @@
  */
 
 /* ───────── 포인트 색 — 주 행동과 지금 있는 메뉴에만(제목 속 한 단어는 강조하지 않는다) ───────── */
-.btn--primary { background: var(--accent-point); border-color: var(--accent-point); }
-.btn--primary:hover:not(:disabled) { background: var(--accent-point-hover); border-color: var(--accent-point-hover); }
-.btn--primary.btn--loading { background: var(--accent-point) !important; border-color: var(--accent-point) !important; }
 .menu-item[aria-current="page"] { box-shadow: inset 3px 0 0 var(--accent-point); }
 .menu-item[aria-current="page"] svg { color: var(--accent-point); }
 .mobile-nav a[aria-current="page"] svg { color: var(--accent-point); }
@@ -19,14 +16,11 @@
  * 남기는 것: 메뉴가 열림, 토스트가 나타남, 버튼이 눌림, 기다리는 동안 도는 표시. 카드는 테두리 색만 바뀐다. */
 :root { --motion-fast: .15s; --ease-standard: cubic-bezier(.4, 0, .2, 1); }
 .gcard, .match-card { transition: border-color var(--motion-fast) var(--ease-standard); }
-.btn { transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), transform .1s var(--ease-standard); }
-.btn:active:not(:disabled) { transform: scale(.98); }
 .select-menu { animation: menu-in var(--motion-fast) var(--ease-standard); transform-origin: top; }
 .toast { animation: toast-in .2s var(--ease-standard); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(16px); } }
 @media (prefers-reduced-motion: reduce) {
   .select-menu, .toast { animation: none !important; }
-  .btn:active:not(:disabled) { transform: none; }
 }
 
 .job-live > span:last-child { margin-left: 8px; color: var(--text-tertiary); }
@@ -66,7 +60,7 @@
 .card-fill__bar { flex: 1; height: 5px; border-radius: 999px; background: var(--border-default); overflow: hidden; }
 .card-fill__bar i { display: block; height: 100%; border-radius: inherit; background: var(--field-low-text); }
 .card-fill--full .card-fill__bar i { background: var(--accent-point); }
-.card-fill__text { font-size: 12px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+.card-fill__text { font-size: 12px; font-weight: var(--weight-bold); color: var(--text-secondary); white-space: nowrap; }
 .gcard--confirmed { border-color: var(--border-selected) !important; }
 /* "확정됨" 같은 작은 배지가 진한 배경 위에서 번져 보이던 것 — 자간을 풀고 글자를 반 픽셀 키운다 */
 .badge { font-size: 12px; letter-spacing: 0; -webkit-font-smoothing: antialiased; }
@@ -101,8 +95,8 @@
 .ai-wait__dots i:nth-child(2) { animation-delay: .15s; }
 .ai-wait__dots i:nth-child(3) { animation-delay: .3s; }
 @keyframes ai-dot { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
-.ai-wait__text { display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 21px; font-weight: 500; color: var(--text-strong); }
-.ai-wait__long { font-size: 12px; line-height: 19px; font-weight: 400; color: var(--text-secondary); }
+.ai-wait__text { display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 21px; font-weight: var(--weight-regular); color: var(--text-strong); }
+.ai-wait__long { font-size: 12px; line-height: 19px; font-weight: var(--weight-regular); color: var(--text-secondary); }
 @media (prefers-reduced-motion: reduce) { .ai-wait__dots i { animation: none; opacity: .7; } }
 
 /* 사이드바 최근 카드 — ✎ 글자 대신 고정 폭 점이라 제목 시작선이 맞는다. 채운 점 = 작성 중 */
@@ -119,19 +113,19 @@
 .profile-menu--sidebar { width: 100%; }
 .profile-menu__trigger { display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--control-touch-size); padding: 6px 8px; border-radius: var(--control-radius); text-align: left; color: var(--sidebar-text); }
 .profile-menu__trigger:hover, .profile-menu__trigger[aria-expanded="true"] { background: var(--bg-subtle); }
-.profile-menu__name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.profile-menu__name { flex: 1; min-width: 0; font-size: 14px; font-weight: var(--weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .profile-menu__chev { color: var(--text-tertiary); flex: 0 0 auto; }
 .profile-menu__pop { position: absolute; z-index: 50; min-width: 200px; padding: 6px; border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border-default); box-shadow: var(--shadow-menu); animation: menu-in .15s cubic-bezier(.4, 0, .2, 1); }
 .profile-menu--sidebar .profile-menu__pop { left: 0; right: 0; bottom: calc(100% + 6px); }
 .profile-menu--mobile .profile-menu__pop { right: 0; top: calc(100% + 6px); }
 @keyframes menu-in { from { opacity: 0; transform: translateY(4px) scale(.98); } }
-.profile-menu__item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--control-touch-size); padding: 10px 12px; border-radius: var(--control-radius); font-size: 14px; font-weight: 500; color: var(--text-strong); text-align: left; }
+.profile-menu__item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--control-touch-size); padding: 10px 12px; border-radius: var(--control-radius); font-size: 14px; font-weight: var(--weight-regular); color: var(--text-strong); text-align: left; }
 .profile-menu__item svg { color: var(--text-secondary); }
 .profile-menu__item:hover, .profile-menu__item:focus-visible { background: var(--bg-subtle); }
 .profile-menu__sep { height: 1px; margin: 4px 6px; background: var(--border-default); }
 .profile-menu--mobile .profile-menu__trigger { width: auto; min-height: var(--control-touch-size); padding: 4px 6px; gap: 8px; }
 .mobile-brand > a { display: inline-flex; align-items: center; min-height: var(--control-touch-size); }
-.profile-menu--mobile .profile-menu__name { font-size: 12px; font-weight: 500; color: var(--text-secondary); max-width: 40vw; }
+.profile-menu--mobile .profile-menu__name { font-size: 12px; font-weight: var(--weight-regular); color: var(--text-secondary); max-width: 40vw; }
 .shell--rail .profile-menu__name, .shell--rail .profile-menu__chev { display: none; }
 .shell--rail .profile-menu__trigger { justify-content: center; padding-inline: 0; }
 .shell--rail .profile-menu--sidebar .profile-menu__pop { right: auto; width: 200px; }
@@ -169,7 +163,7 @@
 .evidence-rail > [data-commits]::before {
   content: attr(data-commits) / ""; position: absolute; z-index: 1; display: grid; place-items: center;
   width: var(--rail-dot); height: var(--rail-dot); border-radius: 50%;
-  font-size: 11px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+  font-size: 11px; font-weight: var(--weight-bold); line-height: 1; font-variant-numeric: tabular-nums;
   background: var(--accent-point); color: var(--text-on-ink); box-shadow: 0 0 0 4px var(--bg-canvas);
 }
 /* 내 답변으로만 채운 칸: 속 빈 원(커밋 근거는 없지만 비어 있지는 않다). 빈 칸: 점선 원 */

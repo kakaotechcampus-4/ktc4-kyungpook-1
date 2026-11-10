@@ -71,7 +71,7 @@ function planAssignment(letter: Any) {
     const ranked = [...cards].sort((a, b) => fitScore(b, q.theme) - fitScore(a, q.theme));
     q.considered = ranked.slice(0, 3).map((c, i) => ({ cardId: c.id, note: i === 0 ? '문항이 묻는 것과 가장 가까움' : i === 1 ? '비슷하지만 결과가 약함' : '다른 문항에 더 맞음' }));
     const first = ranked[0];
-    if (!first) { q._pick = null; steps.push({ at, actor: 'SUB_AGENT', kind: 'NO_FIT', questionSeq: q.seq }); at += 0.7; continue; }
+    if (!first || /카드 없이/.test(q.text)) { q._pick = null; steps.push({ at, actor: 'SUB_AGENT', kind: 'NO_FIT', questionSeq: q.seq }); at += 0.7; continue; }
     q._pick = [first.id, ranked[1]?.id ?? null];
     q._reason = `${q.theme ? '문항 유형과 카드 유형이 같고, ' : ''}${first.kind === 'TECH' ? '기술로 문제를 푼 과정이 분명해서' : '사람 사이 일을 풀어 간 과정이 분명해서'}`;
     steps.push({ at, actor: 'SUB_AGENT', kind: 'PICKED', questionSeq: q.seq, cardId: first.id, reason: q._reason });
@@ -333,6 +333,7 @@ function view(letter: Any) {
         writing: letter.stage === 'DRAFTING' ? writingOf(letter, q, elapsed(letter)) : null,
         polish: q.polish ?? null,
         polishAppliedCount: q.polishAppliedCount ?? 0,
+        suggestions: q.suggestions ?? null,
       };
     }),
     steps: {
@@ -707,11 +708,42 @@ export function listCoverLetterTurns(id: string): CoverLetterResult {
   return l ? ok({ turns: (l.turns ?? []).map(turnView) }) : notFound();
 }
 
+/** 중심 카드가 없는 문항을 처음 열면 한 번만 제안 세 개를 만든다(#938) — 쓰지 않은 확정 카드 하나, 레포 기록(후보) 둘. 하나는 약한 후보라 만든 카드가 확정되지 않는다 */
+function suggestFor(l: Any, q: Any) {
+  if (q.primaryCardId || q.suggestions != null) return;
+  const usedCards = new Set(l.questions.map((x: Any) => x.primaryCardId));
+  const card = confirmedCards().find((c: Any) => !usedCards.has(c.id));
+  const candidates = ['c_42', 'c_57'].flatMap((id) => db.candidates.find((c: Any) => c.id === id && c.status === 'NEW') ?? []);
+  q.suggestions = [
+    ...(card ? [{ source: 'CARD', id: card.id, title: card.title, angle: '리뷰어와 방식을 두고 의견이 갈렸다가 맞춘 과정을 의견 조율로 쓸 수 있어요', repoId: null }] : []),
+    ...candidates.map((c: Any) => ({ source: 'CANDIDATE', id: c.id, title: c.title, angle: `리뷰 댓글 ${c.meta.reviewComments}개가 오간 일이에요. 설계를 두고 의견이 갈린 일로 쓸 수 있어요`, repoId: c.repoId })),
+  ];
+}
+
+const REWRITTEN = '의견이 갈린 일을 끝까지 맞춰 가며 결과를 냈습니다. 서로 다른 방식을 표로 비교해 근거를 함께 보고 합의했습니다.';
+
+/** 고른 확정 카드를 그 문항의 중심 카드로 두고 글을 처음부터 다시 쓴다. 서버처럼 AI 말 하나를 대화에 붙인다 */
+export function rewriteCoverLetterQuestion(id: string, questionId: string, body: Any): CoverLetterResult {
+  const t = turnTarget(id, questionId);
+  if ('ok' in t) return t;
+  const { l, q } = t;
+  const card = typeof body?.cardId === 'string' ? confirmedCards().find((c: Any) => c.id === body.cardId) : null;
+  if (!card) return fail(404, 'NOT_FOUND', '확정한 카드를 찾을 수 없습니다.');
+  const sentences = REWRITTEN.split(/(?<=[.])\s+/);
+  Object.assign(q, { primaryCardId: card.id, assignedBy: 'USER', pickReason: null });
+  q.draft = { text: REWRITTEN, aiText: REWRITTEN, sentences: sentences.map((x, i) => ({ seq: i + 1, text: x })), marks: [], source: 'LLM' };
+  q._turn = undefined;
+  pushTurn(l, q, 'AI', `Q${q.seq} 을 '${card.title}' 카드로 다시 썼어요`, null, 'DONE');
+  l.updatedAt = now();
+  return turnReply(l, q);
+}
+
 /** 그 문항 이야기를 시작한다. 이미 그 문항 질문이 열려 있으면 같은 곳을 다시 묻는다(질문 수는 늘지 않는다) */
 export function openCoverLetterTurn(id: string, questionId: string): CoverLetterResult {
   const t = turnTarget(id, questionId);
   if ('ok' in t) return t;
   const { l, q } = t;
+  suggestFor(l, q);
   const last = (l.turns ?? []).filter((x: Any) => x.role === 'AI').at(-1);
   const intro = last && last.questionId !== q.id ? `Q${q.seq} 얘기로 갈게요.` : null;
   const st = q._turn;
@@ -723,7 +755,8 @@ export function openCoverLetterTurn(id: string, questionId: string): CoverLetter
 
 /**
  * 답 하나 — '무시하고'가 든 말은 범위 밖(OFF_TOPIC), 15자 안쪽이면 꼬리 질문 한 번, 아니면 답을 재료로 저장하고 그 빈칸 자리를 다시 쓴다(FILLED).
- * 다시 쓴 말(FILLED)에는 다음 질문을 잇지 않는다 — 실제 서버가 그렇고, 남은 빈칸은 화면이 그 문항을 다시 열 때 묻는다.
+ * 카드가 있는 문항의 다시 쓴 말(FILLED)에는 다음 질문을 잇지 않고, 남은 빈칸은 화면이 그 문항을 다시 열 때 묻는다.
+ * 카드가 없는 문항은 실제 서버처럼 답을 받은 같은 말(FILLED + item)에서 다음 항목을 이어 묻는다.
  * '실패'가 든 답은 다시 쓰기가 실패한 경우를 흉내 낸다 — 말과 답은 남기고 글은 그대로 두며 rewriteFailed 를 준다.
  */
 export function replyCoverLetterTurn(id: string, questionId: string, body: Any): CoverLetterResult {
@@ -750,7 +783,18 @@ export function replyCoverLetterTurn(id: string, questionId: string, body: Any):
     if (!rewriteFailed) fillDraft(q, g, formalSentence(text));
     st.passed.push(g.key);
     st.pending = null;
-    pushTurn(l, q, 'AI', '알려 준 대로 그 자리를 다시 썼어요.', g.item, 'FILLED');
+    // 실제 서버는 꼭 있어야 하는 항목 빈칸이 남았을 때만 같은 말에서 이어 묻는다 — 더 쓸 거리나 덧붙일 결과는 다시 열 때 묻는다
+    const left = !q.primaryCardId && st.asked < TURN_QUESTIONS ? nextGap(q) : null;
+    const next = left && left.key.startsWith('item:') ? left : null;
+    if (next) {
+      st.asked++;
+      Object.assign(st, { pending: next, followed: false });
+      pushTurn(l, q, 'AI', `알려 준 대로 그 자리를 다시 썼어요.
+${askLines(q, next)}`, next.item, 'FILLED');
+    } else {
+      // 더 묻지 않는 FILLED 는 실제 서버처럼 item 이 null 이다 — item 이 있으면 화면이 열린 질문으로 본다
+      pushTurn(l, q, 'AI', '알려 준 대로 그 자리를 다시 썼어요.', null, 'FILLED');
+    }
   }
   l.updatedAt = now();
   return turnReply(l, q, rewriteFailed);

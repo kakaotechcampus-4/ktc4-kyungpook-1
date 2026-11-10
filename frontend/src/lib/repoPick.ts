@@ -56,6 +56,42 @@ export function pickHead(phase: PickPhase, { repoName, cardCount, picked, again 
   }
 }
 
+/** 끝난 과정을 다시 보이는 장면들. 회사마다 확인 중, 확인 끝 두 장면이 이어지고 마지막 장면은 끝난 과정 그대로다 */
+export function replayFrames(live: Live): Live[] {
+  const waiting = live.candidates.map((candidate): LiveCandidate => ({ ...candidate, state: 'WAITING', failed: false, hits: [] }));
+  const frame = (candidates: LiveCandidate[], finished: boolean): Live => ({ ...live, candidates, finished });
+  const frames = [frame(waiting, false)];
+  live.candidates.forEach((candidate, i) => {
+    const before = [...frames[frames.length - 1].candidates];
+    frames.push(frame(before.map((item, j) => (j === i ? { ...item, state: 'CHECKING' } : item)), false));
+    frames.push(frame(before.map((item, j) => (j === i ? candidate : item)), false));
+  });
+  frames[frames.length - 1] = live;
+  return frames;
+}
+
+/** 다시 보기 장면 하나가 머무는 시간(ms). 회사 10곳이면 12초쯤 걸린다 */
+export const REPLAY_FRAME_MS = 600;
+
+export const replayHead = (repoName: string, cardCount: number) => ({
+  title: '맞는 기업을 이렇게 골랐어요',
+  lead: `${repoName} 레포의 카드 ${cardCount}장과 맞는 조건이 많은 회사를 찾은 과정이에요.`,
+});
+
+const replayedKey = (repoId: string, computedAt: string | null) => `repo-pick-replayed:${repoId}:${computedAt ?? ''}`;
+const replayedInPage = new Set<string>();
+
+/** 이 브라우저에서 이미 다시 본 결과인지. 저장소를 못 쓰면 이 화면을 연 동안만 기억한다 */
+export function isReplayed(repoId: string, computedAt: string | null): boolean {
+  const key = replayedKey(repoId, computedAt);
+  try { return localStorage.getItem(key) !== null; } catch { return replayedInPage.has(key); }
+}
+
+export function markReplayed(repoId: string, computedAt: string | null) {
+  const key = replayedKey(repoId, computedAt);
+  try { localStorage.setItem(key, '1'); } catch { replayedInPage.add(key); }
+}
+
 // ───────── 원 그림 ─────────
 /** 0 바깥(후보), 1 가운데(맞은 조건 1개), 2 안쪽(맞은 조건 2개 이상) */
 export type Ring = 0 | 1 | 2;
@@ -188,7 +224,7 @@ export const resultRows = (companies: readonly PickCompany[], live: Live | null)
 });
 
 export const fitLabel = (required: number, preferred: number) =>
-  [required ? `필수 ${required}개` : '', preferred ? `우대 ${preferred}개` : ''].filter(Boolean).join(' · ');
+  [required ? `필수 ${required}개` : '', preferred ? `우대 ${preferred}개` : ''].filter(Boolean).join(', ');
 
 /** 고른 기업 아래의 이유 한 줄 */
 export function pickReason(row: Pick<PickRow, 'required' | 'preferred' | 'cards' | 'techs'>): string {

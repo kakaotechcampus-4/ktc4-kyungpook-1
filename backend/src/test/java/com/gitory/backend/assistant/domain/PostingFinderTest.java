@@ -85,8 +85,8 @@ class PostingFinderTest {
     }
 
     @Test
-    @DisplayName("회사를 말하면 낱말로 거르지 않고 맞은 낱말이 많은 순서에만 쓴다")
-    void usesKeywordsOnlyForOrderWhenCompanyIsGiven() {
+    @DisplayName("회사와 낱말을 함께 말하면 그 회사 공고 중 낱말이 맞은 것만 남기고 전체 건수도 그 수로 준다")
+    void narrowsCompanyPostingsToKeywordMatches() {
 
         MatchTarget plain = target("토스", "개발자", JobCategory.ETC, ExperienceLevel.UNSPECIFIED, at(5));
         MatchTarget backend = target("토스", "백엔드 개발자", JobCategory.ETC, ExperienceLevel.UNSPECIFIED, at(9));
@@ -96,7 +96,41 @@ class PostingFinderTest {
         PostingFinder.Found found = PostingFinder.find(List.of(plain, backend, soonButOff, otherCompany), "토스",
                 List.of("백엔드"));
 
-        assertThat(found.top()).containsExactly(backend, soonButOff, plain);
+        assertThat(found.top()).containsExactly(backend);
+        assertThat(found.total()).isEqualTo(1);
+
+    }
+
+    @Test
+    @DisplayName("회사와 낱말을 함께 말했는데 그 회사 공고 중 맞은 것이 없으면 그 회사 공고를 모두 남긴다")
+    void keepsAllCompanyPostingsWhenNoneMatchKeywords() {
+
+        MatchTarget late = target("토스", "개발자", JobCategory.ETC, ExperienceLevel.UNSPECIFIED, at(9));
+        MatchTarget soon = target("토스", "디자이너", JobCategory.ETC, ExperienceLevel.UNSPECIFIED, at(1));
+        MatchTarget otherCompany = target("당근", "백엔드 개발자", JobCategory.ETC, ExperienceLevel.UNSPECIFIED, at(1));
+
+        PostingFinder.Found found = PostingFinder.find(List.of(late, soon, otherCompany), "토스", List.of("백엔드"));
+
+        assertThat(found.top()).containsExactly(soon, late);
+        assertThat(found.total()).isEqualTo(2);
+
+    }
+
+    @Test
+    @DisplayName("앞의 다섯 건에는 같은 회사의 같은 제목을 한 번만 담고 마감이 빠른 것을 남기며 전체 건수는 그대로 센다")
+    void listsSameCompanyAndRoleOnlyOnce() {
+
+        MatchTarget first = target("토스", "Server 개발자", JobCategory.ETC, ExperienceLevel.UNSPECIFIED, at(1));
+        MatchTarget duplicate = target("토스", "Server개발자", JobCategory.ETC, ExperienceLevel.UNSPECIFIED, at(2));
+        MatchTarget upperCase = target("토 스", "SERVER 개발자", JobCategory.ETC, ExperienceLevel.UNSPECIFIED, at(3));
+        MatchTarget otherRole = target("토스", "디자이너", JobCategory.ETC, ExperienceLevel.UNSPECIFIED, at(4));
+        MatchTarget otherCompany = target("당근", "Server 개발자", JobCategory.ETC, ExperienceLevel.UNSPECIFIED, at(5));
+
+        PostingFinder.Found found = PostingFinder.find(List.of(otherCompany, otherRole, duplicate, upperCase, first),
+                null, List.of());
+
+        assertThat(found.top()).containsExactly(first, otherRole, otherCompany);
+        assertThat(found.total()).isEqualTo(5);
 
     }
 

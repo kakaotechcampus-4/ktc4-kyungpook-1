@@ -107,7 +107,7 @@ class AiCoverLetterTurnAdapterTest {
         assertThat(sent.path("thread").get(1).path("question_id").asInt()).isEqualTo(1);
         assertThat(reply).isEqualTo(new CoverLetterTurnReply(
                 new CoverLetterTurnReply.Message("로그를 같이 봤군요. 이 답으로 채울게요.", 1, "ACTION"),
-                new CoverLetterTurnReply.Answer("ACTION", "로그를 같이 보며 원인을 좁혔다", true), "FILLED"));
+                List.of(new CoverLetterTurnReply.Answer("ACTION", "로그를 같이 보며 원인을 좁혔다", true)), "FILLED"));
 
     }
 
@@ -138,13 +138,13 @@ class AiCoverLetterTurnAdapterTest {
     @ParameterizedTest
     @ValueSource(strings = {"unknownStatus", "unknownMessageItem", "blankMessageText", "unsentQuestion",
             "missingMessage", "filledWithoutAnswer", "unknownAnswerItem", "blankAnswerText", "tooLongAnswer",
-            "sufficientNotBoolean", "answerOnOpen"})
+            "sufficientNotBoolean", "answerOnOpen", "filledWithEmptyAnswers", "missingAnswers", "duplicateAnswerItem"})
     @DisplayName("모르는 상태·항목, 빈 말, 보내지 않은 문항을 가리킨 말, 정리한 답 없이 채웠다는 응답, 1,000자를 넘는 답, 사용자가 답하지 않았는데 온 답은 다시 해도 같은 이상 응답이다")
     void rejectsTurnRepliesOutsideTheContract(String broken) {
 
         ObjectNode data = validReply();
         ObjectNode message = (ObjectNode) data.path("message");
-        ObjectNode answer = (ObjectNode) data.path("answer");
+        ObjectNode answer = (ObjectNode) data.path("answers").get(0);
         CoverLetterTurnRequest request = REPLY;
         switch (broken) {
             case "unknownStatus" -> data.put("status", "WAITING");
@@ -152,7 +152,10 @@ class AiCoverLetterTurnAdapterTest {
             case "blankMessageText" -> message.put("text", " ");
             case "unsentQuestion" -> message.put("question_id", 3);
             case "missingMessage" -> data.remove("message");
-            case "filledWithoutAnswer" -> data.putNull("answer");
+            case "filledWithoutAnswer", "filledWithEmptyAnswers" -> data.putArray("answers");
+            case "missingAnswers" -> data.remove("answers");
+            case "duplicateAnswerItem" -> data.withArray("answers").addObject().put("item", "ACTION")
+                    .put("text", "다른 답이다").put("sufficient", true);
             case "unknownAnswerItem" -> answer.put("item", "SKILL");
             case "blankAnswerText" -> answer.put("text", "");
             case "tooLongAnswer" -> answer.put("text", "가".repeat(1_001));
@@ -171,6 +174,27 @@ class AiCoverLetterTurnAdapterTest {
                     assertThat(failure.isRetryable()).isFalse();
                     assertThat(failure.isInvalidResponse()).isTrue();
                 });
+
+    }
+
+    @Test
+    @DisplayName("정리한 답 목록은 없어도, 하나여도, 여럿이어도 순서대로 읽고, 항목이 없는 말(열린 질문)도 읽는다")
+    void readsZeroOneAndManyAnswersAndAMessageWithoutItem() {
+
+        ObjectNode none = validReply();
+        none.put("status", "ASKING").putArray("answers");
+        ((ObjectNode) none.path("message")).putNull("item");
+        responseBody = success(none);
+        CoverLetterTurnReply asking = adapter().next(REPLY);
+        assertThat(asking.answers()).isEmpty();
+        assertThat(asking.message().item()).isNull();
+
+        ObjectNode many = validReply();
+        many.withArray("answers").addObject().put("item", "RESULT").put("text", "배포가 빨라졌다").put("sufficient", false);
+        responseBody = success(many);
+        assertThat(adapter().next(REPLY).answers()).containsExactly(
+                new CoverLetterTurnReply.Answer("ACTION", "로그를 같이 보며 원인을 좁혔다", true),
+                new CoverLetterTurnReply.Answer("RESULT", "배포가 빨라졌다", false));
 
     }
 
@@ -255,7 +279,7 @@ class AiCoverLetterTurnAdapterTest {
         ObjectNode data = mapper.createObjectNode().put("status", "FILLED");
         data.putObject("message").put("text", "로그를 같이 봤군요. 이 답으로 채울게요.").put("question_id", 1)
                 .put("item", "ACTION");
-        data.putObject("answer").put("item", "ACTION").put("text", "로그를 같이 보며 원인을 좁혔다").put("sufficient", true);
+        data.putArray("answers").addObject().put("item", "ACTION").put("text", "로그를 같이 보며 원인을 좁혔다").put("sufficient", true);
         return data;
 
     }

@@ -46,13 +46,12 @@ describe('칸 이름과 근거 개수는 한 가지 말로 쓴다 (CD-01, CD-02,
     expect(versionSourceLabel.MASK).toBe('정보 가리기');
   });
 
-  it('근거 개수는 "근거 커밋 N개, 내 답변 N개" 한 가지이고, 0 인 쪽은 요약 줄에서만 남긴다', () => {
+  it('근거 개수는 "근거 커밋 N개, 내 답변 N개" 한 가지이고, 0 인 쪽은 뺀다', () => {
     const items = [{ type: 'COMMIT' }, { type: 'COMMIT' }, { type: 'USER_STATED' }, { type: 'USER_SELECTED' }] as const;
     expect(evidenceCountLabel([...items])).toBe('근거 커밋 2개, 내 답변 2개');
     expect(evidenceCountLabel([{ type: 'COMMIT' }])).toBe('근거 커밋 1개');
     expect(evidenceCountLabel([{ type: 'USER_STATED' }])).toBe('내 답변 1개');
-    expect(evidenceCountLabel([{ type: 'COMMIT' }], { showZero: true })).toBe('근거 커밋 1개, 내 답변 0개');
-    expect(evidenceCountLabel([], { showZero: true })).toBe('근거 커밋 0개, 내 답변 0개');
+    expect(evidenceCountLabel([])).toBe('');
   });
 });
 
@@ -84,12 +83,12 @@ describe('후보 보드 (C-01, C-02, C-03, C-06, C-09)', () => {
     </Routes></MemoryRouter></QueryClientProvider>);
     return board;
   }
-  it('머리는 "레포 이름 에서 찾은 일" 제목과 안내 한 줄이고, 정리 기준·직접 추가는 회색 글자 버튼이다 (회색 레포 상자·"후보 선택" 머리는 없다)', () => {
+  it('머리는 "레포 이름 에서 찾은 일" 제목과 안내 한 줄이고, 정리 기준은 글자 버튼, 직접 추가는 보조 버튼이다 (회색 레포 상자·"후보 선택" 머리는 없다)', () => {
     mountBoard('r_auth');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('auth-service 에서 찾은 일');
-    expect(screen.getByText('카드로 남길 일을 골라 주세요. 고른 것마다 초안을 써 드려요.')).toBeInTheDocument();
+    expect(screen.getByText('고른 일마다 카드 초안을 써 드려요.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '정리 기준' })).toHaveClass('btn--text');
-    expect(screen.getByRole('button', { name: '+ 직접 추가' })).toHaveClass('btn--text');
+    expect(screen.getByRole('button', { name: '+ 직접 추가' })).toHaveClass('btn--secondary'); // 할 일은 보조 버튼(#805)
     expect(document.querySelector('.repo-ctx')).toBeNull();
     expect(screen.queryByText('후보 선택')).not.toBeInTheDocument();
   });
@@ -213,14 +212,14 @@ describe('경험 카드 상세 (CD-02, CD-03, CD-05, CD-06, CD-10, CD-12, CD-14)
     const card = load('card_01');
     mountCard({ ...card, version: { ...card.version, task: null } });
     const footer = document.querySelector('.sticky-footer') as HTMLElement;
-    expect(within(footer).getByText(/칸에 답변해 주세요$/)).toBeInTheDocument();
+    expect(within(footer).getByText(/칸이 비어 있어요$/)).toBeInTheDocument();
     expect(within(footer).getByRole('button', { name: '답변하기' })).toBeInTheDocument();
     expect(footer.textContent).not.toMatch(/보완하기/);
   });
 
-  it('후보 보드로 가는 링크는 "후보 보드"이다', () => {
+  it('카드 상세에는 빵부스러기와 겹치는 후보 보드 버튼을 두지 않는다(#805)', () => {
     mountCard(load('card_01'));
-    expect(screen.getAllByRole('link', { name: '후보 보드' }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: '후보 보드' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '후보 목록' })).not.toBeInTheDocument();
   });
 
@@ -304,7 +303,7 @@ describe('직접 작성 (NC-01, NC-03)', () => {
     render(<QueryClientProvider client={client()}><RouterProvider router={router} /></QueryClientProvider>);
     const footer = document.querySelector('.sticky-footer') as HTMLElement;
     expect(within(footer).getByRole('button', { name: '작성 시작' })).toBeInTheDocument();
-    expect(within(footer).getByText('제목을 적고 작성을 시작해 주세요')).toBeInTheDocument();
+    expect(within(footer).getByText('제목을 적으면 작성을 시작해요')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/임시 저장/);
     expect(screen.getByText('카드 제목 (필수)')).toBeInTheDocument();
     expect(document.body.textContent).not.toContain('카드 제목 *');

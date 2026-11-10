@@ -9,7 +9,7 @@ import { endpoints } from '@/api/endpoints';
 import { AuthError } from '@/api/client';
 import { redirectToLogin } from '@/app/queryClient';
 import { isBlankCardText, type Card, type StarField } from '@/api/schemas';
-import { Breadcrumb, Button, Field, Input, PageTitle, StickyFooter } from '@/components/ui';
+import { Breadcrumb, Button, ButtonLink, Field, Input, PageTitle, StickyFooter } from '@/components/ui';
 import { STAR_FIELDS, fieldKey, starFieldExample, starFieldName, starFieldShort } from '@/lib/labels';
 import { CONFIG } from '@/lib/config';
 import { toDraftFields, useDraftAutosave } from '@/lib/useDraftAutosave';
@@ -209,16 +209,16 @@ export function NewCardPage() {
 
       {starting ? (
         <StickyFooter strong={createDraft.isPending ? '카드를 만드는 중' : isBlankCardText(title) ? '제목을 적으면 시작할 수 있어요' : '질문은 상황부터 차례로 드려요'}>
-          <Link to="/" className="btn btn--text">나가기</Link>
-          <Button variant="outline" disabled={createDraft.isPending} onClick={() => setWriting(true)}>네 칸 직접 쓰기</Button>
+          <ButtonLink to="/" variant="text">나가기</ButtonLink>
+          <Button variant="secondary" disabled={createDraft.isPending} onClick={() => setWriting(true)}>네 칸 직접 쓰기</Button>
           <Button size="lg" disabled={isBlankCardText(title)} loading={createDraft.isPending} onClick={() => void startInterview()}>질문 받으며 쓰기</Button>
         </StickyFooter>
       ) : (
       <StickyFooter
-        strong={saving ? '저장 중' : autosave.failed ? '저장 상태를 확인해 주세요' : cardId ? '본문은 자동으로 저장돼요' : '제목을 적고 작성을 시작해 주세요'}>
-        <Link to="/" className="btn btn--text">나가기</Link>
+        strong={saving ? '저장 중' : autosave.failed ? '저장 상태를 확인해 주세요' : cardId ? '본문은 자동으로 저장돼요' : '제목을 적으면 작성을 시작해요'}>
+        <ButtonLink to="/" variant="text">나가기</ButtonLink>
         {!cardId ? <Button size="lg" disabled={isBlankCardText(title)} loading={saving} onClick={() => void flush()}>작성 시작</Button> : <>
-          <Button variant="outline" disabled={!!blockedCard || isBlankCardText(title)} loading={saving} onClick={() => void leave()}>저장 후 종료</Button>
+          <Button variant="secondary" disabled={!!blockedCard || isBlankCardText(title)} loading={saving} onClick={() => void leave()}>저장 후 종료</Button>
           <Button size="lg" disabled={!canConfirm} loading={saving} onClick={() => void leave()}>다 썼어요</Button>
         </>}
       </StickyFooter>

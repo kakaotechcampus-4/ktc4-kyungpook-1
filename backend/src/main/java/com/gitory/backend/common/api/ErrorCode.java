@@ -21,5 +21,6 @@ public enum ErrorCode {
     BAD_FIELD,
     AI_UNAVAILABLE,
     RATE_LIMITED,
+    ACTIVE_WORK_RUNNING,
     INTERNAL_ERROR
 }

@@ -6,8 +6,6 @@
 .ask { flex: 1; gap: 0; --main-pb: 0px; padding-bottom: 0; }
 .ask > :not(.sr-only) { width: 100%; max-width: 820px; margin-inline: auto; }
 .ask__thread { flex: 1; padding: 24px 0 32px; gap: 14px; }
-/* 새 줄로 스크롤할 때 아래에 붙은 입력 줄에 가리지 않게 그 높이만큼 띄운다 */
-.ask__end { scroll-margin-bottom: 150px; }
 .ask__dock { position: sticky; bottom: 0; z-index: 5; display: flex; flex-direction: column; gap: 8px; padding: 14px 0 20px; border-top: 1px solid var(--border-default); background: var(--bg-surface); }
 .ask__sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 20px; font-size: 14px; line-height: 20px; color: var(--text-secondary); }
 .ask__count { font-variant-numeric: tabular-nums; }
@@ -25,21 +23,21 @@
 .ask-start h1 { font-size: var(--page-title-size); line-height: var(--page-title-leading); font-weight: var(--heading-weight); letter-spacing: var(--text-tracking); }
 .ask-start p { margin-top: 10px; font-size: 16px; line-height: 25px; color: var(--text-secondary); word-break: keep-all; }
 .ask-start__try { width: min(600px, 100%); margin-top: 40px; text-align: left; }
-.ask-start__try h2 { margin-bottom: 12px; font-size: 15px; line-height: 22px; font-weight: 600; color: var(--text-secondary); }
+.ask-start__try h2 { margin-bottom: 12px; font-size: 15px; line-height: 22px; font-weight: var(--weight-bold); color: var(--text-secondary); }
 .ask-start__try ul { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .ask-example { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 76px; padding: 14px 18px; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); font: inherit; text-align: left; color: inherit; cursor: pointer; transition: border-color var(--motion-fast) var(--ease-standard); }
 .ask-example:hover { border-color: var(--border-strong); }
 .ask-example:focus-visible { outline: 2px solid var(--border-selected); outline-offset: 2px; }
 .ask-example__icon { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 13px; background: var(--bg-subtle); color: var(--text-strong); }
 .ask-example__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ask-example__text strong { font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-primary); }
+.ask-example__text strong { font-size: 16px; line-height: 24px; font-weight: var(--weight-bold); color: var(--text-primary); }
 .ask-example__text span { font-size: 14px; line-height: 21px; color: var(--text-secondary); word-break: keep-all; }
 
 /* 걸음 목록 — 끝난 걸음은 검은 ✓, 하는 중은 점 셋, 못 한 걸음은 호박색 ! */
 .ask-steps { align-self: flex-start; display: flex; flex-direction: column; width: min(600px, 100%); margin: 0; padding: 0; list-style: none; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); }
 .ask-step { display: flex; align-items: center; gap: 12px; padding: 14px 18px; font-size: 16px; line-height: 24px; word-break: keep-all; }
 .ask-step + .ask-step { border-top: 1px solid var(--border-default); }
-.ask-step__mark { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-ink-solid); color: var(--text-on-ink); font-size: 14px; line-height: 1; font-weight: 700; }
+.ask-step__mark { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-ink-solid); color: var(--text-on-ink); font-size: 14px; line-height: 1; font-weight: var(--weight-bold); }
 .ask-step--run .ask-step__mark { width: auto; min-width: 26px; background: transparent; }
 .ask-step--run .ai-wait__dots { padding-top: 0; }
 .ask-step--run { color: var(--text-secondary); }
@@ -50,27 +48,28 @@
 .ask-postings { align-self: flex-start; display: flex; flex-direction: column; gap: 8px; width: min(600px, 100%); margin: 0; padding: 0; list-style: none; }
 .ask-posting { display: flex; align-items: center; gap: 14px; padding: 15px 18px; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); transition: border-color var(--motion-fast) var(--ease-standard); }
 .ask-posting:hover { border-color: var(--border-strong); }
-.ask-posting__av { display: grid; place-items: center; flex: none; width: 46px; height: 46px; border: 1px solid var(--border-default); border-radius: 13px; background: var(--bg-surface); font-size: 18px; line-height: 1; font-weight: 700; }
+.ask-posting__av { display: grid; place-items: center; flex: none; width: 46px; height: 46px; border: 1px solid var(--border-default); border-radius: 13px; background: var(--bg-surface); font-size: 18px; line-height: 1; font-weight: var(--weight-bold); }
 .ask-posting__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.ask-posting__text strong { font-size: 17px; line-height: 25px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ask-posting__text strong { font-size: 17px; line-height: 25px; font-weight: var(--weight-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ask-posting__text span { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 15px; line-height: 22px; color: var(--text-secondary); }
-.ask-posting__go { display: inline-flex; align-items: center; gap: 2px; flex: none; font-size: 15px; line-height: 22px; font-weight: 600; color: var(--text-strong); }
+.ask-posting__go { display: inline-flex; align-items: center; gap: 2px; flex: none; font-size: 15px; line-height: 22px; font-weight: var(--weight-bold); color: var(--text-strong); }
 .ask-meter { display: inline-flex; gap: 4px; }
 .ask-meter i { width: 18px; height: 8px; border-radius: 4px; border: 1.5px solid var(--border-strong); }
 .ask-meter i.is-on { background: var(--bg-ink-solid); border-color: var(--bg-ink-solid); }
 /* 맞춰 본 공고에서 모자란 조건 — 이름만 한 줄로 */
 .ask-missing { align-self: flex-start; max-width: min(600px, 100%); margin: 0; padding: 12px 16px; border-radius: 12px; background: var(--state-open-bg); font-size: 15px; line-height: 23px; color: var(--text-strong); word-break: keep-all; }
-.ask-missing b { margin-right: 8px; font-weight: 700; color: var(--state-open-text); }
+.ask-missing b { margin-right: 8px; font-weight: var(--weight-bold); color: var(--state-open-text); }
 .ask-guide { align-self: flex-start; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: min(600px, 100%); padding: 20px; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); }
-.ask-guide h2 { margin: 0; font-size: 17px; line-height: 25px; font-weight: 700; color: var(--text-primary); }
+.ask-guide h2 { margin: 0; font-size: 17px; line-height: 25px; font-weight: var(--weight-bold); color: var(--text-primary); }
 .ask-guide p { margin: 0 0 8px; font-size: 15px; line-height: 23px; color: var(--text-secondary); word-break: keep-all; }
 .ask-go.btn { align-self: flex-start; min-height: 52px; padding-inline: 24px; font-size: 16px; }
+.ask-result__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.ask-result__letter { font-size: 15px; line-height: 23px; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; }
 
 @media (max-width: 767px) {
   /* 대화가 짧아도 입력 줄이 아래 탭 바로 위에 놓이게, 위 상표 줄과 아래 탭을 뺀 높이를 채운다 */
   .ask { min-height: calc(100svh - 57px - var(--mobile-nav-height) - env(safe-area-inset-bottom)); }
   .ask__thread { padding-top: 12px; }
-  .ask__end { scroll-margin-bottom: 200px; }
   .ask-start__try { margin-top: 28px; }
   .ask__dock { bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom)); padding: 10px 0 12px; background: var(--bg-canvas); }
   .ask-steps, .ask-postings { width: 100%; }
@@ -78,4 +77,6 @@
   .ask-posting__go { display: none; }
   .ask-guide { width: 100%; padding: 18px 16px; }
   .ask-guide .ask-go.btn { align-self: stretch; justify-content: center; }
+  .ask-result__actions { flex-direction: column; align-items: stretch; width: 100%; }
+  .ask-result__letter { text-align: center; }
 }

@@ -35,7 +35,7 @@ const SKIPPED_LABEL = '커밋이 없어 AI 초안 없이 만들었어요';
 
 /**
  * 칸에 한 AI 의 과정. 카드 상세 '만든 과정'과 같은 문장·순서·구분 규칙(draftStepGroups)과 같은 세로 모양을 쓰되 칸 이름은 칸 제목이 말해서 뗀다.
- * AI 가 스스로 고르고 이유를 남긴 단계는 카드 상세처럼 'AI 의 판단' 이름표를 달아 카드 문장과 섞이지 않게 한다. 글은 모두 텍스트로만 그린다.
+ * AI 가 스스로 고르고 이유를 남긴 단계는 카드 상세처럼 '고른 이유' 이름표를 달아 카드 문장과 섞이지 않게 한다. 글은 모두 텍스트로만 그린다.
  */
 function SlotSteps({ slot }: { slot: LiveSlot }) {
   const groups = draftStepGroups(slot.steps, slot.field);
@@ -52,7 +52,7 @@ function SlotSteps({ slot }: { slot: LiveSlot }) {
               {round && <span className="live-step__round">{round}</span>}
               <span className="live-step__text">{line.text}</span>
               {line.detail && <span className="live-step__detail">{line.detail}</span>}
-              {line.reason && <span className="live-step__reason"><span className="live-step__reason-label">AI 의 판단</span><q>{line.reason}</q></span>}
+              {line.reason && <span className="live-step__reason"><span className="live-step__reason-label">고른 이유</span><q>{line.reason}</q></span>}
             </span>
           </li>
         );
@@ -145,7 +145,7 @@ export function LiveCardDraft({ view, instant }: {
       <div className="live-draft__head">
         <h2 id={titleId} className="live-draft__title">지금 쓰는 카드</h2>
         <span className="live-draft__count">{view.total}장 중 {current.index + 1}번째</span>
-        {instant.toggle && <Button variant="outline" size="sm" aria-pressed={instant.on} onClick={instant.toggle}>한 번에 보기</Button>}
+        {instant.toggle && <Button variant="secondary" size="sm" aria-pressed={instant.on} onClick={instant.toggle}>한 번에 보기</Button>}
       </div>
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
       <article className="live-card" data-state={current.state} aria-labelledby={cardTitleId}>

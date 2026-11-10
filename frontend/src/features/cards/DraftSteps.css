@@ -1,12 +1,14 @@
-/* 카드 상세 '만든 과정' (#521, #746). 색은 시맨틱 토큰만, 글자 크기는 11·12·13·14·16 단계만 쓴다 */
-.draft-process { gap: 10px; padding: 16px 18px; }
-.draft-process__title { margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; }
-/* 글자 버튼이지만 눌리는 범위는 44px 이다. 글자 왼쪽 끝을 위 목록과 맞추려 안쪽 여백만큼 당긴다 */
-.draft-process .draft-process__more { align-self: flex-start; margin-left: -8px; color: var(--text-accent); }
+/* 카드 상세 '만든 과정' (#521, #746). 색은 시맨틱 토큰만 쓴다. 오른쪽 칸의 글은 본문 옆에서도 읽히게 15px, 누르는 것은 44px 버튼이다 */
+.draft-process, .card-source { gap: 12px; padding: 20px 22px; }
+.draft-process__title, .card-source__title { margin: 0; font-size: 17px; line-height: 24px; font-weight: var(--weight-bold); }
+.draft-process__line, .card-source__count { margin: 0; font-size: 15px; line-height: 24px; color: var(--text-secondary); }
+.card-source__line { font-size: 15px; line-height: 24px; overflow-wrap: anywhere; }
+.draft-process__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.draft-process__actions .btn { min-height: 44px; padding-inline: 16px; font-size: 15px; }
 .draft-steps { display: flex; flex-direction: column; gap: 18px; }
 .draft-steps__lead { margin: 0; font-size: 12px; line-height: 18px; color: var(--text-secondary); }
 .draft-steps__group { display: flex; flex-direction: column; gap: 10px; }
-.draft-steps__round { margin: 0; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text-tertiary); }
+.draft-steps__round { margin: 0; font-size: 12px; line-height: 16px; font-weight: var(--weight-bold); color: var(--text-tertiary); }
 .draft-steps__list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
 
 /* 왼쪽 세로선이 단계를 이어 읽게 한다. 선과 아이콘은 장식이고 순서는 목록(ol)이 말한다 */
@@ -17,10 +19,10 @@
 /* AI 가 스스로 고르고 이유를 남긴 단계는 아이콘 색으로도 눈에 띄게. 뜻은 아래 '판단 이유' 글자가 따로 말한다 */
 .draft-step--judged .draft-step__icon { background: var(--accent-point-soft); border-color: var(--border-selected); color: var(--text-accent); }
 .draft-step__body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.draft-step__text { margin: 0; padding-top: 3px; font-size: 14px; line-height: 22px; font-weight: 500; color: var(--text-primary); overflow-wrap: anywhere; }
+.draft-step__text { margin: 0; padding-top: 3px; font-size: 14px; line-height: 22px; font-weight: var(--weight-regular); color: var(--text-primary); overflow-wrap: anywhere; }
 .draft-step__detail { margin: 0; font-size: 12px; line-height: 18px; color: var(--text-secondary); overflow-wrap: anywhere; }
 .draft-step__reason { display: flex; flex-direction: column; gap: 1px; margin: 6px 0 0; padding-left: 10px; border-left: 2px solid var(--border-selected); }
-.draft-step__reason-label { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text-accent); }
+.draft-step__reason-label { font-size: 12px; line-height: 16px; font-weight: var(--weight-bold); color: var(--text-accent); }
 .draft-step__reason q { quotes: '\201C' '\201D'; font-size: 13px; line-height: 20px; color: var(--text-strong); overflow-wrap: anywhere; }
 
 @media print { .draft-process { display: none; } }

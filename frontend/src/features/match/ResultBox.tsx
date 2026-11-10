@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Check, ChevronRight } from "lucide-react";
 import { useOverallRecommendation, useStartOverallRecommendation, type MatchTarget, type OverallRecommendation } from "@/api/matching";
 import { errorView } from "@/api/errorView";
-import { Button, Track } from "@/components/ui";
+import { Button, ButtonLink, TitleCount, Track } from "@/components/ui";
 import { CompanyMark } from "./CompanyMark";
 import { DeadlineMark, PostingFacts } from "./PostingParts";
 import { companyLabel, fitNames, fitPostings, fitSummary, type FitPosting } from "./model";
@@ -50,7 +50,7 @@ export function ResultBox({ postings, search, filtered, confirmedCards }: {
   if (filtered && !open && tiles.length > 0 && !computing) {
     return (
       <section className="result-strip" aria-label={BOX_LABEL}>
-        <strong>{BOX_LABEL} {tiles.length}곳</strong>
+        <strong>{BOX_LABEL}<TitleCount n={tiles.length} /></strong>
         {day && <span className="result-strip__day">{day}</span>}
         <Button variant="text" size="sm" aria-expanded={false} onClick={() => setOpen(true)}>펼치기</Button>
       </section>
@@ -65,23 +65,23 @@ export function ResultBox({ postings, search, filtered, confirmedCards }: {
         <div className="result-box__title">
           <h2>
             {computing ? "맞춰 보는 중" : matched ? BOX_LABEL : "내 카드로 공고 맞춰 보기"}
-            {matched && !computing && tiles.length > 0 && <>{" "}<span className="result-box__count">{tiles.length}곳</span></>}
+            {matched && !computing && tiles.length > 0 && <TitleCount n={tiles.length} />}
           </h2>
           {computing ? (
             <Progress progress={data?.progress ?? null} />
           ) : matched ? (
             day && <p className="result-box__meta"><MetaLine day={day} cards={confirmedCards} checked={data.checked} /></p>
           ) : (
-            <p className="result-box__meta">{noCards ? NO_CARDS : `${cards} 인적사항으로, 기술이 겹치는 공고의 필수·우대 조건을 확인해요. 1분쯤 걸려요.`}</p>
+            <p className="result-box__meta">{noCards ? NO_CARDS : `${cards} 인적사항으로, 기술이 겹치는 공고의 필수, 우대 조건을 확인해요. 1분쯤 걸려요.`}</p>
           )}
         </div>
         <div className="result-box__actions">
           {filtered && open && <Button variant="text" size="sm" aria-expanded onClick={() => setOpen(false)}>접기</Button>}
           {noCards ? (
-            <Link to="/cards" className="btn btn--outline">카드 확정하러 가기</Link>
+            <ButtonLink to="/cards" variant="secondary">카드 확정하러 가기</ButtonLink>
           ) : (
             <Button
-              variant={matched || computing ? "outline" : "primary"}
+              variant={matched || computing ? "secondary" : "primary"}
               onClick={() => start.mutate()}
               disabled={computing || overall.isPending}
               loading={start.isPending}
@@ -130,7 +130,7 @@ export function ResultBox({ postings, search, filtered, confirmedCards }: {
 function MetaLine({ day, cards, checked }: { day: string; cards: number | undefined; checked: number }) {
   return (
     <>
-      {day} · {cards === undefined ? "확정 카드와" : <>확정 카드 <b>{cards}장</b>과</>} 인적사항으로{" "}
+      {day}, {cards === undefined ? "확정 카드와" : <>확정 카드 <b>{cards}장</b>과</>} 인적사항으로{" "}
       {checked > 0 ? <>기술이 겹치는 <b>{checked}곳</b>을 확인했어요</> : "맞춰 봤어요"}
     </>
   );
@@ -171,19 +171,18 @@ function ResultTile({ tile: { item, company }, rank, search }: { tile: FitPostin
       <p className="result-tile__count">
         {summary.done && <Check size={15} strokeWidth={2.5} aria-hidden />}
         {summary.text}
-        {summary.extra && <span className="result-tile__pref"> · {summary.extra}</span>}
+        {summary.extra && <span className="result-tile__pref">, {summary.extra}</span>}
       </p>
       {names && (
-        <p className="result-tile__names">
-          <b className={names.lacking ? "is-lacking" : undefined}>{names.names}</b>
-          {names.tail}
+        <p className={`result-tile__names${names.lacking ? " is-lacking" : ""}`}>
+          <span className="result-tile__label">{names.label}</span>
+          {names.names.map((name) => <span key={name} className="result-tile__chip">{name}</span>)}
+          {names.more > 0 && <span className="result-tile__more">외 {names.more}개</span>}
         </p>
       )}
       <div className="posting-tile__foot">
         <DeadlineMark expiresAt={item.source.expiresAt} />
-        <span className="posting-tile__go" aria-hidden="true">
-          상세 보기
-          <ChevronRight size={14} />
+        <span className="posting-tile__go" aria-hidden="true"><ChevronRight size={14} />
         </span>
       </div>
     </li>

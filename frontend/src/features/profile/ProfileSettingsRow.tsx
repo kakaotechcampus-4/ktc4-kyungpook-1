@@ -13,9 +13,9 @@ export function ProfileSettingsRow() {
     : `관심 ${p.interests.map((interest) => INTEREST_LABEL[interest]).join(', ')}. ${isProfileEmpty(p) ? '입력한 정보가 없어요'
       : `학력 ${p.educations.length}, 경력 ${p.careers.length}, 어학 ${p.languages.length}, 자격증 ${p.certifications.length}`}`;
   return (
-    <Link to="/settings/profile" className="kv" style={{ padding: '14px 0' }}>
-      <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 14 }}>인적사항</span><span className="t-12 c-2">{summary}</span></div>
-      <span className="c-3" style={{ fontSize: 16 }} aria-hidden="true">›</span>
+    <Link to="/settings/profile" className="set-row">
+      <div className="set-row__text"><b>인적사항</b><span>{summary}</span></div>
+      <span className="set-row__go" aria-hidden="true">›</span>
     </Link>
   );
 }

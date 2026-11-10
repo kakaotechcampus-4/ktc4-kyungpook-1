@@ -3,7 +3,7 @@ import { loginAsDemo } from './helpers';
 
 /**
  * #751 — 색은 파랑(지금·선택)과 호박(확인 필요) 둘만 뜻을 갖고, 지우기·로그아웃 진입은 회색 글자 버튼 하나로 맞춘다.
- * (11/04 멘토 의견으로 삭제를 여는 버튼만 빨간 글자로 바꿨다. 로그아웃 진입은 회색 글자 그대로다.)
+ * (11/04 멘토 의견으로 삭제를 여는 버튼만 빨간 글자로 바꿨다. 로그아웃 진입은 11/09 마이페이지 정리로 테두리 버튼이 됐다.)
  * 작은 화면에서 손가락으로 누르는 곳(캘린더 날짜·공고 카드·진행 중 체크)은 44px 이상이다.
  */
 const tokenColor = (page: Page, token: string, property: 'color' | 'backgroundColor' = 'color') => page.evaluate(([name, prop]) => {
@@ -55,12 +55,11 @@ test('공고 매칭 캘린더(390px): 날짜 버튼은 44px 이상이고, 요일
   expect(await selected.evaluate((el) => getComputedStyle(el, '::before').backgroundColor)).toBe(await tokenColor(page, '--nav-active-bg', 'backgroundColor'));
 });
 
-test('삭제를 여는 버튼과 확인 창의 삭제는 빨강이고, 로그아웃 진입 버튼은 회색 글자다', async ({ page }) => {
+test('삭제를 여는 버튼과 확인 창의 삭제는 빨강이고, 로그아웃 진입 버튼은 보조 버튼(연한 글자 + 테두리)이다', async ({ page }) => {
   await loginAsDemo(page);
   await page.goto('/activities');
   const remove = page.getByRole('button', { name: '교내 개발 동아리 삭제' });
-  const quiet = await tokenColor(page, '--text-secondary');
-  // 삭제를 여는 버튼은 빨간 글자다(멘토 의견: #751 의 '회색 글자'를 바꿨다)
+    // 삭제를 여는 버튼은 빨간 글자다(멘토 의견: #751 의 '회색 글자'를 바꿨다)
   expect(await remove.evaluate((el) => getComputedStyle(el).color)).toBe(await tokenColor(page, '--state-failed-text'));
   await remove.click();
   const confirm = page.getByRole('dialog').getByRole('button', { name: '삭제', exact: true });
@@ -68,7 +67,7 @@ test('삭제를 여는 버튼과 확인 창의 삭제는 빨강이고, 로그아
   await page.getByRole('dialog').getByRole('button', { name: '취소' }).click();
 
   await page.goto('/settings');
-  expect(await page.getByRole('button', { name: '로그아웃', exact: true }).evaluate((el) => getComputedStyle(el).color)).toBe(quiet);
+  expect(await page.getByRole('button', { name: '로그아웃', exact: true }).evaluate((el) => getComputedStyle(el).color)).toBe(await tokenColor(page, '--text-secondary')); // 버튼 네 가지(#804)의 secondary
 });
 
 test('공고 카드(390px): 제목 글자 밖, 카드 아래쪽을 눌러도 공고 상세로 간다', async ({ page }) => {

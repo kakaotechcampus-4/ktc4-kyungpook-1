@@ -2,11 +2,12 @@ import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useLocation, useNavigationType, useSearchParams } from "react-router-dom";
 import { matchSupported, useMatches, MatchCategory } from "@/api/matching";
 import { useCards, useConfirmedCardCount, useMe } from "@/api/queries";
-import { Badge, Button, EmptyState, PageTitle, Skeleton } from "@/components/ui";
+import { Badge, Button, EmptyState, PageTitle, Skeleton, TitleCount } from "@/components/ui";
 import { SearchField } from "@/components/ui/SearchField";
 import { isDemo } from "@/mock/browser";
 import { track } from "@/lib/track";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
+import { useScrollEdges } from "@/lib/useScrollEdges";
 import { JobCalendar, type CalendarPosting } from "@/features/home/JobCalendar";
 import { useHomePicks } from "@/features/home/useHomePicks";
 import { MatchFailure, MatchUnavailable } from "./shared";
@@ -30,6 +31,7 @@ const NO_POSTINGS: never[] = [];
 
 export function MatchListPage() {
   useDocumentTitle("공고 매칭");
+  const chipRow = useScrollEdges<HTMLDivElement>();
   const matches = useMatches();
   // 확정 카드 수는 목록의 등급이 아니라 내 정보에서 읽는다(등급이 비었다고 카드가 없는 것은 아니다). 아직 모르면 undefined
   const confirmedCards = useConfirmedCardCount();
@@ -91,10 +93,9 @@ export function MatchListPage() {
     <main className="main matching-page">
       <PageTitle after={isDemo ? <Badge kind="NEUTRAL">예시 공고</Badge> : undefined}>공고 매칭</PageTitle>
       <ResultBox postings={matches.data ?? NO_POSTINGS} search={search} filtered={filtered} confirmedCards={confirmedCards} />
-      <section className="match-group" aria-labelledby="match-all-title">
+      <section className="match-group" aria-label="모든 공고">
         <div className="match-group__head">
-          <h2 id="match-all-title">모든 공고</h2>
-          {matches.isSuccess && <span className="match-group__meta" aria-live="polite">{list.length}건</span>}
+          <h2 id="match-all-title">모든 공고{matches.isSuccess && <TitleCount n={list.length} live />}</h2>
         </div>
         <div className="match-tools">
           <SearchField
@@ -103,7 +104,7 @@ export function MatchListPage() {
             placeholder="기업이나 직무 검색"
             className="match-tools__search"
           />
-          <div className="match-chips" role="group" aria-label="직무">
+          <div ref={chipRow} className="match-chips scroll-edges" role="group" aria-label="직무">
             {CATEGORIES.map(([value, label]) => (
               <button
                 key={value}
@@ -138,7 +139,7 @@ export function MatchListPage() {
                 desc={filtered ? "검색어나 직무를 바꿔 보세요." : "새 공고가 등록되면 이곳에 표시돼요."}
               />
               {filtered && (
-                <Button variant="outline" onClick={() => { setQuery(''); setSp({}); }}>
+                <Button variant="secondary" onClick={() => { setQuery(''); setSp({}); }}>
                   검색과 직무 초기화
                 </Button>
               )}

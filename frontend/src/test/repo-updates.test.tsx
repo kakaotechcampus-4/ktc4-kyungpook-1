@@ -48,7 +48,7 @@ describe('서버가 스스로 다시 읽은 레포', () => {
     const checks = () => calls.filter((call) => call.method === 'POST' && call.path === '/repo-updates/check');
     mountApp([page(<HomePage />, '/')], '/', queryClient);
 
-    await screen.findByRole('heading', { level: 1, name: '지원할 곳' });
+    await screen.findByRole('heading', { level: 1, name: /^지원할 곳/ });
     await waitFor(() => expect(checks()).toHaveLength(1));
     expect(calls.findIndex((call) => call.path === '/repos')).toBeLessThan(calls.findIndex((call) => call.path === '/repo-updates/check'));
     expect(notice()).not.toBeInTheDocument();
@@ -63,14 +63,14 @@ describe('서버가 스스로 다시 읽은 레포', () => {
     await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
 
     expect(checks()).toHaveLength(1);
-    expect(screen.getByRole('heading', { level: 1, name: '지원할 곳' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /^지원할 곳/ })).toBeInTheDocument();
     expect(toast).not.toHaveBeenCalled();
   });
 
   it('C2 알림이 있으면 지원할 곳 카드 아래에 레포마다 한 줄과 카드 확인하기 링크를 보이고, 없으면 아무것도 보이지 않는다', async () => {
     connectMockServer();
     mountApp([page(<HomePage />, '/')], '/');
-    await screen.findByRole('region', { name: '지원할 곳' });
+    await screen.findByRole('region', { name: /^지원할 곳/ });
     expect(notice()).not.toBeInTheDocument();
     cleanup();
 
@@ -84,7 +84,7 @@ describe('서버가 스스로 다시 읽은 레포', () => {
       'hong-dev/auth-service에서 새로 한 일로 카드 3장을 써 뒀어요카드 확인하기',
       'hong-dev/web-client에서 새로 한 일로 카드 1장을 써 뒀어요카드 확인하기',
     ]);
-    const panel = await screen.findByRole('region', { name: '지원할 곳' });
+    const panel = await screen.findByRole('region', { name: /^지원할 곳/ });
     expect(panel.compareDocumentPosition(lines) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 

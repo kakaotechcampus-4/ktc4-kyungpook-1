@@ -46,7 +46,7 @@ export function NewCardDialog({ folderName, repoId, activityId, onClose }: { fol
       <p className="new-card-dialog__hint">제목은 나중에 고칠 수 있지만, 폴더는 만든 뒤 옮길 수 없어요.</p>
       <div className="new-card-dialog__actions">
         <Button variant="text" disabled={busy} onClick={onClose}>취소</Button>
-        <Button variant="outline" disabled={blank || busy} loading={busy && next === 'edit'} onClick={() => void create('edit')}>네 칸 직접 쓰기</Button>
+        <Button variant="secondary" disabled={blank || busy} loading={busy && next === 'edit'} onClick={() => void create('edit')}>네 칸 직접 쓰기</Button>
         <Button disabled={blank || busy} loading={busy && next === 'interview'} onClick={() => void create('interview')}>질문 받으며 쓰기</Button>
       </div>
     </Modal>

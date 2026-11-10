@@ -1,6 +1,7 @@
 package com.gitory.backend.assistant.infra;
 
 import com.gitory.backend.assistant.domain.AssistantRun;
+import com.gitory.backend.assistant.domain.AssistantRunState;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -15,6 +16,8 @@ import java.util.UUID;
 public interface AssistantRunRepository extends JpaRepository<AssistantRun, Long> {
 
     Optional<AssistantRun> findByPublicIdAndUserId(UUID publicId, Long userId);
+
+    boolean existsByUserIdAndState(Long userId, AssistantRunState state);
 
     // 소유자를 보지 않으므로 남의 실행인지 가려 거절 기록을 남길 때만 쓴다
     Optional<AssistantRun> findByPublicId(UUID publicId);

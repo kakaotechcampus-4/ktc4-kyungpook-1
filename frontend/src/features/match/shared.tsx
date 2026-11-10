@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { QueryFailure } from "@/components/ui/QueryFailure";
-import { Button, PageTitle } from "@/components/ui";
+import { Button, ButtonLink, PageTitle } from "@/components/ui";
 import type { MatchTarget } from "@/api/matching";
 
 export function MatchUnavailable() {
@@ -13,9 +13,9 @@ export function MatchUnavailable() {
       <p className="c-2">
         연동이 준비되면 확정한 경험과 공고를 비교할 수 있어요.
       </p>
-      <Link to="/cards" className="btn btn--outline">
+      <ButtonLink to="/cards" variant="secondary">
         경험 카드 보기
-      </Link>
+      </ButtonLink>
     </main>
   );
 }
@@ -57,7 +57,7 @@ export function MatchFailure({
         <h2>경험 근거를 찾지 못했어요</h2>
         <p>AI가 잠시 응답하지 않아요. 잠시 뒤 다시 시도해 주세요.</p>
         <Button
-          variant="outline"
+          variant="secondary"
           loading={pending}
           onClick={() => void retry()}
         >

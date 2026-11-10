@@ -26,7 +26,7 @@ test('고르는 줄에는 칩이 없고, 정리한 레포는 줄 오른쪽에 �
 test('고른 줄은 파랑 테두리로 보이고, 아래 막대가 고른 레포 이름을 말한다', async ({ page }) => {
   await loginAsDemo(page);
   await page.goto('/repos');
-  await expect(page.getByText('레포를 하나 골라 주세요', { exact: true })).toBeVisible();
+  await expect(page.getByText('정리할 레포를 고르면 다음으로 넘어가요', { exact: true })).toBeVisible();
   const row = page.getByRole('radio', { name: /web-client/ });
   await row.click();
   await expect(row).toHaveAttribute('aria-checked', 'true');
@@ -42,7 +42,7 @@ test('고른 줄은 파랑 테두리로 보이고, 아래 막대가 고른 레�
   expect(look.ring).toBe(look.want);
   expect(look.dot).toBe(look.want);
   await expect(page.getByText('web-client 을 골랐어요', { exact: true })).toBeVisible();
-  await expect(page.getByText('다음은 읽는 범위 확인이에요', { exact: true })).toBeVisible();
+  await expect(page.getByText('다음은 읽는 범위 확인이에요', { exact: true })).toHaveCount(0); // 다음 단계 이름은 단계 줄이 말한다
 });
 
 test('390px 에서 가로로 밀리지 않고, 줄은 누르기 좋은 높이다', async ({ page }) => {

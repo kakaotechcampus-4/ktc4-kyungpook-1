@@ -52,7 +52,8 @@ public record AssistantRunResponse(
             @Schema(description = "FILL_POSTING_GAPS 로 맞은 필수 조건이 늘어난 수") Integer gapsFilled,
             @Schema(description = "ASK_CARD_GAP 이 연 질문. 더 물을 것이 없으면 없다") AssistantRunQuestion question,
             @Schema(description = "POLISH_COVER_LETTER 가 첨삭한 문항(번호 순서)") List<AssistantRunPolished> polished,
-            @Schema(description = "POLISH_COVER_LETTER 뒤에도 아직 첨삭하지 않은 문항 수") Integer remainingQuestions) {
+            @Schema(description = "POLISH_COVER_LETTER 뒤에도 아직 첨삭하지 않은 문항 수") Integer remainingQuestions,
+            @Schema(description = "START_COVER_LETTER 가 자주 나오는 문항 3개로 자소서를 만들었을 때만 true, 아니면 null") Boolean defaultQuestions) {
 
         static AssistantRunItem from(RunItem item) {
 
@@ -71,7 +72,7 @@ public record AssistantRunResponse(
                             : item.polished().stream()
                             .map(done -> new AssistantRunPolished(done.seq(), done.points()))
                             .toList(),
-                    item.remainingQuestions());
+                    item.remainingQuestions(), item.defaultQuestions());
 
         }
 

@@ -64,6 +64,15 @@ public class CoverLetterService {
     public CoverLetterView create(Long userId, String jobRole, String memo, List<String> strengths,
                                   List<NewQuestion> newQuestions, UUID postingId, String idempotencyKey) {
 
+        return create(userId, jobRole, memo, strengths, newQuestions, postingId, idempotencyKey, false);
+
+    }
+
+    /** defaultQuestions 면 newQuestions 는 기본 문항이고, 자소서에 그 표시를 남긴다 */
+    public CoverLetterView create(Long userId, String jobRole, String memo, List<String> strengths,
+                                  List<NewQuestion> newQuestions, UUID postingId, String idempotencyKey,
+                                  boolean defaultQuestions) {
+
         String key = checkedKey(idempotencyKey);
         checkInput(jobRole, memo, newQuestions);
         List<Strength> checkedStrengths = checkedStrengths(strengths);
@@ -79,7 +88,8 @@ public class CoverLetterService {
         CoverLetterPosting posting = postingId == null ? null : postings.read(postingId, userId);
         rateLimiter.acquire(RateLimitedAction.COVER_LETTER, userId, 1);
 
-        return views.of(save(userId, jobRole, memo, checkedStrengths, newQuestions, posting, key));
+        return views.of(save(userId, jobRole, memo, checkedStrengths, newQuestions, posting, key,
+                defaultQuestions));
 
     }
 
@@ -225,11 +235,13 @@ public class CoverLetterService {
     }
 
     private CoverLetter save(Long userId, String jobRole, String memo, List<Strength> strengths,
-                             List<NewQuestion> newQuestions, CoverLetterPosting posting, String key) {
+                             List<NewQuestion> newQuestions, CoverLetterPosting posting, String key,
+                             boolean defaultQuestions) {
 
         try {
             return transaction.execute(status -> {
-                CoverLetter letter = letters.save(CoverLetter.start(userId, jobRole, memo, strengths, key, posting));
+                CoverLetter letter = letters.save(CoverLetter.start(userId, jobRole, memo, strengths, key, posting,
+                        defaultQuestions));
                 for (int seq = 1; seq <= newQuestions.size(); seq++) {
                     NewQuestion question = newQuestions.get(seq - 1);
                     questions.save(CoverLetterQuestion.of(letter.getId(), seq, question.text(),

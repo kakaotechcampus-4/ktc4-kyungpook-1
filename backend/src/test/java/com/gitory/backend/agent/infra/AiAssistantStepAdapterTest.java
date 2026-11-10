@@ -212,6 +212,21 @@ class AiAssistantStepAdapterTest {
 
     }
 
+    @Test
+    @DisplayName("default_questions 를 읽고, 없으면 false 로 둔다")
+    void readsDefaultQuestionsFlagAndDefaultsToFalse() {
+
+        ObjectNode withFlag = callReply();
+        withFlag.putArray("questions");
+        withFlag.put("default_questions", true);
+        responseBody = success(withFlag);
+        assertThat(adapter().next(REQUEST).defaultQuestions()).isTrue();
+
+        responseBody = success(callReply());
+        assertThat(adapter().next(REQUEST).defaultQuestions()).isFalse();
+
+    }
+
     private ObjectNode callReply() {
 
         ObjectNode data = mapper.createObjectNode().put("action", "CALL_TOOL").put("tool", "START_COVER_LETTER")

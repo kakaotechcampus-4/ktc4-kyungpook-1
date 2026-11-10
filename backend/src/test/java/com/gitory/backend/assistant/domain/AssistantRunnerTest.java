@@ -339,7 +339,7 @@ class AssistantRunnerTest {
         return Stream.of(
                 Arguments.of(AssistantStepReply.call(AssistantTool.START_COVER_LETTER, null, null, null, null, null, "백엔드 개발자",
                         List.of(new AssistantStepReply.Question("지원 동기를 쓰세요", null))),
-                        ToolResult.coverLetter(1, UUID.randomUUID())),
+                        ToolResult.coverLetter(1, UUID.randomUUID(), false)),
                 Arguments.of(AssistantStepReply.call(AssistantTool.START_REPO_ANALYSIS, null, null, "r1", null, null,
                         null, List.of()), ToolResult.repoAnalysis(REPO, UUID.randomUUID())));
 

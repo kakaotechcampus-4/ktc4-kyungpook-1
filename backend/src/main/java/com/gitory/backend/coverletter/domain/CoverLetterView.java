@@ -10,7 +10,7 @@ public record CoverLetterView(UUID id, CoverLetterStage stage, CoverLetterStep f
                               Boolean retryable, boolean running, String jobRole, String memo,
                               List<Strength> strengths, Boolean memoUsable, PostingRef posting, Instant createdAt,
                               Instant updatedAt, List<Question> questions, List<Step> assignSteps,
-                              List<WritingStep> draftSteps) {
+                              List<WritingStep> draftSteps, boolean defaultQuestions) {
 
     public record PostingRef(UUID id, String company, String title) {
     }

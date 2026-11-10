@@ -61,6 +61,7 @@ public class CoverLetter {
     @JdbcTypeCode(SqlTypes.JSON)
     private CoverLetterPosting posting;
 
+    private boolean defaultQuestions;
     private String idempotencyKey;
     private Instant createdAt;
     private Instant updatedAt;
@@ -78,6 +79,14 @@ public class CoverLetter {
     public static CoverLetter start(Long userId, String jobRole, String memo, List<Strength> strengths,
                                     String idempotencyKey, CoverLetterPosting posting) {
 
+        return start(userId, jobRole, memo, strengths, idempotencyKey, posting, false);
+
+    }
+
+    /** defaultQuestions 는 사용자가 문항을 주지 않아 자주 나오는 문항으로 만든 자소서라는 표시라, 화면이 실제 문항으로 바꾸라고 안내하는 데 쓴다 */
+    public static CoverLetter start(Long userId, String jobRole, String memo, List<Strength> strengths,
+                                    String idempotencyKey, CoverLetterPosting posting, boolean defaultQuestions) {
+
         CoverLetter letter = new CoverLetter();
         Instant now = CoverLetterTime.now();
         letter.publicId = UUID.randomUUID();
@@ -89,6 +98,7 @@ public class CoverLetter {
         letter.assignSteps = new ArrayList<>();
         letter.draftSteps = new ArrayList<>();
         letter.posting = posting;
+        letter.defaultQuestions = defaultQuestions;
         letter.idempotencyKey = idempotencyKey;
         letter.createdAt = now;
         letter.updatedAt = now;

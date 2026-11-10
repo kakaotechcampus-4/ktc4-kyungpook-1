@@ -8,20 +8,9 @@
   <p>GitHub 기록을 근거가 연결된 경험 카드로 정리하고,<br />내 경험에 맞는 채용 공고와 자소서 초안으로 이어갑니다.</p>
   <p>카카오테크 캠퍼스 4기 · 경북대 1팀</p>
   <p>
-    <a href="https://gitory.duckdns.org/"><strong>Gitory 시작하기 ↗</strong></a> ·
-    <a href="https://gitory.duckdns.org/login">로그인 없이 둘러보기</a> ·
-    <a href="./docs/README.md">개발 문서</a> ·
-    <a href="./CONTRIBUTING.md">기여 가이드</a>
-  </p>
-  <p>
-    <a href="#시연-영상">시연 영상</a> ·
-    <a href="#한눈에-보기">한눈에 보기</a> ·
-    <a href="#주요-기능과-화면">기능과 화면</a> ·
-    <a href="#ai는-어디까지-맡기나">AI는 어디까지 맡기나</a> ·
-    <a href="#서비스-구성">서비스 구성</a> ·
-    <a href="#품질과-자동화">품질과 자동화</a> ·
-    <a href="#로컬에서-시작하기">로컬 실행</a> ·
-    <a href="#팀-소개">팀 소개</a>
+    <a href="https://gitory.duckdns.org/"><strong>Gitory 시작하기 ↗</strong></a>&nbsp;&nbsp;·&nbsp;&nbsp;
+    <a href="https://gitory.duckdns.org/login">로그인 없이 둘러보기</a>&nbsp;&nbsp;·&nbsp;&nbsp;
+    <a href="./docs/README.md">개발 문서</a>
   </p>
 </div>
 
@@ -32,6 +21,16 @@
 https://github.com/user-attachments/assets/7c769b51-049e-4cbc-aecd-0da89dfcb1f6
 
 저장소를 고르고 경험 카드가 써지는 것부터 맞는 공고와 자소서 초안까지, 실제 서비스 화면으로 담았습니다.
+
+## 목차
+
+- **[한눈에 보기](#한눈에-보기)** — 무엇을 해결하는지, 네 걸음 흐름
+- **[주요 기능과 화면](#주요-기능과-화면)** — 기능 5개와 움직이는 화면
+- **[AI는 어디까지 맡기나](#ai는-어디까지-맡기나)** — AI 가 정하는 곳과 상한, 숫자로 확인한 것
+- **[서비스 구성](#서비스-구성)** — 아키텍처, AI 흐름, 기술 스택
+- **[품질과 자동화](#품질과-자동화)** — 시험 층, CI 와 배포
+- **[직접 실행하기](#직접-실행하기)** — 파트별 실행 · 검증 문서
+- **[팀 소개](#팀-소개)** · **[개발 문서](#개발-문서)**
 
 ## 한눈에 보기
 
@@ -252,28 +251,13 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
   <img src="./docs/images/readme/deploy.png" width="100%" alt="PR에서 서버까지. 1 PR, 2 CI 4개, 3 develop 머지, 4 배포 게이트(그 커밋의 CI 4개가 모두 초록인지 확인), 5 EC2 배포. 확인에 실패하면 직전 커밋으로 자동 롤백" />
 </p>
 
-## 로컬에서 시작하기
+## 직접 실행하기
 
-### 프론트엔드 샘플 체험
-
-Node.js 22 이상에서 백엔드 없이 화면과 사용 흐름을 볼 수 있습니다.
-
-```bash
-git clone https://github.com/kakaotechcampus-4/ktc4-kyungpook-1.git
-cd ktc4-kyungpook-1/frontend
-npm ci
-cp .env.example .env.local
-npm run dev
-```
-
-`http://localhost:5173`에서 **샘플로 체험하기**를 누르세요.
-예시 환경변수의 `VITE_API_MOCK=true`는 브라우저 안 샘플 API를 씁니다. 샘플 데이터는 실제 계정·서버 저장과 구분됩니다.
-
-### 실제 API 연결과 검증
+운영 서비스는 [gitory.duckdns.org](https://gitory.duckdns.org/)에서 바로 쓸 수 있고, 로그인 없이 [샘플 데이터로 둘러보기](https://gitory.duckdns.org/login)도 됩니다. 직접 띄우거나 검증하려면 파트별 문서를 따라가면 됩니다.
 
 | 작업 | 시작 문서 |
 | --- | --- |
-| 프론트엔드 API 연결 · 단위/E2E 검사 | [Frontend README](./frontend/README.md) |
+| 화면만 띄우기(백엔드 없이 샘플 데이터) · 단위/E2E 검사 | [Frontend README](./frontend/README.md) |
 | JDK 21 · 로컬 DB · GitHub OAuth · 서버 실행 | [Backend README](./backend/README.md) |
 | AI 서버 실행 · LLM·임베딩 설정 · API | [AI README](./ai/README.md) |
 | Spring Boot–FastAPI 연결 · 환경변수 | [BE–AI 연결 가이드](./docs/BE_AI_INTEGRATION.md) |

@@ -1,0 +1,2940 @@
+[
+ {
+  "key": "buzzvil/113561",
+  "team_techs": [
+   "PYTHON",
+   "DJANGO",
+   "MYSQL",
+   "AWS",
+   "KUBERNETES",
+   "REDIS",
+   "AIRFLOW",
+   "GITHUB_ACTIONS",
+   "GRAFANA",
+   "PROMETHEUS"
+  ],
+  "criteria": [
+   {
+    "i": 1,
+    "q": "43d6c0978bf9f30e",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 2,
+    "q": "1772f32209602687",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 3,
+    "q": "ba9c8d60030d66c0",
+    "general_type": null,
+    "techs": [
+     "AWS",
+     "KUBERNETES"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 4,
+    "q": "6a541e86fd5790f2",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "q": "2d51e6a47e0de751",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "q": "f1c4bc3ae3eefe23",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "q": "d7c4c34a50d6a4ef",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "q": "f9d04bf566b00fd9",
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "estfamily/107360",
+  "team_techs": [
+   "REACT",
+   "TYPESCRIPT",
+   "JAVASCRIPT",
+   "SPRING",
+   "PYTHON",
+   "MYSQL",
+   "JENKINS"
+  ],
+  "criteria": [
+   {
+    "i": 6,
+    "q": "6698394f39b2de59",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "q": "7e0dec450d56cc2e",
+    "general_type": null,
+    "techs": [
+     "JAVASCRIPT"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "q": "4942131e8ca30609",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "q": "5ccce9b9670db148",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "q": "136f7d954afa746a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "q": "a8514f81985f621b",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "q": "248394bd906bbd07",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "5433a40ccb10fa5f",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "945eb5fe0f40eaa0",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "58c5e6c3f4311141",
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "q": "49fe461c70996844",
+    "general_type": null,
+    "techs": [
+     "TYPESCRIPT",
+     "REACT",
+     "NEXTJS"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "q": "84f523190e812672",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 18,
+    "q": "947cd5d114cb8e4d",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 19,
+    "q": "328ae1e78190d4cf",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 20,
+    "q": "b60ad8d72b4e35b8",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 21,
+    "q": "6278e7f422fa0f5d",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 22,
+    "q": "5622ddf1dcf8c34b",
+    "general_type": null,
+    "techs": [
+     "NEXTJS",
+     "VUE"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 23,
+    "q": "f25441ef904c37b5",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 24,
+    "q": "e1ee164a6610b437",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 25,
+    "q": "464ab38ee6c65b68",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 26,
+    "q": "6b4e036f6a2d7d90",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 27,
+    "q": "cb7d69ea1074b8f2",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 28,
+    "q": "c24275a0ed9aa974",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 29,
+    "q": "2fdfb65bee162673",
+    "general_type": null,
+    "techs": [
+     "SPRING"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 30,
+    "q": "9199471daf418b9a",
+    "general_type": null,
+    "techs": [
+     "GRAPHQL"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 31,
+    "q": "bb8076170590ffeb",
+    "general_type": null,
+    "techs": [
+     "JPA"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 32,
+    "q": "551a612a4a10131c",
+    "general_type": null,
+    "techs": [
+     "SPRING"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 33,
+    "q": "260ae5fcfca16df4",
+    "general_type": null,
+    "techs": [
+     "MSA"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 34,
+    "q": "73e5819756cd1032",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 35,
+    "q": "a03784dafc8ac49a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 36,
+    "q": "0a44a59b7b61c7c5",
+    "general_type": null,
+    "techs": [
+     "LINUX"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 37,
+    "q": "9c84e99fffeb4325",
+    "general_type": null,
+    "techs": [
+     "REDIS",
+     "KAFKA"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 38,
+    "q": "74b046e894138b04",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 39,
+    "q": "08b029811add7d45",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 40,
+    "q": "10dce82ddad0eab1",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 41,
+    "q": "e5c4c3417f5406b6",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 42,
+    "q": "460d00893570f7cd",
+    "general_type": null,
+    "techs": [
+     "CI_CD"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 43,
+    "q": "12ee8fd9d4fd1c55",
+    "general_type": null,
+    "techs": [
+     "AWS",
+     "GCP",
+     "AZURE"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 44,
+    "q": "69c912435a494966",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 45,
+    "q": "91ff89367e67d38f",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 46,
+    "q": "033a771fee2dfd59",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 47,
+    "q": "08f7a87d796148ef",
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 48,
+    "q": "834e57978048ba95",
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 49,
+    "q": "99ef569f5f7b1ce9",
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 50,
+    "q": "99ef569f5f7b1ce9",
+    "general_type": "MILITARY",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "gccompany/176690",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 4,
+    "q": "c992463a639fd014",
+    "general_type": null,
+    "techs": [
+     "AWS",
+     "KUBERNETES"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "q": "8ee7d977d4f02d71",
+    "general_type": null,
+    "techs": [
+     "GCP"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "q": "03742b39c3e92c91",
+    "general_type": null,
+    "techs": [
+     "AWS",
+     "GRAFANA",
+     "PROMETHEUS"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "q": "64c30fd0c1f6fc2a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "q": "4eb037f8120c4c48",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "q": "48d071bef51b3eaf",
+    "general_type": null,
+    "techs": [
+     "PYTHON"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "kakaomobility/148119",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 5,
+    "q": "85486df1de79a1fd",
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "q": "2323a6d623dde43a",
+    "general_type": null,
+    "techs": [
+     "C",
+     "CPP",
+     "PYTHON"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "q": "71813303fc28dc9a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "q": "2fb52a43c0b5ba10",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "q": "95d53046b951e8f0",
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "MASTER",
+    "education_exempt": true
+   },
+   {
+    "i": 10,
+    "q": "7a4c95d75fb4c2e8",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "q": "e6f3d1875b20f7dd",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "q": "c665a4849c91d611",
+    "general_type": null,
+    "techs": [
+     "LLM"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "9fbff85ac781ea07",
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "27535415b756297d",
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "bb926ec2de81d68d",
+    "general_type": "MILITARY",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "q": "ef5036ce7e73843d",
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "q": "99f409431ddca43a",
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "lawcompany/165289",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 6,
+    "q": "d644a559cc3aade9",
+    "general_type": null,
+    "techs": [
+     "PYTHON"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "q": "6607033bc1db3808",
+    "general_type": null,
+    "techs": [
+     "LLM"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "q": "c9298987f6632dbf",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "q": "16f6f678c99572bf",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "q": "7d38b0824c41c6f7",
+    "general_type": null,
+    "techs": [
+     "LLM",
+     "LANGCHAIN"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "q": "bbea1408b8568cb1",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "q": "102d749457cac690",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "406f79666df497b3",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "ca9c63f7ef884065",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "d751a25c49659add",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "q": "52096edcdcb52a5c",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "q": "7be5cb47cdfd1a05",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 18,
+    "q": "b7977ae3941139af",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 19,
+    "q": "99f3f2bc00b87796",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 20,
+    "q": "cf91b0d70fafb277",
+    "general_type": null,
+    "techs": [
+     "DOCKER",
+     "KUBERNETES"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 21,
+    "q": "16b9f141fa272789",
+    "general_type": null,
+    "techs": [
+     "AWS",
+     "GCP"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "masangsoft/169484",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 4,
+    "q": "33d7e3ded1f8aac9",
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": true
+   },
+   {
+    "i": 5,
+    "q": "825b35e916d18931",
+    "general_type": null,
+    "techs": [
+     "TYPESCRIPT",
+     "JAVASCRIPT"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "q": "d310410851e50f3b",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "q": "14be8632e79a41c0",
+    "general_type": null,
+    "techs": [
+     "REACT",
+     "NODEJS"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "q": "a81af6bbb68982d1",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "q": "01cd7c77fdc19a42",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "q": "5333231d770c2a26",
+    "general_type": null,
+    "techs": [
+     "NEXTJS",
+     "REACT",
+     "VUE"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "q": "6dec04bb5cca2643",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "q": "35dcd25ac9cac9f9",
+    "general_type": null,
+    "techs": [
+     "NODEJS",
+     "EXPRESS"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "1b97717f2351c933",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "a7893ceefcdec0ec",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "e89924b59425ea21",
+    "general_type": null,
+    "techs": [
+     "AWS"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "q": "25eb0fcd14a9c20b",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "q": "588147fc36911497",
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "neubility/201765",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 10,
+    "q": "922788876ba343e9",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "q": "59b6385acfbf0abc",
+    "general_type": null,
+    "techs": [
+     "CPP",
+     "PYTHON"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "q": "e1d1bd5f811841f3",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "ba732a3eff6c0879",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "a6a314c6899dd114",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "21a790bbe018920c",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "q": "8bb9ade8e5af467f",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "q": "459f84741818d5b1",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 18,
+    "q": "17b8db381f7e573b",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 19,
+    "q": "6bc07578752fb0d1",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 20,
+    "q": "7c5b059fa4314d56",
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 21,
+    "q": "eb25fba5a9584a0d",
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "realworld/195941",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 18,
+    "q": "cb7e0a86f534bbb8",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 19,
+    "q": "0d01a3ec690b1b70",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 20,
+    "q": "934637a3180ecd13",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 21,
+    "q": "35709f65c553b377",
+    "general_type": null,
+    "techs": [
+     "GRAFANA"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 22,
+    "q": "f5e3e2fa0cd515be",
+    "general_type": null,
+    "techs": [
+     "PYTHON"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 23,
+    "q": "34098c158fc7349e",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 24,
+    "q": "f719d30f1f73bd09",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 25,
+    "q": "079d4ad86b8a8035",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 26,
+    "q": "055280d81eaf82f7",
+    "general_type": null,
+    "techs": [
+     "PYTORCH",
+     "TENSORFLOW"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 27,
+    "q": "d07428b24666ec65",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 28,
+    "q": "5b6d2f88e83856f0",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 29,
+    "q": "f8e3f90bf21716e2",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 30,
+    "q": "9d5238277a83ac14",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 31,
+    "q": "b33c5efca0b7cd80",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 32,
+    "q": "7ecb2d81b56b1b76",
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 33,
+    "q": "91241c99e7184810",
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 34,
+    "q": "f1af93fe163821cd",
+    "general_type": "MILITARY",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "shoplive/174632",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 4,
+    "q": "38df6b20091bb4b5",
+    "general_type": null,
+    "techs": [
+     "JAVA",
+     "SPRING"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "q": "2b010d5e227f836a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "q": "58175b3675f053fc",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "q": "3d03471b36f7990b",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "q": "f31b52add61eebc6",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "q": "5951d062c2f56a95",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "q": "8738b68278ceb68f",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "q": "8aaf8e35bcc3745c",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "q": "7cdd3604ccd189aa",
+    "general_type": null,
+    "techs": [
+     "AWS",
+     "DOCKER",
+     "KUBERNETES"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "5e1a381e8badea41",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "9d277f2ee8291e62",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "ee2ea4d424971e3b",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "supercent/213168",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 4,
+    "q": "0fae5b5f95e63d39",
+    "general_type": null,
+    "techs": [
+     "GO",
+     "CPP",
+     "JAVA"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "q": "07e4dd593558cf1a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "q": "3d61ce3baf77a251",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "q": "620952f71c067816",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "q": "dd32a6947af0490b",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "q": "d17ecba5239b4c81",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "q": "e1e48c8b24be241a",
+    "general_type": null,
+    "techs": [
+     "RUST"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "q": "69aa8074ebeea027",
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "autocrypt/154900",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 2,
+    "q": "c99f40252049ea7c",
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 3,
+    "q": "09748b34335d610c",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 4,
+    "q": "48e0b3bb0fe4ab6f",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "q": "e5cef1643e408738",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "q": "8fd5c38f9c9034b9",
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "MASTER",
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "q": "dd314731fffa38a0",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "q": "e1b097ba8da7d462",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "q": "b0edd063a6b9b36a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "deepauto-ai/216583",
+  "team_techs": [
+   "NEXTJS",
+   "REACT",
+   "FASTAPI",
+   "POSTGRESQL",
+   "KUBERNETES",
+   "LLM"
+  ],
+  "criteria": [
+   {
+    "i": 4,
+    "q": "260896e0d234eddb",
+    "general_type": null,
+    "techs": [
+     "REACT",
+     "NEXTJS"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "q": "35e32f37f150b270",
+    "general_type": null,
+    "techs": [
+     "CI_CD"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "q": "021ffc66bdf7297e",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "q": "4c3327ff1ba769a8",
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "BACHELOR",
+    "education_exempt": true
+   },
+   {
+    "i": 8,
+    "q": "22128aab84aa514f",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "q": "2be8fea05551e921",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "q": "f41365c398158ee3",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "q": "f56a3e4e90a5080e",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "q": "d6ba9539d4503650",
+    "general_type": "LANGUAGE",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "d6ba9539d4503650",
+    "general_type": "LANGUAGE",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "233010a812536214",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "89a005788005e650",
+    "general_type": "MILITARY",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "q": "44626eb7139d487c",
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "q": "6a3cb0b9ce28f306",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 18,
+    "q": "e719bb764ceabae6",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 19,
+    "q": "8bce81f71f5fa276",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 20,
+    "q": "59f68dd005c667eb",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 21,
+    "q": "cf7e7355bf04de8a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 22,
+    "q": "99027698edcd0291",
+    "general_type": null,
+    "techs": [
+     "DOCKER",
+     "LINUX"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "finda/189081",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 13,
+    "q": "2ef6afd459e9d3bf",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "28d76f0025f7426a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "interxlab/201635",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 4,
+    "q": "1e8da8a06364b62d",
+    "general_type": null,
+    "techs": [
+     "CSHARP",
+     "DOTNET"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "q": "52855c188caf52b5",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "q": "c1b6a4805fd0ff5c",
+    "general_type": null,
+    "techs": [
+     "JAVASCRIPT"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "q": "6b998bc442b1917e",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "q": "5672f195ef184b6e",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "q": "699d18d98822b9d3",
+    "general_type": null,
+    "techs": [
+     "LINUX",
+     "DOCKER"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "q": "d4817a90d475491b",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "q": "a42390702f166799",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "q": "302d2ed735f748a5",
+    "general_type": null,
+    "techs": [
+     "PYTHON"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "e8b9db4b9de57f0d",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "kurly/189997",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 5,
+    "q": "190696715d389686",
+    "general_type": null,
+    "techs": [
+     "JAVA",
+     "SPRING"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "q": "aaf570d9d633a665",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "q": "ac7dc1327e4059d7",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "q": "3a58a3cf4544a72d",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "q": "df6804695d2b2332",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "q": "6454aba8a5f48ad1",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "q": "04c592abffa33b95",
+    "general_type": null,
+    "techs": [
+     "KAFKA",
+     "REDIS",
+     "KUBERNETES",
+     "ELASTICSEARCH"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "q": "0febf6774808de41",
+    "general_type": null,
+    "techs": [
+     "AWS"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "ce7d77b9e62b49ae",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "c09c038a60f7b374",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "105c8b3edb23e1e5",
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "q": "b430d99672755412",
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "q": "b430d99672755412",
+    "general_type": "MILITARY",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "mangoboost/224442",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 5,
+    "q": "428af53ae7152d4b",
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "BACHELOR",
+    "education_exempt": true
+   },
+   {
+    "i": 6,
+    "q": "756617ab0361a9fb",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "q": "7d3f095a590baa4d",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "q": "e90889697fe9c5ae",
+    "general_type": null,
+    "techs": [
+     "LINUX"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "q": "215f90b4ae390fdd",
+    "general_type": null,
+    "techs": [
+     "GO",
+     "C",
+     "CPP",
+     "RUST",
+     "PYTHON"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "q": "4b5127bd15678530",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "q": "4b5127bd15678530",
+    "general_type": "LANGUAGE",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "q": "1915d8d2b1bc7f65",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "ce697c2a59eca9e8",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "d8f33d0477493e4a",
+    "general_type": null,
+    "techs": [
+     "KUBERNETES"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "2fcda5fda421b450",
+    "general_type": null,
+    "techs": [
+     "LLM"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "q": "5067d57e43053146",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "q": "64c23cc6ec147324",
+    "general_type": null,
+    "techs": [
+     "REACT"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 18,
+    "q": "597523cebe10c3b4",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "moreh/191672",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 8,
+    "q": "6e5a08acc9fe0dc2",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "q": "6ad9508fb94fd869",
+    "general_type": null,
+    "techs": [
+     "RUST",
+     "GO"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "q": "d5822ae159e38b9b",
+    "general_type": null,
+    "techs": [
+     "KUBERNETES",
+     "LLM"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "q": "06c56701cbba0a89",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "q": "3653be5d9796e79d",
+    "general_type": null,
+    "techs": [
+     "CI_CD"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "7de8eadd7a5afefe",
+    "general_type": null,
+    "techs": [
+     "LLM"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "299cb5a790f48d66",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "ac04de3295c66cba",
+    "general_type": null,
+    "techs": [
+     "KUBERNETES"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "q": "9a32f8a919657a36",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "pfct/220589",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 11,
+    "q": "da1f37f69d82bca0",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "q": "aeefa533cf17bedb",
+    "general_type": null,
+    "techs": [
+     "CI_CD"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "ad179d739386b36c",
+    "general_type": null,
+    "techs": [
+     "KUBERNETES"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "5742d9bbbc7ac1d5",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "95964278e579899c",
+    "general_type": "CERTIFICATE",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "q": "be71dd4386e8c07b",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "q": "a0233fdab008afb7",
+    "general_type": null,
+    "techs": [
+     "LLM"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "seoulrobotics/5442141008",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 11,
+    "q": "4c1d437b26b8ba0b",
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "BACHELOR",
+    "education_exempt": true
+   },
+   {
+    "i": 12,
+    "q": "2d9ff8e1457f0ead",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "e1eac671798f8978",
+    "general_type": null,
+    "techs": [
+     "GO"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "42f016eefb05dc0c",
+    "general_type": null,
+    "techs": [
+     "GO"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "26e54ab0c49fd0d0",
+    "general_type": null,
+    "techs": [
+     "POSTGRESQL"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "q": "960351a0e5c0c4f4",
+    "general_type": null,
+    "techs": [
+     "KAFKA"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "q": "04a83fda1b04cd39",
+    "general_type": "LANGUAGE",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 18,
+    "q": "466fd76c61a7a938",
+    "general_type": null,
+    "techs": [
+     "TYPESCRIPT",
+     "REACT",
+     "NEXTJS"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 19,
+    "q": "291e116a31720ca5",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 20,
+    "q": "0b1ec8fbba2c5030",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 21,
+    "q": "bad95649cf7f5691",
+    "general_type": "LANGUAGE",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 22,
+    "q": "6223336198664df7",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 23,
+    "q": "3e7da39686b91d47",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 24,
+    "q": "be7aef490a8d845e",
+    "general_type": null,
+    "techs": [
+     "PROMETHEUS",
+     "GRAFANA"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 25,
+    "q": "27955a36e258cf67",
+    "general_type": null,
+    "techs": [
+     "TYPESCRIPT"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 26,
+    "q": "ddc6dc1df4e79939",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 27,
+    "q": "b5628404a3527d6a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 28,
+    "q": "08edfb7d0c8b275f",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 29,
+    "q": "91793dd76fdbe2c6",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 30,
+    "q": "19dbe7716630358d",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 31,
+    "q": "dd90e7b642602ac9",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "supercent/213851",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 5,
+    "q": "749982fa90d04f62",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "q": "0704521ab07ebe61",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "q": "f18c520224074c31",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "q": "8b2880691b91e24a",
+    "general_type": null,
+    "techs": [
+     "CI_CD"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "q": "da93f5a2109b4272",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "q": "104b6a851ac00e94",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "q": "2994bbec6f642c6a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "q": "cb0c00eae18d0774",
+    "general_type": null,
+    "techs": [
+     "LLM"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "cdbb56f7a0bf887a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "69aa8074ebeea027",
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "5990293bdbc0298a",
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "autocrypt/219814",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 9,
+    "q": "16fbb8d6bade6704",
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "BACHELOR",
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "q": "d794ec3acd8a0d18",
+    "general_type": null,
+    "techs": [
+     "C"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "q": "ac23f88037797903",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "q": "65028473b0f23058",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "92d8dfeb64e05f4a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "3c0f249908b33772",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "f3f47b2bec3df5f2",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "q": "1669744a04969661",
+    "general_type": "LANGUAGE",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "q": "dcf8f66dc5c07258",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 18,
+    "q": "0bb7f6227a6fbb12",
+    "general_type": "LANGUAGE",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 19,
+    "q": "0bb7f6227a6fbb12",
+    "general_type": "LANGUAGE",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 20,
+    "q": "0c6c18acad16f9dd",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "deepauto-ai/224370",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 11,
+    "q": "eef272014bf1ec29",
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "BACHELOR",
+    "education_exempt": true
+   },
+   {
+    "i": 12,
+    "q": "e7e06c4559ea2219",
+    "general_type": null,
+    "techs": [
+     "PYTHON",
+     "PYTORCH"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "10209a62b29375f0",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "ff35875a55317bd5",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "59a18535dddebe0a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "q": "006e1fa8752dac8a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "q": "431180c12afb81a6",
+    "general_type": null,
+    "techs": [
+     "LANGCHAIN"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 18,
+    "q": "b0a1059e1e5ff9f8",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 19,
+    "q": "0e4f2beca3b76b54",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 20,
+    "q": "71025b211d3ac944",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 21,
+    "q": "7809123ee541db1a",
+    "general_type": null,
+    "techs": [
+     "LLM"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 22,
+    "q": "3d4d7f0ca841e184",
+    "general_type": null,
+    "techs": [
+     "LLM"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 23,
+    "q": "5fd41b43a11bb5c6",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 24,
+    "q": "45df454b9b933ed9",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 25,
+    "q": "a022d6d49a936dab",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 26,
+    "q": "02d70b7b42812d4c",
+    "general_type": null,
+    "techs": [
+     "HADOOP",
+     "SPARK"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 27,
+    "q": "923d320747fce3aa",
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": true
+   },
+   {
+    "i": 28,
+    "q": "923d320747fce3aa",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 29,
+    "q": "63dc3123e88848d3",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 30,
+    "q": "c15a0cc34151e5ec",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 31,
+    "q": "f46938d8fe387a3e",
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "featuring/220296",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 20,
+    "q": "3214e586b6c60db3",
+    "general_type": null,
+    "techs": [
+     "AWS"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 21,
+    "q": "e4812b32328b4ebd",
+    "general_type": null,
+    "techs": [
+     "DOCKER",
+     "KUBERNETES"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 22,
+    "q": "73428e9f07f530a8",
+    "general_type": null,
+    "techs": [
+     "GITHUB_ACTIONS",
+     "JENKINS",
+     "CI_CD"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 23,
+    "q": "b8994162e852635f",
+    "general_type": null,
+    "techs": [
+     "LINUX"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 24,
+    "q": "d7e58ab0dc0e16ea",
+    "general_type": null,
+    "techs": [
+     "TERRAFORM"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 25,
+    "q": "5123db196359c79d",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 26,
+    "q": "19dc72ad8892f769",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "ineeji/227434",
+  "team_techs": [
+   "REACT",
+   "NEXTJS",
+   "TYPESCRIPT",
+   "GCP",
+   "DOCKER",
+   "GITHUB_ACTIONS",
+   "CI_CD"
+  ],
+  "criteria": [
+   {
+    "i": 5,
+    "q": "a16a8b790bf2b0a5",
+    "general_type": null,
+    "techs": [
+     "REACT",
+     "TYPESCRIPT",
+     "NEXTJS"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "q": "a1d68c03be859d32",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "q": "8a8a8fab66de04d9",
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "BACHELOR",
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "q": "32e0371cd6f225f5",
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "q": "cf14d50e2e752478",
+    "general_type": "LANGUAGE",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "q": "2f340379565494dd",
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "q": "c21a462690dd31d1",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "q": "4272eebc470be30a",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "q": "3b0ef4560fb41707",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "q": "de69e5e2796d1ff1",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "q": "5dd5236bba2b2e57",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "q": "2bf9f6672794945f",
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "q": "3c888e2747df97a2",
+    "general_type": null,
+    "techs": [
+     "DOCKER",
+     "CI_CD"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ }
+]

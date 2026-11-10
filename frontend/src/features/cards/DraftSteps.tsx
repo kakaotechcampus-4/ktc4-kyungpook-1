@@ -1,9 +1,10 @@
 import { useId, useState } from 'react';
-import { CircleCheck, FilePenLine, FileSearch, Flag, Hand, PencilLine, RefreshCw, Undo2, type LucideIcon } from 'lucide-react';
+import { CircleCheck, FilePenLine, FileSearch, Flag, Hand, History, PencilLine, RefreshCw, Undo2, type LucideIcon } from 'lucide-react';
 import type { Card, DraftStep, DraftStepKind } from '@/api/schemas';
 import { Button } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { draftStepGroups, draftStepSummary } from '@/lib/draftSteps';
+import { historyActionLabel } from '@/lib/labels';
 import './DraftSteps.css';
 
 /** 아이콘은 장식이다. 무슨 단계인지는 문장이 말한다 */
@@ -15,17 +16,25 @@ export const kindIcon: Record<DraftStepKind, LucideIcon> = {
  * 카드 상세 오른쪽 '만든 과정' — 초안 → 고쳐 쓰기 → 검사 결과 세 줄과, 단계 전부를 여는 '자세히'.
  * 기록이 없으면 세 줄 대신 한 문장만 둔다. 후보 없이 만든 카드는 직접 쓴 카드이고, 후보가 있는데 기록이 없으면 기록 전에 만든 카드다.
  */
-export function DraftProcess({ card }: { card: Card }) {
+export function DraftProcess({ card, onHistory }: { card: Card; onHistory?: () => void }) {
   const titleId = useId();
   const [open, setOpen] = useState(false);
   const lines = draftStepSummary(card.draftSteps);
+  // 서버가 센 바뀐 횟수다. 확정하며 버전만 늘어난 카드나 한 번도 바뀌지 않은 카드는 돌아갈 곳이 없어 작성 이력을 보이지 않는다
+  const changes = onHistory ? card.changeCount ?? 0 : 0;
+  const all = changes > 0 ? [...lines, `처음 내용에서 ${changes}번 바뀌었어요`] : lines;
   return (
     <section className="card stack draft-process" aria-labelledby={titleId}>
       <h2 id={titleId} className="draft-process__title">만든 과정</h2>
-      {lines.length
-        ? <ol className="aside-list">{lines.map((line) => <li key={line} className="t-12l c-2">{line}</li>)}</ol>
-        : <p className="t-12l c-2">{card.candidate ? '만든 과정 기록이 없는 카드예요' : '직접 쓴 카드예요'}</p>}
-      {lines.length > 0 && <Button variant="text" size="sm" className="draft-process__more" onClick={() => setOpen(true)}>자세히</Button>}
+      {all.length
+        ? <ol className="aside-list">{all.map((line) => <li key={line} className="draft-process__line">{line}</li>)}</ol>
+        : <p className="draft-process__line">{card.candidate ? '만든 과정 기록이 없는 카드예요' : '직접 쓴 카드예요'}</p>}
+      {(lines.length > 0 || changes > 0) && (
+        <div className="draft-process__actions">
+          {lines.length > 0 && <Button variant="outline" onClick={() => setOpen(true)}>자세히 보기</Button>}
+          {changes > 0 && <Button variant="outline" onClick={onHistory}><History size={16} aria-hidden />{historyActionLabel}</Button>}
+        </div>
+      )}
       {open && <DraftStepsDialog steps={card.draftSteps} onClose={() => setOpen(false)} />}
     </section>
   );

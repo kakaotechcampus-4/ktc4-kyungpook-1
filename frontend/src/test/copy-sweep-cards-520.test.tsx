@@ -46,13 +46,12 @@ describe('칸 이름과 근거 개수는 한 가지 말로 쓴다 (CD-01, CD-02,
     expect(versionSourceLabel.MASK).toBe('정보 가리기');
   });
 
-  it('근거 개수는 "근거 커밋 N개, 내 답변 N개" 한 가지이고, 0 인 쪽은 요약 줄에서만 남긴다', () => {
+  it('근거 개수는 "근거 커밋 N개, 내 답변 N개" 한 가지이고, 0 인 쪽은 뺀다', () => {
     const items = [{ type: 'COMMIT' }, { type: 'COMMIT' }, { type: 'USER_STATED' }, { type: 'USER_SELECTED' }] as const;
     expect(evidenceCountLabel([...items])).toBe('근거 커밋 2개, 내 답변 2개');
     expect(evidenceCountLabel([{ type: 'COMMIT' }])).toBe('근거 커밋 1개');
     expect(evidenceCountLabel([{ type: 'USER_STATED' }])).toBe('내 답변 1개');
-    expect(evidenceCountLabel([{ type: 'COMMIT' }], { showZero: true })).toBe('근거 커밋 1개, 내 답변 0개');
-    expect(evidenceCountLabel([], { showZero: true })).toBe('근거 커밋 0개, 내 답변 0개');
+    expect(evidenceCountLabel([])).toBe('');
   });
 });
 

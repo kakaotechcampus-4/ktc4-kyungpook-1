@@ -462,6 +462,8 @@ export const Card = z.object({
   // 모르는 이유는 일반 오류 문구(INTERNAL_ERROR)로 읽는다. 연결 버튼은 GITHUB_UNAUTHORIZED 일 때만 붙는다
   draftFailure: unknownAs(z.enum(['GITHUB_UNAUTHORIZED', 'AI_UNAVAILABLE', 'INTERNAL_ERROR']), 'INTERNAL_ERROR').nullable().optional(),
   interviewTurns: z.number(),
+  // 첫 버전 뒤로 글이 바뀐 횟수로 확정 사본은 세지 않는다. 이전 서버·이전 스냅샷은 키가 없어 0 으로 읽는다
+  changeCount: z.number().optional(),
   // AI 가 되묻기를 그만두기로 한 이유 한 줄(#430). 끝내지 않았거나 그 뒤 새 질문을 만들었으면 null 이다
   interviewEndReason: z.string().nullish(),
   confirmedAt: z.string().nullable(),

@@ -39,6 +39,12 @@ public interface CollectionStatsRepository extends Repository<CollectionRun, Lon
     long countStoredCommits(@Param("publicId") UUID publicId, @Param("userId") Long userId);
 
     @Query("""
+            SELECT COUNT(p) FROM PullRequest p JOIN ConnectedRepository c ON c.repositoryId = p.repositoryId
+            WHERE c.publicId = :publicId AND c.userId = :userId
+            """)
+    long countStoredPullRequests(@Param("publicId") UUID publicId, @Param("userId") Long userId);
+
+    @Query("""
             SELECT COUNT(g) FROM GitCommit g JOIN ConnectedRepository c ON c.repositoryId = g.repositoryId
             WHERE c.publicId = :publicId AND c.userId = :userId AND g.authorLogin IS NULL
             """)

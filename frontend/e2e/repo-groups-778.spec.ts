@@ -24,9 +24,9 @@ for (const width of [1440, 390]) for (const theme of ['light', 'dark'] as const)
     if (width === 1440 && theme === 'light') {
       await done.getByRole('link', { name: '다시 정리' }).first().click();
       await expect(page).toHaveURL(/\/repos\?select=r_auth&disclose=1$/);
-      const dialog = page.getByRole('dialog', { name: '읽는 범위 확인' });
-      await expect(dialog.getByText('전에 정리한 레포예요')).toBeVisible();
-      await expect(dialog.getByRole('button', { name: '정리 시작' })).toBeEnabled(); // 읽는 범위를 다 받은 뒤의 모습을 찍는다
+      const dialog = page.getByRole('dialog', { name: '새 기록만 읽어요' });
+      await expect(dialog.getByText(/^지난 정리\(.+\) 뒤 새 커밋 3개 · PR 1개$/)).toBeVisible();
+      await expect(dialog.getByRole('button', { name: '다시 정리' })).toBeEnabled(); // 읽는 범위를 다 받은 뒤의 모습을 찍는다
       await page.screenshot({ path: `${SHOTS}/again-1440-light.png`, animations: 'disabled' });
     }
   });

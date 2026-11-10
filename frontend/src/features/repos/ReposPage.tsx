@@ -7,6 +7,7 @@ import { Badge, Button, ButtonLink, EmptyState, IconBox, Note, PageTitle, Radio,
 import { AiWait } from '@/components/ui/AiWait';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGrid } from '@/features/auth/LandingPage';
+import { koMd } from '@/lib/format';
 import { COUNTING, isCounting } from '@/lib/repoCounts';
 import { groupRepos } from '@/lib/repoGroups';
 import { repoMeta, repoSentence } from '@/lib/repoSentence';
@@ -44,6 +45,14 @@ export function ReposPage() {
   const shown = picking + groups.done.length;
   const selected = (repos.data ?? []).find((r) => r.id === selectedId) ?? null;
   const detail = useRepo(disclose ? selectedId ?? undefined : undefined);
+  const [showScope, setShowScope] = useState(false);
+  // 지난 정리 뒤 새 기록만 읽는 추정이 오면 다시 정리 창으로 본다 — 못 받은 서버는 처음 정리 모양 그대로
+  const disclosure = detail.data?.disclosure;
+  const again = !!selected?.lastAnalyzedAt && disclosure?.reanalyzeSeconds != null;
+  const newCommits = disclosure?.newCommits ?? 0;
+  const newPulls = disclosure?.newPullRequests ?? 0;
+  const nothingNew = newCommits + newPulls === 0;
+  const lastDate = koMd(selected?.lastAnalyzedAt ?? '');
 
   // setSp({...}) 는 쿼리스트링 전체를 교체한다 — URL 에만 남아 있던 다른 값이 select/disclose 조작 한 번에 사라지지 않게
   // 기존 파라미터를 남기고 필요한 키만 바꾼다.
@@ -107,9 +116,11 @@ export function ReposPage() {
       </StickyFooter>
 
       {disclose && selected && (
-        <Modal title="읽는 범위 확인" width={720} onClose={closeDisclose}
-          footer={{ strong: detail.data ? `약 ${detail.data.disclosure.estimatedSeconds}초` : '…',
-            actions: <><Button variant="secondary" onClick={closeDisclose}>취소</Button><Button onClick={begin} loading={start.isPending} disabled={!detail.data}>정리 시작</Button></> }}>
+        <Modal title={again ? '새 기록만 읽어요' : '읽는 범위 확인'} width={720} onClose={closeDisclose}
+          footer={{ strong: detail.data ? `약 ${again ? disclosure?.reanalyzeSeconds : detail.data.disclosure.estimatedSeconds}초` : '…',
+            actions: again && nothingNew
+              ? <><ButtonLink to={`/repos/${selected.id}/candidates`}>지난 후보 보기</ButtonLink><Button variant="secondary" onClick={begin} loading={start.isPending}>그래도 다시 정리</Button></>
+              : <><Button variant="secondary" onClick={closeDisclose}>취소</Button><Button onClick={begin} loading={start.isPending} disabled={!detail.data}>{again ? '다시 정리' : '정리 시작'}</Button></> }}>
             <div className="stack" style={{ gap: 14 }}>
               <div className="card card--paper repo-ctx" style={{ padding: '14px 16px' }}>
                 <IconBox icon={FolderGit2} size={36} />
@@ -119,10 +130,19 @@ export function ReposPage() {
                 </div>
                 <Badge kind="NEUTRAL">읽기 전용</Badge>
               </div>
-              {detail.isPending ? <Skeleton h={160} /> : detail.data && <PermissionGrid compact reads={detail.data.disclosure.reads} skips={detail.data.disclosure.skips} />}
+              {detail.isPending && <Skeleton h={160} />}
+              {again && disclosure && <>
+                <div className="stack" style={{ gap: 4 }}>
+                  <strong className="t-14">{nothingNew ? `지난 정리(${lastDate}) 뒤 새 기록이 없어요` : `지난 정리(${lastDate}) 뒤 새 커밋 ${newCommits}개 · PR ${newPulls}개`}</strong>
+                  {nothingNew && <span className="t-14 c-2">지난 후보를 그대로 둬요</span>}
+                </div>
+                <Button variant="text" aria-expanded={showScope} onClick={() => setShowScope((v) => !v)}>{showScope ? '읽는 범위 접기' : '읽는 범위 보기'}</Button>
+                {showScope && <PermissionGrid compact reads={disclosure.reads} skips={disclosure.skips} />}
+              </>}
+              {!again && disclosure && <PermissionGrid compact reads={disclosure.reads} skips={disclosure.skips} />}
               {detail.isError && <QueryFailure error={detail.error} retry={() => detail.refetch()} pending={detail.isFetching} />}
-              <p className="t-14 c-2">정리한 뒤에 새 커밋이 생기면 Gitory가 다시 읽어 카드 초안을 써 둬요</p>
-              {selected.lastAnalyzedAt && <Note strong="전에 정리한 레포예요" tone="inset">다시 정리해 새 기록을 확인할 수 있어요. 지난 결과만 보려면 <Link to={`/repos/${selected.id}/candidates`}>지난 후보 보기</Link></Note>}
+              {!again && <p className="t-14 c-2">정리한 뒤에 새 커밋이 생기면 Gitory가 다시 읽어 카드 초안을 써 둬요</p>}
+              {!again && selected.lastAnalyzedAt && <Note strong="전에 정리한 레포예요" tone="inset">다시 정리해 새 기록을 확인할 수 있어요. 지난 결과만 보려면 <Link to={`/repos/${selected.id}/candidates`}>지난 후보 보기</Link></Note>}
             </div>
         </Modal>
       )}

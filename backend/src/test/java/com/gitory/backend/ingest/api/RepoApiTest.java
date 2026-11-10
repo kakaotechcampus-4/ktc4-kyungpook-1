@@ -508,6 +508,34 @@ class RepoApiTest {
     }
 
     @Test
+    @DisplayName("분석한 저장소 상세는 저장된 커밋·PR 행보다 센 수가 많은 만큼 새 커밋·새 PR 과 다시 분석 예상 시간을 담고, 분석 전에는 모두 null 이다")
+    void detailAddsReanalyzeFieldsOnlyAfterAnalysis() throws Exception {
+
+        UUID fresh = connectCounted(100L, "fresh");
+        UUID analyzed = connectCounted(200L, "analyzed");
+        Long repositoryId = jdbc.queryForObject("SELECT repository_id FROM user_repository WHERE public_id = ?",
+                Long.class, analyzed);
+        jdbc.update("UPDATE user_repository SET last_analyzed_at = '2026-10-05T02:00:00Z' WHERE public_id = ?", analyzed);
+        for (int i = 0; i < 180; i++) {
+            fixtures.insertCommit(repositoryId, "sha" + i);
+        }
+        for (int i = 1; i <= 48; i++) {
+            jdbc.update("INSERT INTO pull_request (repository_id, github_pr_number, title, state, base_branch, head_branch, opened_at) VALUES (?, ?, 'PR', 'CLOSED', 'develop', 'feature', now())",
+                    repositoryId, i);
+        }
+
+        detail(fresh)
+                .andExpect(jsonPath("$.data.disclosure.newCommits").value(nullValue()))
+                .andExpect(jsonPath("$.data.disclosure.newPullRequests").value(nullValue()))
+                .andExpect(jsonPath("$.data.disclosure.reanalyzeSeconds").value(nullValue()));
+        detail(analyzed)
+                .andExpect(jsonPath("$.data.disclosure.newCommits").value(8))
+                .andExpect(jsonPath("$.data.disclosure.newPullRequests").value(2))
+                .andExpect(jsonPath("$.data.disclosure.reanalyzeSeconds").value(32));
+
+    }
+
+    @Test
     @DisplayName("상세는 GitHub 을 부르지 않고 DB 에 저장된 값만 읽어, GitHub 목록에서 빠진 저장소도 보여 준다")
     void detailReadsOnlyDatabase() throws Exception {
 

@@ -1,6 +1,7 @@
 package com.gitory.backend.ingest.domain;
 
 import com.gitory.backend.audit.domain.AuditAction;
+import com.gitory.backend.ingest.infra.CollectionStatsRepository;
 import com.gitory.backend.ingest.infra.ConnectedRepositoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -19,6 +20,7 @@ import java.util.UUID;
 public class RepositoryDetailService {
 
     private final ConnectedRepositoryRepository connections;
+    private final CollectionStatsRepository stats;
     private final IngestLimits limits;
     private final IngestGroupingProperties grouping;
     private final RepositoryWorkCounter workCounter;
@@ -32,7 +34,12 @@ public class RepositoryDetailService {
                 .orElseThrow(ConnectedRepositoryNotFoundException::new);
         RepositorySummary summary = workCounter.fill(List.of(found)).get(0);
 
-        return new RepositoryDetail(summary, Disclosure.of(summary, limits, grouping.enabled()));
+        boolean analyzed = summary.lastAnalyzedAt() != null;
+        int storedCommits = analyzed ? Math.toIntExact(stats.countStoredCommits(publicId, userId)) : 0;
+        int storedPullRequests = analyzed ? Math.toIntExact(stats.countStoredPullRequests(publicId, userId)) : 0;
+
+        return new RepositoryDetail(summary,
+                Disclosure.of(summary, limits, grouping.enabled(), storedCommits, storedPullRequests));
 
     }
 }

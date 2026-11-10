@@ -21,6 +21,7 @@ export const seedRepos = [
       reads: ['내 커밋 214개 — 봇·머지 커밋 제외', '내가 만든 PR 31건', '내가 남긴 리뷰 코멘트 88건', '연결된 이슈'],
       skips: ['다른 사람만 작업한 PR', 'lockfile · 자동 생성 파일', '비공개 저장소 — 권한 자체를 요청하지 않습니다', '코드 원문 — 이 단계에서는 읽지 않습니다'],
       estimatedSeconds: 40,
+      newCommits: 3, newPullRequests: 1, reanalyzeSeconds: 40,
     },
   },
   {
@@ -46,6 +47,7 @@ export const seedRepos = [
       reads: ['내 커밋 21개 — 머지 커밋 31개 제외', '내가 만든 PR 1건', '내가 남긴 리뷰 코멘트 0건'],
       skips: ['다른 사람 커밋 118개', 'Unity 메타·씬 바이너리 · 자동 생성 파일', '비공개 저장소 — 권한 자체를 요청하지 않습니다', '코드 원문 — 이 단계에서는 읽지 않습니다'],
       estimatedSeconds: 15,
+      newCommits: 0, newPullRequests: 0, reanalyzeSeconds: 12,
     },
   },
   {

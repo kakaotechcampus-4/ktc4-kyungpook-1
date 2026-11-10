@@ -179,6 +179,9 @@ export const RepoDisclosure = z.object({
   reads: z.array(z.string()),
   skips: z.array(z.string()),
   estimatedSeconds: z.number(),
+  newCommits: z.number().nullish(),
+  newPullRequests: z.number().nullish(),
+  reanalyzeSeconds: z.number().nullish(),
 });
 export const RepoDetail = RepoSummary.extend({ disclosure: RepoDisclosure });
 export type RepoDetail = z.infer<typeof RepoDetail>;

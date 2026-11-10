@@ -56,7 +56,7 @@ const STATUS_LABEL: Record<ConditionStatus, string> = {
   MET: "맞음",
   NOT_MET: "모자람",
   UNJUDGED: "맞춰 보기 전",
-  UNKNOWN: "인적사항 필요",
+  UNKNOWN: "직접 확인",
   CHECK: "직접 확인",
 };
 const isTile = (status: ConditionStatus) => status === "MET" || status === "NOT_MET";
@@ -79,14 +79,14 @@ const StatusSuffix = ({ status }: { status: ConditionStatus }) => (
 const EDUCATION_TEXT: Partial<Record<ConditionStatus, string>> = {
   MET: "인적사항의 학력과 맞아요.",
   NOT_MET: "인적사항과 맞지 않아요 — 지원 자격을 확인해 보세요.",
-  UNKNOWN: "인적사항에 학력을 적으면 비교할 수 있어요.",
+  UNKNOWN: "학력 조건은 공고에서 직접 확인해 주세요.",
   CHECK: "학력 조건은 직접 확인해 주세요.",
 };
 
 const EXPERIENCE_TEXT: Partial<Record<ConditionStatus, string>> = {
   MET: "인적사항의 경력이 공고의 경력 조건과 맞아요.",
   NOT_MET: "인적사항의 경력이 공고의 경력 조건보다 짧아요 — 지원 자격을 확인해 보세요.",
-  UNKNOWN: "인적사항을 저장하면 경력을 비교할 수 있어요.",
+  UNKNOWN: "경력 조건은 공고에서 직접 확인해 주세요.",
 };
 
 const noteOf = ({ generalType, status }: Condition) =>

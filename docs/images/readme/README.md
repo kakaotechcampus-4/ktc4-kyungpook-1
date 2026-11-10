@@ -34,3 +34,17 @@
 `01-home.jpg` · `02-repositories.jpg` · `03-candidates.jpg` · `04-star-card.jpg` · `05-interview.jpg`는
 2026-10-19 [샘플 데모](https://gitory-prototypes.vercel.app)에서 캡처한 체험용 예시다.
 이전 화면 비교를 위해 보관하며 현재 루트 README에는 사용하지 않는다.
+
+## 소개 이미지 · 흐름 그림 · 움직이는 화면 (2026-11-11)
+
+- `hero.png`(2400 × 1200) · `flow.png`(2400 × 720): HTML 로 구성해 Playwright 로 그린 그림이다. 화면은 첫 화면이 쓰는 제품 그림(`frontend/public/landing/*.png`)을 브라우저 틀에 담았다. 원본 HTML 은 저장소에 두지 않았다.
+- `gif/*.gif`(1280 × 800, 초당 12장, 여섯 개 합쳐 3MB 안팎): 로그인 없이 쓰는 **샘플 데이터(목 서버)** 화면을 Chrome DevTools 스크린캐스트(브라우저가 그리는 프레임 그대로)로 받아 Pillow 로 초당 12장에 맞춰 이었다. 팔레트 하나를 같이 쓰고 바뀐 부분만 저장해 작다. 샘플 데이터라 글 내용은 예시이고, 레포 정리는 PR 이 있는 샘플 레포(web-client)로 찍었다.
+
+| 파일 | 화면 | 길이 |
+| --- | --- | --- |
+| [gif/analysis-run.gif](gif/analysis-run.gif) | 레포 정리 — 읽은 PR·커밋 줄, 묶은 이유, 추천 이유 | 13초 |
+| [gif/card-draft-live.gif](gif/card-draft-live.gif) | 카드 초안 — 네 칸이 한 글자씩 | 15초 |
+| [gif/interview-chat.gif](gif/interview-chat.gif) | 되묻기 — 답을 보내면 칸에 넣고 다음 질문 | 10초 |
+| [gif/cover-letter-fill.gif](gif/cover-letter-fill.gif) | 자소서 대화 — 한 줄 답으로 그 자리를 다시 씀 | 12초 |
+| [gif/repo-match-pick.gif](gif/repo-match-pick.gif) | 맞는 기업 고르기 — 과정과 이유 | 10초 |
+| [gif/home-command.gif](gif/home-command.gif) | 홈 한 줄 명령 — 도구를 이어 실행 | 12초 |

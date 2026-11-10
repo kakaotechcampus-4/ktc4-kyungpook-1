@@ -54,7 +54,7 @@ class InterviewHistoryApiTest {
 
     // FE schemas.ts 의 InterviewTurn 이 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
     private static final String[] TURN_KEYS = {"turnNo", "field", "askedBy", "sourceType", "questionType", "question",
-            "reason", "options", "answerMode", "outcome", "answer", "remaining", "maxTurns"};
+            "reason", "exampleAnswer", "options", "answerMode", "outcome", "answer", "remaining", "maxTurns"};
 
     @Container
     @ServiceConnection
@@ -195,7 +195,7 @@ class InterviewHistoryApiTest {
     }
 
     @Test
-    @DisplayName("질문 하나는 FE InterviewTurn 의 13개 키를 모두 담고, 질문 번호는 seq·질문 글은 저장된 그대로이며 출처는 DIRECT_CARD 이고 근거·보기는 빈 배열이다")
+    @DisplayName("질문 하나는 FE InterviewTurn 의 14개 키를 모두 담고, 질문 번호는 seq·질문 글은 저장된 그대로이며 출처는 DIRECT_CARD 이고 근거·보기는 빈 배열이다")
     void exposesTwelveKeysOfOneTurn() throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);

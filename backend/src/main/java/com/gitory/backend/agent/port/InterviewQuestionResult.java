@@ -6,5 +6,5 @@ public record InterviewQuestionResult(InterviewNextAction nextAction, InterviewS
                                       Integer targetStatementSeq, InterviewQuestionType questionType,
                                       String questionText, InterviewAnswerMode answerMode,
                                       List<String> suggestedAnswers, String reason,
-                                      List<ExperienceTheme> themes) {
+                                      List<ExperienceTheme> themes, String exampleAnswer) {
 }

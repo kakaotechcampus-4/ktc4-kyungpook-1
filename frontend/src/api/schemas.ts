@@ -541,6 +541,8 @@ export const InterviewTurn = z.object({
   outcome: TurnOutcome.nullable().optional().transform((value) => value ?? null),
   // AI 가 이 칸을 고른 이유 한 줄(#430). 사용자가 칸을 골랐거나 AI 가 실패해 틀 질문을 썼으면 null 이다
   reason: z.string().nullable().optional().transform((value) => value ?? null),
+  // 그 질문에 맞는 예시 답 한 줄('예:' 로 시작). 입력칸 안내에 쓰고, 없으면 칸 공통 예시를 보인다
+  exampleAnswer: z.string().nullish(),
   remaining: z.number(),
   maxTurns: z.number(), // 상한은 서버 정책이다. 화면 상수로 두지 않는다
 });

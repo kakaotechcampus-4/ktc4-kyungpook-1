@@ -538,7 +538,7 @@ export function askTurn(c: Any, field: string, ai?: { reason: string; again?: bo
     turnNo: turns.length + 1, field, askedBy: ai ? 'FOLLOW_UP' : 'USER_REQUEST', sourceType,
     questionType: found.length ? 'FOLLOWUP' : sourceType === 'DIRECT_CARD' ? 'RECALL_AID' : 'EVIDENCE_GAP',
     question: ai?.again ? AGAIN_RESULT.question : bank.question,
-    options: ai?.again ? [] : bank.options, answer: null, outcome: null, reason: ai?.reason ?? null,
+    options: ai?.again ? [] : bank.options, answer: null, outcome: null, reason: ai?.reason ?? null, exampleAnswer: ai?.again ? null : bank.example,
     remaining: Math.max(0, INTERVIEW_MAX_TURNS - turns.length - 1),
     maxTurns: INTERVIEW_MAX_TURNS,
   };

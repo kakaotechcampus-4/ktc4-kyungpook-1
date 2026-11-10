@@ -230,22 +230,24 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
 
 ## 품질과 자동화
 
-| 층 | 무엇을 지키나 | 실행 |
+[![backend CI](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/backend-ci.yml/badge.svg?branch=develop)](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/backend-ci.yml) [![AI CI](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/ai-ci.yml/badge.svg?branch=develop)](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/ai-ci.yml) [![frontend](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/frontend-ci.yml/badge.svg?branch=develop)](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/frontend-ci.yml) [![e2e](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/e2e.yml/badge.svg?branch=develop)](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/e2e.yml) [![deploy](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/deploy.yml/badge.svg?branch=develop)](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/deploy.yml)
+
+| 층 | 무엇을 지키나 | 어디에 |
 | --- | --- | --- |
-| 화면 단위 (약 1,800개) | 화면 규칙과 API 계약(zod), 목 서버 동작 | `cd frontend && npx vitest run` |
-| 화면 E2E (378개) | 정적 빌드 · 모바일 · 실제 API 연동 흐름 | `npm run e2e:static` · `e2e:mobile` · `e2e:real` |
-| 서버 (약 3,900개) | API 계약, 동시성, 마이그레이션, 모듈 경계 8규칙(ArchUnit), 실제 PostgreSQL(Testcontainers) | `cd backend && ./gradlew build` |
-| AI (약 1,500개) | 응답 모양, 가드레일, 지시 주입 대응 | `cd ai && python -m pytest tests -q` |
-| 전체 서비스 E2E (4 시나리오) | 로그인부터 카드 확정·되묻기까지, 가짜 GitHub·LLM 으로 전 서비스 | `docker compose -f e2e/compose.yaml up --build --wait` 뒤 `cd e2e && npx playwright test` |
+| 화면 단위 (약 1,800개) | 화면 규칙과 API 계약(zod), 목 서버 동작 | [frontend/src/test](./frontend/src/test) |
+| 화면 E2E (378개) | 정적 빌드 · 모바일 · 실제 API 연동 흐름 | [frontend/e2e](./frontend/e2e) · [frontend/e2e-real](./frontend/e2e-real) |
+| 서버 (약 3,900개) | API 계약, 동시성, 마이그레이션, 모듈 경계 8규칙(ArchUnit), 실제 PostgreSQL(Testcontainers) | [backend/src/test](./backend/src/test) |
+| AI (약 1,500개) | 응답 모양, 가드레일, 지시 주입 대응 | [ai/tests](./ai/tests) |
+| 전체 서비스 E2E (4 시나리오) | 로그인부터 카드 확정·되묻기까지, 가짜 GitHub·LLM 으로 전 서비스 | [e2e/tests](./e2e/tests) |
 | AI 품질 평가 | 작업별 평가 세트로 재고, 바꾼 뒤 다시 잼 | [평가 결과](./ai/evals/RESULTS.md) · [결과 파일](./ai/evals/results/history/) |
 
 규칙 코드의 시험은 코드를 되돌리면 실패하는지(변이 확인)까지 보고 PR 본문에 적습니다.
 
 | 언제 | 무엇이 돌아가나 |
 | --- | --- |
-| PR 마다 | `backend CI`(빌드·테스트·경계 검사, 마이그레이션 검사, 번호 순서 검사) · `AI CI` · `frontend`(타입·단위·E2E 세 벌) · `e2e`(전체 서비스) |
-| develop 머지 | 위 네 CI 가 모두 초록일 때만 `deploy` 가 서버에 배포하고, 올라간 뒤 확인에 실패하면 직전 커밋으로 자동 롤백 |
-| 매일 | DB 백업(7일 보관), 사이트 상태 확인, PR 요약 알림 |
+| PR 마다 | [backend CI](./.github/workflows/backend-ci.yml)(빌드·테스트·경계 검사, 마이그레이션 검사, 번호 순서 검사) · [AI CI](./.github/workflows/ai-ci.yml) · [frontend](./.github/workflows/frontend-ci.yml)(타입·단위·E2E 세 벌) · [e2e](./.github/workflows/e2e.yml)(전체 서비스) |
+| develop 머지 | 위 네 CI 가 모두 초록일 때만 [deploy](./.github/workflows/deploy.yml) 가 서버에 배포하고, 올라간 뒤 확인에 실패하면 직전 커밋으로 자동 롤백 |
+| 매일 | DB 백업(7일 보관), [사이트 상태 확인](./.github/workflows/uptime.yml), [PR 요약 알림](./.github/workflows/daily-pr-digest.yml) |
 
 <p align="center">
   <img src="./docs/images/readme/deploy.png" width="100%" alt="PR에서 서버까지. 1 PR, 2 CI 4개, 3 develop 머지, 4 배포 게이트(그 커밋의 CI 4개가 모두 초록인지 확인), 5 EC2 배포. 확인에 실패하면 직전 커밋으로 자동 롤백" />

@@ -7,6 +7,7 @@ import { LANDING_HOLD_EXTENSION_MS, LandingBrand, shouldPlayLandingIntro } from 
 import { useLogin } from './useLogin';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { LandingExample } from './LandingExample';
+import { SampleTourLink } from './SampleTourLink';
 import { LegalLinks } from '@/features/legal/LegalLinks';
 
 const READS = ['내가 올린 커밋', '내가 만든 PR', '내가 남긴 리뷰 코멘트'];
@@ -49,6 +50,7 @@ export function LandingPage() {
           <div className="landing__actions">
             <Button size="xl" loading={login.pending} onClick={() => login.isDemo ? void login.start() : setSp({ consent: '1' })}>{login.label}</Button>
           </div>
+          <SampleTourLink />
           {error === 'access_denied' && <p className="landing-notice" role="status">GitHub 연결을 취소했어요. 준비되면 다시 시작해 주세요.</p>}
           {error && error !== 'access_denied' && <p className="landing-notice landing-notice--error" role="alert">GitHub 연결에 실패했어요. 다시 시작해 주세요.</p>}
           {reason === 'expired' && !error && !login.isDemo && <p className="landing-notice" role="status">로그인이 만료됐어요. 다시 시작해 주세요.</p>}

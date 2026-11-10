@@ -186,38 +186,86 @@ LLM 은 경험 묶기 · STAR 초안 · 되묻기 · 공고 조건 추출 · 자
 
 ## 👥 팀
 
-**카카오테크 캠퍼스 4기 경북대 1팀**이 기획부터 개발 · 배포까지 함께 만들었습니다. PR 1,000여 개를 모두 팀원 리뷰를 거쳐 머지했고, 규칙은 [기여 가이드](./CONTRIBUTING.md)에 있습니다.
+카카오테크 캠퍼스 4기 경북대 1팀
 
-<table align="center">
+### Backend
+
+<table>
   <tr>
-    <td align="center" width="16%">
-      <a href="https://github.com/taehun0208"><img src="https://github.com/taehun0208.png?size=120" width="96" alt="곽태훈" /><br /><strong>곽태훈</strong></a><br />
-      <sub>팀장 · Backend</sub><br /><sub><a href="https://github.com/taehun0208">@taehun0208</a></sub>
-    </td>
-    <td align="center" width="16%">
-      <a href="https://github.com/hyukjin0324"><img src="https://github.com/hyukjin0324.png?size=120" width="96" alt="권혁진" /><br /><strong>권혁진</strong></a><br />
-      <sub>AI 리드</sub><br /><sub><a href="https://github.com/hyukjin0324">@hyukjin0324</a></sub>
-    </td>
-    <td align="center" width="16%">
-      <a href="https://github.com/ganggang-0605"><img src="https://github.com/ganggang-0605.png?size=120" width="96" alt="김경무" /><br /><strong>김경무</strong></a><br />
-      <sub>플래너 · Frontend</sub><br /><sub><a href="https://github.com/ganggang-0605">@ganggang-0605</a></sub>
-    </td>
-    <td align="center" width="16%">
-      <a href="https://github.com/TaeHuiKKIM"><img src="https://github.com/TaeHuiKKIM.png?size=120" width="96" alt="김태희" /><br /><strong>김태희</strong></a><br />
-      <sub>FE 리드</sub><br /><sub><a href="https://github.com/TaeHuiKKIM">@TaeHuiKKIM</a></sub>
-    </td>
-    <td align="center" width="16%">
-      <a href="https://github.com/Grow22"><img src="https://github.com/Grow22.png?size=120" width="96" alt="장성준" /><br /><strong>장성준</strong></a><br />
-      <sub>BE 리드</sub><br /><sub><a href="https://github.com/Grow22">@Grow22</a></sub>
-    </td>
-    <td align="center" width="16%">
-      <a href="https://github.com/chxisoei"><img src="https://github.com/chxisoei.png?size=120" width="96" alt="최민서" /><br /><strong>최민서</strong></a><br />
-      <sub>메이커 · AI</sub><br /><sub><a href="https://github.com/chxisoei">@chxisoei</a></sub>
-    </td>
+    <th>역할</th>
+    <td align="center" width="200"><strong>팀장</strong></td>
+    <td align="center" width="200"><strong>BE 리드</strong></td>
+  </tr>
+  <tr>
+    <th>사진</th>
+    <td align="center" width="200"><a href="https://github.com/taehun0208"><img src="https://github.com/taehun0208.png?size=120" width="96" alt="곽태훈" /></a></td>
+    <td align="center" width="200"><a href="https://github.com/Grow22"><img src="https://github.com/Grow22.png?size=120" width="96" alt="장성준" /></a></td>
+  </tr>
+  <tr>
+    <th>이름</th>
+    <td align="center" width="200">곽태훈</td>
+    <td align="center" width="200">장성준</td>
+  </tr>
+  <tr>
+    <th>GitHub</th>
+    <td align="center" width="200"><a href="https://github.com/taehun0208">@taehun0208</a></td>
+    <td align="center" width="200"><a href="https://github.com/Grow22">@Grow22</a></td>
+  </tr>
+</table>
+
+### Frontend
+
+<table>
+  <tr>
+    <th>역할</th>
+    <td align="center" width="200"><strong>FE 리드</strong></td>
+    <td align="center" width="200"><strong>플래너</strong></td>
+  </tr>
+  <tr>
+    <th>사진</th>
+    <td align="center" width="200"><a href="https://github.com/TaeHuiKKIM"><img src="https://github.com/TaeHuiKKIM.png?size=120" width="96" alt="김태희" /></a></td>
+    <td align="center" width="200"><a href="https://github.com/ganggang-0605"><img src="https://github.com/ganggang-0605.png?size=120" width="96" alt="김경무" /></a></td>
+  </tr>
+  <tr>
+    <th>이름</th>
+    <td align="center" width="200">김태희</td>
+    <td align="center" width="200">김경무</td>
+  </tr>
+  <tr>
+    <th>GitHub</th>
+    <td align="center" width="200"><a href="https://github.com/TaeHuiKKIM">@TaeHuiKKIM</a></td>
+    <td align="center" width="200"><a href="https://github.com/ganggang-0605">@ganggang-0605</a></td>
+  </tr>
+</table>
+
+### AI
+
+<table>
+  <tr>
+    <th>역할</th>
+    <td align="center" width="200"><strong>AI 리드</strong></td>
+    <td align="center" width="200"><strong>메이커</strong></td>
+  </tr>
+  <tr>
+    <th>사진</th>
+    <td align="center" width="200"><a href="https://github.com/hyukjin0324"><img src="https://github.com/hyukjin0324.png?size=120" width="96" alt="권혁진" /></a></td>
+    <td align="center" width="200"><a href="https://github.com/chxisoei"><img src="https://github.com/chxisoei.png?size=120" width="96" alt="최민서" /></a></td>
+  </tr>
+  <tr>
+    <th>이름</th>
+    <td align="center" width="200">권혁진</td>
+    <td align="center" width="200">최민서</td>
+  </tr>
+  <tr>
+    <th>GitHub</th>
+    <td align="center" width="200"><a href="https://github.com/hyukjin0324">@hyukjin0324</a></td>
+    <td align="center" width="200"><a href="https://github.com/chxisoei">@chxisoei</a></td>
   </tr>
 </table>
 
 ## 📚 개발 문서
+
+협업 규칙(브랜치 · PR · 리뷰 1명 필수)은 [기여 가이드](./CONTRIBUTING.md)에 있고, PR 1,000여 개를 모두 팀원 리뷰를 거쳐 머지했습니다.
 
 | 알고 싶은 내용 | 문서 |
 | --- | --- |
@@ -227,6 +275,4 @@ LLM 은 경험 묶기 · STAR 초안 · 되묻기 · 공고 조건 추출 · 자
 | 고친 문제와 나아진 숫자 · 측정 · 기술 결정 | [개선 기록](./docs/improvement-log.md) · [측정 기록](./docs/metrics-log.md) · [기술 결정 기록](./docs/tech-decisions.md) |
 | 백엔드 모듈 책임과 의존 방향 | [Backend 아키텍처](./backend/ARCHITECTURE.md) |
 | 요청·응답 계약과 API 스냅샷 | [공유 계약](./contracts/README.md) · [OpenAPI](./docs/openapi/README.md) |
-| 브랜치 · 커밋 · PR · 리뷰 규칙 | [기여 가이드](./CONTRIBUTING.md) |
 | 화면 개선 · 오류 재현 · 발표와 데모 기록 | [개발 문서 모음](./docs/README.md) |
-| 화면·구성도 갱신 기준 | [캡처 기록](./docs/images/readme/README.md) · [구성도 출처](./docs/images/architecture/README.md) |

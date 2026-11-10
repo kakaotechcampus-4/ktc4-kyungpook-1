@@ -126,7 +126,7 @@ describe('공고 매칭 결과 상자', () => {
     expect(titles(allPostings())).toHaveLength(6);
   });
 
-  it('누르면 계산을 시작하고, 계산 중에는 확인한 공고 수를 보이며 버튼을 막는다', async () => {
+  it('누르면 계산을 시작하고, 계산 중에는 확인한 공고 수를 보이고 제목을 되풀이하는 버튼은 두지 않는다', async () => {
     // 결과가 최신이면 들어올 때 스스로 시작하지 않으므로, 다시 맞춰 보기를 눌러 시작한다
     vi.spyOn(matchingApi, 'recommendations').mockResolvedValue(ready());
     const start = vi.spyOn(matchingApi, 'startRecommendations').mockResolvedValue(state({ status: 'COMPUTING', progress: { done: 2, total: 5 } }));
@@ -137,7 +137,7 @@ describe('공고 매칭 결과 상자', () => {
     expect(start).toHaveBeenCalledTimes(1);
     expect(within(box()).getByRole('heading', { level: 2, name: '맞춰 보는 중' })).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: '맞춰 보기 진행률' })).toHaveAttribute('aria-valuenow', '40');
-    expect(screen.getByRole('button', { name: '맞춰 보는 중' })).toBeDisabled();
+    expect(within(box()).queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('계산 중에도 지난 결과 타일은 그대로 보인다', async () => {

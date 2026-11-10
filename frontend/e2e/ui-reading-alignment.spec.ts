@@ -13,11 +13,10 @@ test('desktop cards with different title lengths share footer baselines', async 
   }
 });
 
-test('all three repository step labels are visible without horizontal scrolling at 320px', async ({ page }) => {
+test('the /repos page has no step rail and no horizontal scroll at 320px', async ({ page }) => {
   await page.setViewportSize({width:320,height:900}); await loginAsDemo(page); await page.goto('/repos');
-  const rail=page.getByRole('list',{name:'진행 단계'});
-  const bounds=await rail.evaluate(e=>({left:e.getBoundingClientRect().left,right:e.getBoundingClientRect().right,items:Array.from(e.children).map(child=>({left:child.getBoundingClientRect().left,right:child.getBoundingClientRect().right}))}));
-  for(const item of bounds.items){expect(item.left).toBeGreaterThanOrEqual(bounds.left);expect(item.right).toBeLessThanOrEqual(bounds.right);}
+  await expect(page.getByRole('list',{name:'진행 단계'})).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });
 
 test('mobile evidence links are easy to press and expose long snippets without truncation', async ({ page }) => {

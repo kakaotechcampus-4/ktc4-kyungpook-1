@@ -70,25 +70,4 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(page).toHaveURL(/\/settings$/);
     await expect(page.getByRole('heading', { name: '마이페이지', exact: true })).toBeVisible();
   });
-
-  test(`${theme} pending repository steps have visible boundaries and readable numbers`, async ({ page }) => {
-    await loginAsDemo(page);
-    await page.addInitScript(value => localStorage.setItem('gitory.theme', value), theme);
-    await page.goto('/repos');
-    const pending = page.locator('main > .wizard__steps .wstep:not(.wstep--now):not(.wstep--done) .wstep__no');
-    await expect(pending).toHaveCount(2);
-    const colors = await pending.evaluateAll(elements => elements.map(element => {
-      const css = getComputedStyle(element);
-      return { canvas: getComputedStyle(document.documentElement).backgroundColor, fill: css.backgroundColor, text: css.color, border: css.borderTopColor, borderWidth: parseFloat(css.borderTopWidth) };
-    }));
-    const luminance = (color: string) => {
-      const values = color.match(/[\d.]+/g)!.slice(0, 3).map(Number).map(value => color.startsWith('color(srgb') ? value : value / 255);
-      return values.map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
-    };
-    const contrast = (first: string, second: string) => (Math.max(luminance(first), luminance(second)) + .05) / (Math.min(luminance(first), luminance(second)) + .05);
-    for (const color of colors) {
-      expect(Math.max(contrast(color.fill, color.canvas), color.borderWidth > 0 ? contrast(color.border, color.canvas) : 0)).toBeGreaterThanOrEqual(3);
-      expect(contrast(color.text, color.fill)).toBeGreaterThanOrEqual(4.5);
-    }
-  });
 }

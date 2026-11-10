@@ -77,16 +77,12 @@ export function ResultBox({ postings, search, filtered, confirmedCards }: {
         </div>
         <div className="result-box__actions">
           {filtered && open && <Button variant="text" size="sm" aria-expanded onClick={() => setOpen(false)}>접기</Button>}
-          {noCards ? (
+          {/* 계산 중에는 제목이 이미 말해 주므로 같은 말의 눌러지지 않는 버튼을 두지 않는다 */}
+          {computing ? null : noCards ? (
             <ButtonLink to="/cards" variant="secondary">카드 확정하러 가기</ButtonLink>
           ) : (
-            <Button
-              variant={matched || computing ? "secondary" : "primary"}
-              onClick={() => start.mutate()}
-              disabled={computing || overall.isPending}
-              loading={start.isPending}
-            >
-              {computing ? "맞춰 보는 중" : matched ? "다시 맞춰 보기" : "내 조건으로 맞춰 보기"}
+            <Button variant={matched ? "secondary" : "primary"} onClick={() => start.mutate()} disabled={overall.isPending} loading={start.isPending}>
+              {matched ? "다시 맞춰 보기" : "내 조건으로 맞춰 보기"}
             </Button>
           )}
         </div>

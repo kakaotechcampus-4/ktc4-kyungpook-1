@@ -68,18 +68,8 @@ export function gapKeys(gapFill: GapFill): string[] {
   ]);
 }
 
-/** 끝난 뒤 요약 — '제안 1개 · 찾지 못함 1개 · 찾지 않음 1개 · 시간 초과 1개' 에서 0 인 것은 뺀다 */
-export function gapSummary(gapFill: GapFill): string {
-  const count = (result: GapFillCondition["result"]) => gapFill.conditions.filter((c) => c.result === result).length;
-  const parts = [
-    [count("PROPOSED"), "제안"],
-    [count("NOT_FOUND"), "찾지 못함"],
-    [count("SKIPPED"), "찾지 않음"],
-    [count("TIMED_OUT"), "시간 초과"],
-  ] as const;
-  const text = parts.filter(([n]) => n > 0).map(([n, label]) => `${label} ${n}개`).join(", ");
-  return text || "채울 조건이 없어요";
-}
+/** 채우기가 끝난 뒤 카드로 만들 제안이 몇 개인지 — 찾지 못함·찾지 않음은 조건 줄마다 이미 적혀 있다 */
+export const proposalCount = (gapFill: GapFill) => gapFill.conditions.filter((c) => c.result === "PROPOSED").length;
 
 /** 맞춰 보기 결과를 펼치는 간격 — 조건이 적어도 전체가 6초쯤은 되게, 많아도 1초 안팎으로 */
 export const revealIntervalMs = (count: number, minTotalMs = 6000) => Math.max(900, Math.ceil(minTotalMs / Math.max(count, 1)));

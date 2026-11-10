@@ -183,7 +183,6 @@ export function CoverLetterNewPage() {
 
       <div className="sticky-footer">
         <div className="sticky-footer__text">
-          <strong>만들면 카드를 고르고 초안까지 이어서 써요</strong>
           {footWarn && <span className="cl-foot-warn">{footWarn}</span>}
         </div>
         <div className="sticky-footer__actions">

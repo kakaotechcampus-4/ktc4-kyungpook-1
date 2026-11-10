@@ -101,7 +101,7 @@ describe('레포 목록 화면', () => {
     mount('/repos', <ReposPage />, '/repos', seedRepos);
     const row = rowOf(/side-project-new/);
     expect(within(row).getByText(/기여 개수를 세는 중이에요/)).toBeInTheDocument();   // #756 숫자 줄 대신 문장 한 줄
-    expect(within(row).getByText(/집계 전이에요/)).toBeInTheDocument();
+    expect(within(row).queryByText(/집계 전이에요/)).not.toBeInTheDocument();
     expect(within(row).queryByText(/내 기여/)).not.toBeInTheDocument();
     expect(within(row).queryByText('PR 0건')).not.toBeInTheDocument();
     expect(within(row).queryByText(/부풀린 것처럼/)).not.toBeInTheDocument();

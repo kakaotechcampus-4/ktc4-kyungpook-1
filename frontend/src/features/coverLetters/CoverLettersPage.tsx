@@ -22,15 +22,17 @@ const STAGE_LABEL: Record<CoverLetterStage, string> = {
 export function CoverLettersPage() {
   useDocumentTitle('자소서');
   const list = useCoverLetters();
-  const add = <ButtonLink to="/cover-letters/new" variant="primary">새 자소서</ButtonLink>;
+  // 주된 버튼은 화면에 하나만 — 목록이 비면 빈 화면 안내의 버튼이 주된 것이고 머리의 버튼은 보조가 된다
+  const empty = list.isSuccess && list.data.length === 0;
+  const add = (variant: 'primary' | 'secondary') => <ButtonLink to="/cover-letters/new" variant={variant}>새 자소서</ButtonLink>;
   return (
     <main className="main main--tight">
       <Breadcrumb items={[{ label: '홈', to: '/' }, { label: '자소서' }]} />
-      <PageTitle right={add} sub="확정한 경험 카드로 문항마다 초안을 써요.">자소서</PageTitle>
+      <PageTitle right={add(empty ? 'secondary' : 'primary')} sub="확정한 경험 카드로 문항마다 초안을 써요.">자소서</PageTitle>
       {list.isError ? <QueryFailure error={list.error} retry={() => list.refetch()} pending={list.isFetching} />
         : list.isPending ? <div className="cl-shelf" aria-hidden="true"><Skeleton h={348} /><Skeleton h={348} /><Skeleton h={348} /></div>
         : list.data.length === 0 ? (
-          <EmptyState icon={FileText} title="아직 쓴 자소서가 없어요" desc="지원 직무와 문항을 넣으면 문항마다 쓸 카드를 골라 드려요.">{add}</EmptyState>
+          <EmptyState icon={FileText} title="아직 쓴 자소서가 없어요" desc="지원 직무와 문항을 넣으면 문항마다 쓸 카드를 골라 드려요.">{add('primary')}</EmptyState>
         ) : (
           <ul className="cl-shelf">
             {list.data.map((l) => {

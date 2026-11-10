@@ -138,9 +138,8 @@ a.set-row:hover, .set-details > summary:hover { background: var(--bg-subtle); }
 .repo-row__desc { display: block; font-size: 13px; line-height: 18px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .repo-row__line { display: block; margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--text-strong); overflow-wrap: anywhere; }
 .repo-row__caution { font-weight: var(--weight-bold); color: var(--field-low-text); }
-.repo-row__hint { color: var(--text-tertiary); }
 .repo-row__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 4px; }
-.repo-row__meta { font-size: 12px; line-height: 17px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.repo-row__meta { font-size: 13px; line-height: 18px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 .record-list > .repo-row.card--selected::before { border-color: var(--border-accent); }
 .repo-row--sel .radio--checked { background: var(--border-accent); border-color: var(--border-accent); }
 /* 고른 레포 줄은 파랑 바탕 — 앱 공통 --bg-selected 는 회색이라 고른 것을 파랑으로 보이게 따로 둔다 */

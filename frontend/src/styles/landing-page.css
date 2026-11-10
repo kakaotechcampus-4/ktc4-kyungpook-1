@@ -4,9 +4,11 @@
 .lp-wrap { width: 100%; max-width: 1200px; margin-inline: auto; padding-inline: 24px; }
 
 /* 위 줄 */
-/* 위 바는 따라 내려온다 — 첫 화면에선 바탕이 없고, 첫 화면을 지나면 반투명 바탕과 실선이 생긴다 */
-.landing .landing__top { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: 1fr auto; align-items: center; width: 100%; max-width: none; margin: 0; padding: 18px max(24px, calc((100% - 1200px) / 2)); border: 0; border-bottom: 1px solid transparent; transition: background-color .3s ease, border-color .3s ease; }
-.landing[data-top-action="shown"] .landing__top { background: color-mix(in srgb, var(--bg-paper) 86%, transparent); backdrop-filter: blur(12px); border-bottom-color: var(--border-default); }
+/* 위 바는 따라 내려온다 — 상자는 본문과 같은 1200px 정렬선에 두고, 화면 폭 바탕은 ::before 가 그린다.
+   첫 화면에선 바탕이 없고, 첫 화면을 지나면 반투명 바탕과 실선이 생긴다 */
+.landing .landing__top { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: 1fr auto; align-items: center; width: 100%; max-width: 1200px; margin: 0 auto; padding: 18px 24px; border: 0; }
+.landing .landing__top::before { content: ''; position: absolute; z-index: -1; top: 0; bottom: 0; left: 50%; width: 100vw; transform: translateX(-50%); border-bottom: 1px solid transparent; transition: background-color .3s ease, border-color .3s ease; }
+.landing[data-top-action="shown"] .landing__top::before { background: color-mix(in srgb, var(--bg-paper) 86%, transparent); backdrop-filter: blur(12px); border-bottom-color: var(--border-default); }
 .landing .landing__top .landing__top-action { display: inline-flex; justify-self: end; transition: opacity .3s ease, visibility .3s; }
 .landing[data-intro="playing"] .landing__top-action, .landing[data-top-action="hidden"] .landing__top-action { opacity: 0; visibility: hidden; }
 

@@ -11,13 +11,15 @@ export type FolderNext = {
 };
 
 /**
- * 확인할 카드(초안)가 있으면 화면 순서로 첫 초안 카드를, 다 확정됐으면 카드를 쓰는 곳(공고, 자소서)을 가리킨다.
+ * 확인할 카드(초안)가 있으면 화면 순서로 첫 초안 카드를, 다 확정됐으면 카드를 쓰는 곳을 가리킨다.
+ * 레포 폴더는 아래 '이 레포로 맞는 기업' 구역이 공고를 보여 주므로 자소서 쓰기만 두고, 그 구역이 없는 활동·직접 폴더는 매칭이 켜져 있으면 맞는 공고 보기를 둔다.
  * `cards` 는 폴더가 화면에 보이는 순서(기술 카드, 경험 카드)여야 하고, 카드가 없으면 null 이다.
  */
-export function folderNext({ cards, justConfirmed, matchOn }: {
+export function folderNext({ cards, justConfirmed, matchOn, repoFolder }: {
   cards: readonly Pick<CardSummary, 'id' | 'status'>[];
   justConfirmed: boolean;
   matchOn: boolean;
+  repoFolder: boolean;
 }): FolderNext | null {
   if (cards.length === 0) return null;
   const drafts = cards.filter((card) => card.status === 'DRAFT');
@@ -33,8 +35,8 @@ export function folderNext({ cards, justConfirmed, matchOn }: {
   return {
     tone: 'ready',
     title: justConfirmed ? '카드를 확정했어요. 이 폴더의 카드를 모두 쓸 수 있어요' : `카드 ${ready}장이 준비됐어요`,
-    sub: matchOn ? '이 카드로 맞는 공고를 보고 자소서를 쓸 수 있어요.' : '이 카드로 자소서를 쓸 수 있어요.',
-    action: matchOn ? { label: '맞는 공고 보기', to: '/match' } : { label: '자소서 쓰기', to: '/cover-letters/new' },
-    more: matchOn ? { label: '자소서 쓰기', to: '/cover-letters/new' } : undefined,
+    sub: matchOn && !repoFolder ? '이 카드로 맞는 공고를 보고 자소서를 쓸 수 있어요.' : '이 카드로 자소서를 쓸 수 있어요.',
+    action: matchOn && !repoFolder ? { label: '맞는 공고 보기', to: '/match' } : { label: '자소서 쓰기', to: '/cover-letters/new' },
+    more: matchOn && !repoFolder ? { label: '자소서 쓰기', to: '/cover-letters/new' } : undefined,
   };
 }

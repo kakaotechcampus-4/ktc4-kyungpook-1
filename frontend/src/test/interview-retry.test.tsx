@@ -71,7 +71,7 @@ describe('interview retry and pending answer', () => {
     fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
     expect(await screen.findByText('카드를 확정했어요')).toBeInTheDocument();
     expect(screen.queryByText('이어서 물을까요?')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '카드 보기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '카드로 돌아가기' })).toBeInTheDocument();
   });
 
   it('locks option chips while an answer is being saved', async () => {

@@ -1,7 +1,7 @@
 import { ExternalLink } from 'lucide-react';
 import { useMatch } from '@/api/matching';
 import type { CoverLetterPosting } from '@/api/coverLetters';
-import { ButtonLink, buttonClass } from '@/components/ui';
+import { buttonClass } from '@/components/ui';
 import { CalendarToggle } from '@/features/match/CalendarToggle';
 import { companyLabel } from '@/features/match/model';
 import { track } from '@/lib/track';
@@ -18,7 +18,6 @@ export function NextSteps({ posting }: { posting: CoverLetterPosting }) {
         </a>
       )}
       {detail && <CalendarToggle posting={{ id: detail.id, company: companyLabel(detail.company), role: detail.role, expiresAt: detail.source.expiresAt }} />}
-      <ButtonLink to="/" variant="text">다음 공고 보기</ButtonLink>
     </div>
   );
 }

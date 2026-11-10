@@ -5,7 +5,7 @@ import { Button, TitleCount } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { calendarStorageKey, dateKey, daysUntil, monthDays, readSchedules, safeScheduleUrl, scheduleKinds, scheduleShort, type JobSchedule, type ScheduleKind } from './calendarModel';
 
-/** 마감일을 캘린더에 자동으로 띄울 공고 — 홈은 공고 목록 전체가 아니라 '나와 맞는 기업' 의 공고만 넘긴다 */
+/** 마감일을 캘린더에 자동으로 띄울 공고 — 공고 매칭 화면은 받은 목록에서 마감일이 있는 공고 전부를, 홈은 '나와 맞는 기업' 의 공고만 넘긴다 */
 export type CalendarPosting = { id: string; company: string; role: string; expiresAt: string | null; url: string | null };
 
 const weekdayNames = ['일', '월', '화', '수', '목', '금', '토'];

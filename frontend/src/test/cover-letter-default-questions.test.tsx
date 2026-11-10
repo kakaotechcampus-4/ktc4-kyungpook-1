@@ -8,8 +8,8 @@ import { CoverLetterPage } from '@/features/coverLetters/CoverLetterPage';
 vi.mock('@/lib/track', () => ({ track: vi.fn() }));
 afterEach(cleanup);
 
-const NOTE = '자주 나오는 문항으로 썼어요 · 실제 문항이 있으면 문항 고치기로 바꿔 주세요';
-const WRITING_NOTE = '자주 나오는 문항으로 쓰는 중이에요 · 다 쓴 뒤 문항 고치기로 실제 문항으로 바꿀 수 있어요';
+const NOTE = '자주 나오는 문항으로 썼어요. 실제 문항이 있으면 문항 고치기로 바꿔 주세요';
+const WRITING_NOTE = '자주 나오는 문항으로 쓰는 중이에요. 다 쓴 뒤 문항 고치기로 실제 문항으로 바꿀 수 있어요';
 const base = { id: 'cl_1', stage: 'ASSIGNING', jobRole: '백엔드 개발', createdAt: 't', updatedAt: 't', questions: [] };
 // 초안이 나온 단계는 글상자를 그리므로 초안이 든 문항 하나가 있어야 한다
 const drafted = {

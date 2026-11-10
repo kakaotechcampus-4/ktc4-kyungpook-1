@@ -146,11 +146,11 @@
 /* 쓸거리 제안 — 대화 위. 한 덩어리 안에 제안마다 흰 카드, 큰 버튼 하나씩 */
 .clp-sg { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: var(--radius-lg); background: var(--bg-subtle); }
 .clp-sg--folded { padding: 4px 8px; }
-.clp-sg__title { margin: 0; font-size: 17px; line-height: 26px; font-weight: 600; color: var(--text-strong); }
+.clp-sg__title { margin: 0; font-size: 16px; line-height: 24px; font-weight: var(--weight-bold); color: var(--text-strong); }
 .clp-sg__why { margin: 0; font-size: 14px; line-height: 22px; color: var(--text-secondary); }
 .clp-sg__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .clp-sg__item { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); }
 .clp-sg__chip { padding: 1px 10px; border: 1px solid var(--border-default); border-radius: var(--radius-full); font-size: 12px; line-height: 20px; color: var(--text-secondary); }
-.clp-sg__name { font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-strong); }
+.clp-sg__name { font-size: 16px; line-height: 24px; font-weight: var(--weight-bold); color: var(--text-strong); }
 .clp-sg__angle { font-size: 14px; line-height: 22px; color: var(--text-secondary); }
 .clp-sg__row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

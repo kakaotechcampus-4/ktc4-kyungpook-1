@@ -124,7 +124,7 @@ export function SuggestionBox({ letter, question, onText }: { letter: CoverLette
             <span className="clp-sg__angle">{s.angle}</span>
             {s.source === 'CARD'
               ? <Button size="lg" disabled={busy} onClick={() => use(s.id, s.title)}>이걸로 쓰기</Button>
-              : <Button size="lg" variant="outline" disabled={busy || !s.repoId} onClick={() => void make(s)}>카드 만들어 쓰기</Button>}
+              : <Button size="lg" variant="secondary" disabled={busy || !s.repoId} onClick={() => void make(s)}>카드 만들어 쓰기</Button>}
           </li>
         ))}
       </ul>

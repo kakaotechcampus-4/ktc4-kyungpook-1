@@ -157,4 +157,16 @@ describe('쓸거리 제안', () => {
     expect(rewrites(log)).toHaveLength(1);
     expect(screen.getByTestId('where').textContent).toBe(`/cover-letters/${l.id}`);
   });
+
+  it('F6 돌아와서 다시 쓰지 못하면 글은 그대로 두고 한 줄 알린 뒤 편집기를 연다', { timeout: 15000 }, async () => {
+    const l = draftedWithoutCard();
+    const log: string[] = [];
+    stubFetch(log);
+    const before = l.questions[0].draft!.text;
+    mount(l, `/cover-letters/${l.id}?useCard=card_none&question=${l.questions[0].id}`);
+    await screen.findByText('고른 카드로 다시 쓰지 못했어요', SEEN, SLOW);
+    expect(rewrites(log)).toHaveLength(1);
+    expect(draftText()).toBe(before);
+    expect(screen.getByTestId('where').textContent).toBe(`/cover-letters/${l.id}`);
+  });
 });

@@ -8,8 +8,8 @@ import { CardTags } from '@/components/cards/CardTags';
 import { CardThemes } from '@/components/cards/CardThemes';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
 import { CardStatusMark, cardStarStates } from '@/components/cards/CardStatusMark';
-import { useCard, useRegenerateField, useReopen, useRetryDraft } from '@/api/queries';
-import { isTerminal, StarField as StarFieldSchema, type Card, type StarField } from '@/api/schemas';
+import { useCard, useInterview, useRegenerateField, useReopen, useRetryDraft } from '@/api/queries';
+import { isOpenTurn, isTerminal, StarField as StarFieldSchema, type Card, type StarField } from '@/api/schemas';
 import { Badge, Breadcrumb, Button, EvidenceList, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
 import { STAR_FIELDS, cardKindLabel, candidateRefLabel, fieldKey, starFieldName, starFieldShort, cardContentLabel, interviewActionLabel, historyActionLabel } from '@/lib/labels';
 import { ymd } from '@/lib/format';
@@ -66,6 +66,7 @@ export function CardPage() {
       void q.refetch({ cancelRefetch: false }); // Join the save-and-close refresh if already running.
     }
   }, [cardId, mode, q.data, q.refetch]);
+  const turns = useInterview(cardId);
   const regen = useRegenerateField(cardId);
   const retry = useRetryDraft(cardId);
   const reopen = useReopen(cardId);
@@ -119,6 +120,7 @@ export function CardPage() {
   // 경험 카드 목록 다음에 카드가 든 폴더(레포 또는 활동)가 온다(#522)
   const crumbs = [{ label: '홈', to: '/' }, { label: '경험 카드', to: '/cards' }, ...(card.repo ? [{ label: card.repo.name, to: folderPath.repo(card.repo.id) }] : card.activity ? [{ label: card.activity.name, to: folderPath.activity(card.activity.id) }] : []), { label: srcLabel, href: candidateGithubUrl(card) }];
   const ask = (f: StarField) => nav(`/cards/${cardId}/interview?field=${f}`, { state: location.state });
+  const openTurn = turns.data?.find(isOpenTurn);
   const close = () => setSp({});
   const masked = (t: string) => applyMask(t, card.maskRules);
   // 제목·기간 수정은 제목 바로 옆 연필 하나로 — 무엇을 고치는지 위치가 말해 준다. 서버가 확정 카드도 다시 열지 않고 받으므로 확정 카드에도 둔다
@@ -173,10 +175,14 @@ export function CardPage() {
         )}
         <CardHeader card={card} titleAction={metadataAction} right={<Button variant="outline" size="sm" onClick={exportMd} title="가린 정보를 적용한 내용을 복사해요">복사</Button>} />
         {/* 과제·결과가 비어도 확정은 그대로이고, 채우고 싶을 때 바로 질문을 받게만 한다 */}
-        {gapFields.length > 0 && (
+        {(gapFields.length > 0 || openTurn) && (
           <div className="card row" style={{ gap: 16, padding: '16px 18px', background: 'var(--bg-inset)', border: 0, flexWrap: 'wrap' }}>
-            <span className="grow" style={{ fontSize: 14, lineHeight: '22px' }}>{gapFields.map((f) => starFieldShort[f]).join(', ')} 칸이 비어 있어요. 한두 가지만 알려 주면 채울 수 있어요</span>
-            <Button variant="outline" onClick={() => ask(gapFields[0])}>질문 받기</Button>
+            <span className="grow" style={{ fontSize: 14, lineHeight: '22px' }}>{openTurn
+              ? `${gapFields.includes(openTurn.field) ? `${starFieldShort[openTurn.field]} 칸이 비어 있어요. ` : ''}${openTurn.question}`
+              : `${gapFields.map((f) => starFieldShort[f]).join(', ')} 칸이 비어 있어요. 한두 가지만 알려 주면 채울 수 있어요`}</span>
+            {openTurn
+              ? <Button variant="outline" onClick={() => ask(openTurn.field)}>답하기</Button>
+              : <Button variant="outline" onClick={() => ask(gapFields[0])}>질문 받기</Button>}
           </div>
         )}
         <div className="two-col two-col--340">
@@ -295,10 +301,12 @@ export function CardPage() {
       </div>
 
       <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
-      <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 칸에 답변해 주세요` : canConfirm ? '내용을 확인한 뒤 확정해 주세요' : '상황과 행동을 작성해 주세요'} sub={!reviewFields.length && canConfirm ? '확정한 카드는 공고 매칭에 쓰여요. 나중에 다시 열어 고칠 수 있어요.' : undefined}>
+      <StickyFooter strong={openTurn ? openTurn.question : reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 칸에 답변해 주세요` : canConfirm ? '내용을 확인한 뒤 확정해 주세요' : '상황과 행동을 작성해 주세요'} sub={!reviewFields.length && canConfirm ? '확정한 카드는 공고 매칭에 쓰여요. 나중에 다시 열어 고칠 수 있어요.' : undefined}>
         {reviewFields.length === 0 && <Link to={cardFolderPath(card)} className="btn btn--text">나중에</Link>}
         <Button variant={reviewFields.length ? 'outline' : 'primary'} size="lg" disabled={!canConfirm} onClick={() => setSp({ confirm: '1' })} title={canConfirm ? undefined : '상황과 행동을 작성해 주세요'}>확정</Button>
-        {reviewFields.length > 0 && <Button size="lg" title={interviewActionLabel} onClick={() => ask(reviewFields[0])}>답변하기</Button>}
+        {openTurn
+          ? <Button size="lg" title={interviewActionLabel} onClick={() => ask(openTurn.field)}>답하기</Button>
+          : reviewFields.length > 0 && <Button size="lg" title={interviewActionLabel} onClick={() => ask(reviewFields[0])}>답변하기</Button>}
       </StickyFooter>
 
       {sp.get('confirm') === '1' && <ConfirmDialog card={card} onClose={close} onConfirmed={() => nav(cardFolderPath(card), { replace: true, state: { confirmed: card.id } })} />}

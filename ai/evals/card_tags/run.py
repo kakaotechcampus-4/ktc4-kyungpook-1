@@ -83,6 +83,9 @@ async def main() -> None:
         rows += await asyncio.gather(*(one(pr, client) for pr in prs[i:i + 4]))
     out.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8")
     print(f"초안 {sum('techs' in r for r in rows)} · 실패 {sum('error' in r for r in rows)}")
+    llm_harness.record_summary(
+        "card_tags", args.name, {"drafts": sum("techs" in r for r in rows), "failures": sum("error" in r for r in rows),
+                                 "prs": len(rows)}, sample="1차 표본 PR")
 
 
 if __name__ == "__main__":

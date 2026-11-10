@@ -13,9 +13,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
+from datetime import datetime
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+_AI_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(_AI_ROOT))
+
+from evals.common import llm_harness  # noqa: E402
 
 
 def score(pred: set, gold: set, cases: list[str], gold_by_case: dict) -> dict:
@@ -61,6 +67,8 @@ def main() -> None:
         out[name] = score(p, gd, cases, by_case)
     out["정답 없는 문장에 채움을 준 수"] = sum(any(x[0] == c for x in pred) for c in empty)
     print(json.dumps(out, ensure_ascii=False, indent=1))
+    llm_harness.record_summary("match_judge", args.results.stem, out, sample="채움 판정 vs 정답(갈린 짝 판정 반영)",
+                               measured_at=datetime.fromtimestamp(args.results.stat().st_mtime))
     if args.disagreements:
         dis = [{"id": f"{x[0]}|{x[1]}|{x[2]}", "ai": x in pred, "gold": x in raw_gold} for x in sorted(pred ^ raw_gold)]
         args.disagreements.parent.mkdir(parents=True, exist_ok=True)

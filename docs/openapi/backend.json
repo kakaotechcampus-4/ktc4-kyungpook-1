@@ -1542,6 +1542,11 @@
             "$ref" : "#/components/schemas/CardCandidateResponse",
             "description" : "카드를 만든 후보이고, 직접 작성 카드는 null"
           },
+          "changeCount" : {
+            "description" : "첫 버전 뒤로 글이 바뀐 횟수이고, 확정하며 남긴 같은 글의 사본은 세지 않는다",
+            "format" : "int32",
+            "type" : "integer"
+          },
           "confirmedAt" : {
             "format" : "date-time",
             "type" : "string"

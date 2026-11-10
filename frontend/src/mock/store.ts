@@ -351,10 +351,10 @@ export function cardView(c: Any) {
   const { versions, userId, activityId, ...rest } = c;
   const { _metadata, _confirmed, ...version } = v;
   settleThemes(c); rest.themes = c.themes ?? []; delete rest.themesByUser; delete rest.themesDueAt; // 문항 유형(#564): 목 안의 표시는 내보내지 않는다
-  void versions;
   void userId; void activityId; void _metadata; void _confirmed;
+  const changeCount = versions.filter((x: Any) => x.versionNo > 1 && !x._confirmed).length; // 실서버처럼 확정하며 남긴 사본은 세지 않는다
   // draftSteps: 실서버처럼 AI 초안 기록이 없는 카드(직접 쓴 카드·새로 만든 카드)는 빈 배열
-  return clone({ ...rest, areas: c.areas ?? [], techs: c.techs ?? [], draftSteps: c.draftSteps ?? [], activity: activityRef(c), version });
+  return clone({ ...rest, areas: c.areas ?? [], techs: c.techs ?? [], draftSteps: c.draftSteps ?? [], changeCount, activity: activityRef(c), version });
 }
 /**
  * 목록용 STAR 상태 — 현재 버전의 실제 칸 내용으로 판정한다.

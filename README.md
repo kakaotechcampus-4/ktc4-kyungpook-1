@@ -192,24 +192,20 @@ LLM 은 경험 묶기 · STAR 초안 · 되묻기 · 공고 조건 추출 · 자
 
 <table>
   <tr>
-    <th>역할</th>
-    <td align="center" width="200"><strong>팀장</strong></td>
-    <td align="center" width="200"><strong>BE 리드</strong></td>
-  </tr>
-  <tr>
-    <th>사진</th>
     <td align="center" width="200"><a href="https://github.com/taehun0208"><img src="https://github.com/taehun0208.png?size=120" width="96" alt="곽태훈" /></a></td>
     <td align="center" width="200"><a href="https://github.com/Grow22"><img src="https://github.com/Grow22.png?size=120" width="96" alt="장성준" /></a></td>
   </tr>
   <tr>
-    <th>이름</th>
-    <td align="center" width="200">곽태훈</td>
-    <td align="center" width="200">장성준</td>
+    <td align="center" width="200"><strong>곽태훈</strong></td>
+    <td align="center" width="200"><strong>장성준</strong></td>
   </tr>
   <tr>
-    <th>GitHub</th>
-    <td align="center" width="200"><a href="https://github.com/taehun0208">@taehun0208</a></td>
-    <td align="center" width="200"><a href="https://github.com/Grow22">@Grow22</a></td>
+    <td align="center" width="200"><img src="https://img.shields.io/badge/%ED%8C%80%EC%9E%A5-3F6C8E?style=flat-square" alt="팀장" /></td>
+    <td align="center" width="200"><img src="https://img.shields.io/badge/BE_%EB%A6%AC%EB%93%9C-3F6C8E?style=flat-square" alt="BE 리드" /></td>
+  </tr>
+  <tr>
+    <td align="center" width="200"><a href="https://github.com/taehun0208"><img src="https://img.shields.io/badge/taehun0208-24292F?style=flat-square&logo=github&logoColor=white" alt="taehun0208" /></a></td>
+    <td align="center" width="200"><a href="https://github.com/Grow22"><img src="https://img.shields.io/badge/Grow22-24292F?style=flat-square&logo=github&logoColor=white" alt="Grow22" /></a></td>
   </tr>
 </table>
 
@@ -217,24 +213,20 @@ LLM 은 경험 묶기 · STAR 초안 · 되묻기 · 공고 조건 추출 · 자
 
 <table>
   <tr>
-    <th>역할</th>
-    <td align="center" width="200"><strong>FE 리드</strong></td>
-    <td align="center" width="200"><strong>플래너</strong></td>
-  </tr>
-  <tr>
-    <th>사진</th>
     <td align="center" width="200"><a href="https://github.com/TaeHuiKKIM"><img src="https://github.com/TaeHuiKKIM.png?size=120" width="96" alt="김태희" /></a></td>
     <td align="center" width="200"><a href="https://github.com/ganggang-0605"><img src="https://github.com/ganggang-0605.png?size=120" width="96" alt="김경무" /></a></td>
   </tr>
   <tr>
-    <th>이름</th>
-    <td align="center" width="200">김태희</td>
-    <td align="center" width="200">김경무</td>
+    <td align="center" width="200"><strong>김태희</strong></td>
+    <td align="center" width="200"><strong>김경무</strong></td>
   </tr>
   <tr>
-    <th>GitHub</th>
-    <td align="center" width="200"><a href="https://github.com/TaeHuiKKIM">@TaeHuiKKIM</a></td>
-    <td align="center" width="200"><a href="https://github.com/ganggang-0605">@ganggang-0605</a></td>
+    <td align="center" width="200"><img src="https://img.shields.io/badge/FE_%EB%A6%AC%EB%93%9C-3F6C8E?style=flat-square" alt="FE 리드" /></td>
+    <td align="center" width="200"><img src="https://img.shields.io/badge/%ED%94%8C%EB%9E%98%EB%84%88-6B6B75?style=flat-square" alt="플래너" /></td>
+  </tr>
+  <tr>
+    <td align="center" width="200"><a href="https://github.com/TaeHuiKKIM"><img src="https://img.shields.io/badge/TaeHuiKKIM-24292F?style=flat-square&logo=github&logoColor=white" alt="TaeHuiKKIM" /></a></td>
+    <td align="center" width="200"><a href="https://github.com/ganggang-0605"><img src="https://img.shields.io/badge/ganggang--0605-24292F?style=flat-square&logo=github&logoColor=white" alt="ganggang-0605" /></a></td>
   </tr>
 </table>
 
@@ -242,24 +234,20 @@ LLM 은 경험 묶기 · STAR 초안 · 되묻기 · 공고 조건 추출 · 자
 
 <table>
   <tr>
-    <th>역할</th>
-    <td align="center" width="200"><strong>AI 리드</strong></td>
-    <td align="center" width="200"><strong>메이커</strong></td>
-  </tr>
-  <tr>
-    <th>사진</th>
     <td align="center" width="200"><a href="https://github.com/hyukjin0324"><img src="https://github.com/hyukjin0324.png?size=120" width="96" alt="권혁진" /></a></td>
     <td align="center" width="200"><a href="https://github.com/chxisoei"><img src="https://github.com/chxisoei.png?size=120" width="96" alt="최민서" /></a></td>
   </tr>
   <tr>
-    <th>이름</th>
-    <td align="center" width="200">권혁진</td>
-    <td align="center" width="200">최민서</td>
+    <td align="center" width="200"><strong>권혁진</strong></td>
+    <td align="center" width="200"><strong>최민서</strong></td>
   </tr>
   <tr>
-    <th>GitHub</th>
-    <td align="center" width="200"><a href="https://github.com/hyukjin0324">@hyukjin0324</a></td>
-    <td align="center" width="200"><a href="https://github.com/chxisoei">@chxisoei</a></td>
+    <td align="center" width="200"><img src="https://img.shields.io/badge/AI_%EB%A6%AC%EB%93%9C-3F6C8E?style=flat-square" alt="AI 리드" /></td>
+    <td align="center" width="200"><img src="https://img.shields.io/badge/%EB%A9%94%EC%9D%B4%EC%BB%A4-6B6B75?style=flat-square" alt="메이커" /></td>
+  </tr>
+  <tr>
+    <td align="center" width="200"><a href="https://github.com/hyukjin0324"><img src="https://img.shields.io/badge/hyukjin0324-24292F?style=flat-square&logo=github&logoColor=white" alt="hyukjin0324" /></a></td>
+    <td align="center" width="200"><a href="https://github.com/chxisoei"><img src="https://img.shields.io/badge/chxisoei-24292F?style=flat-square&logo=github&logoColor=white" alt="chxisoei" /></a></td>
   </tr>
 </table>
 

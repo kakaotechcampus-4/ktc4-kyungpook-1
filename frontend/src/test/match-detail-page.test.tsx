@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { MatchDetailPage } from '@/features/match/MatchDetailPage';
 import { pickLocation, sectionTally, techOverlap } from '@/features/match/model';
 import { matchingApi, MatchDetail } from '@/api/matching';
+import { coverLetterApi, type CoverLetterSummary } from '@/api/coverLetters';
 import { keys } from '@/api/keys';
 import type { CardSummary } from '@/api/schemas';
 import { handle } from '@/mock/router';
@@ -31,14 +32,32 @@ const summary = () => within(screen.getByRole('complementary', { name: '공고 �
 const fact = (term: string) => summary().getByText(term).nextElementSibling?.textContent;
 const demoCards = () => (handle('GET', '/cards', new URLSearchParams(), {}, true).data as CardSummary[]).filter((c) => c.status === 'CONFIRMED');
 
-it('맞춰 본 뒤에만 이 공고로 자소서 쓰기가 있고, 공고 id 를 postingId 로 넘긴다', async () => {
+it('J1 이 공고로 자소서 쓰기는 맞춰 보는 중에도, 맞춰 본 뒤에도 맨 앞의 진한 버튼이고 공고 id 를 postingId 로 넘긴다', async () => {
   mount({ ...base, id: 'a b/1' });
   const link = await screen.findByRole('link', { name: '이 공고로 자소서 쓰기' });
   expect(link).toHaveAttribute('href', '/cover-letters/new?postingId=a%20b%2F1');
+  expect(link).toHaveClass('btn--primary');
   cleanup();
   mount({ ...base, needsJudgement: true, summary: null });
-  await screen.findByRole('button', { name: '이 공고와 맞춰 보기' });
-  expect(screen.queryByRole('link', { name: '이 공고로 자소서 쓰기' })).not.toBeInTheDocument();
+  const judge = await screen.findByRole('button', { name: '이 공고와 맞춰 보기' });
+  const during = screen.getByRole('link', { name: '이 공고로 자소서 쓰기' });
+  expect(during).toHaveClass('btn--primary');
+  expect(judge).toHaveClass('btn--secondary');
+  expect(during.compareDocumentPosition(judge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it('J1 이 공고로 쓰던 자소서가 있으면 초안 보기나 이어 쓰기로 그 자소서에 잇는다', async () => {
+  const letter = (id: string, stage: CoverLetterSummary['stage']): CoverLetterSummary => ({
+    id, stage, jobRole: '백엔드', posting: { id: base.id, company: base.company, title: base.role } as CoverLetterSummary['posting'],
+    questionCount: 1, firstQuestion: '지원 동기', createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-02T00:00:00Z',
+  });
+  vi.spyOn(coverLetterApi, 'list').mockResolvedValue([letter('cl_1', 'DRAFTED')]);
+  mount(base);
+  expect(await screen.findByRole('link', { name: '초안 보기' })).toHaveAttribute('href', '/cover-letters/cl_1');
+  cleanup();
+  vi.spyOn(coverLetterApi, 'list').mockResolvedValue([letter('cl_2', 'ASKED')]);
+  mount(base);
+  expect(await screen.findByRole('link', { name: '이어 쓰기' })).toHaveAttribute('href', '/cover-letters/cl_2');
 });
 
 it('한 원문 줄이 여러 조건으로 나뉘면 원문은 한 번만 보이고 다음 조건은 다듬은 글로 보인다', async () => {
@@ -119,11 +138,11 @@ it('머리글의 기술 칩은 맞춰 본 뒤 카드 목록이 있으면 겹친 
   expect(plain.getByText('Java').closest('li')).not.toHaveClass('is-on');
 });
 
-it('확정 카드가 0장이면 서버가 모자람으로 줘도 ✕·집계·자소서 버튼 없이 원문과 맞춰 보기 버튼만 보인다', async () => {
+it('확정 카드가 0장이면 서버가 모자람으로 줘도 ✕·집계 없이 원문과 맞춰 보기 버튼, 자소서 쓰기 버튼만 보인다', async () => {
   const drafts = demoCards().map((card) => ({ ...card, status: 'DRAFT' as const }));
   mount(base, (client) => client.setQueryData(keys.cards, drafts));
   await screen.findByRole('button', { name: '이 공고와 맞춰 보기' });
-  expect(screen.queryByRole('link', { name: '이 공고로 자소서 쓰기' })).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '이 공고로 자소서 쓰기' })).toBeInTheDocument();
   expect(document.querySelectorAll('.posting-conditions .cond-tile')).toHaveLength(0);
   expect(summary().queryByText('자격 요건')).not.toBeInTheDocument();
   expect(screen.getByText(base.conditions.find((c) => c.status === 'NOT_MET')!.quote)).toBeInTheDocument();

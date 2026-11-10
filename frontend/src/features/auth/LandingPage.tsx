@@ -43,7 +43,7 @@ export function LandingPage() {
           <h1 className="landing__h1">커밋과 PR을<br /><span>자소서 경험으로</span></h1>
           <p className="landing__lead">
             레포를 고르면 내가 한 일을 찾아 상황, 과제, 행동, 결과로 정리해요.
-            비어 있는 내용은 질문에 답하며 채우고, 자소서와 면접에 활용할 수 있어요.
+            비어 있는 내용은 질문에 답하며 채우고, 자소서에 쓰고 면접 답변 재료로 쓸 수 있어요.
           </p>
 
           <div className="landing__actions">

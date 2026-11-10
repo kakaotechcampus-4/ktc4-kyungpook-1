@@ -10,15 +10,17 @@ import { assistantSupported } from '@/api/capabilities';
 import { errorView } from '@/api/errorView';
 import { Bubble, ChatFrom, Composer } from '@/components/chat/Chat';
 import { scrollPageTo } from '@/components/chat/chatScroll';
-import { Breadcrumb, ButtonLink, Skeleton } from '@/components/ui';
+import { Breadcrumb, Button, ButtonLink, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
-import { composerHint, matchResult, postingMeta, questionsGuide, questionsGuideText, resultLink, stepLine } from './askCopy';
+import { composerHint, coverLetterToOpen, failedNext, firstUserText, matchResult, postingMeta, questionsGuide, questionsGuideText, resultLink, stepLine } from './askCopy';
 import './ask.css';
 
 const Dots = () => <span className="ai-wait__dots" aria-hidden><i /><i /><i /></span>;
 /** 앞 대화로 남겨 두는 실행의 최대 개수 */
 const EARLIER_MAX = 5;
+/** 자소서를 막 시작한 뒤 열기까지 기다리는 시간 — 걸음 줄을 읽고 멈출 틈이다 */
+const OPEN_DELAY_MS = 1500;
 const START_HINT = '예: 토스 백엔드 공고 찾아서 나랑 맞는지 봐 줘';
 /** 처음 화면의 예시 — 누르면 입력 칸에 그대로 들어가서, 회사 이름만 고쳐 보낼 수 있다 */
 const EXAMPLES = [
@@ -75,6 +77,20 @@ function AskChat() {
   const data = runId ? run.data : undefined;
   const items = data?.items ?? [];
   const state = data?.state;
+  // 이 화면에서 도는 걸 지켜보다 끝났을 때만 자소서를 연다 — 나중에 다시 연 끝난 실행은 그대로 둔다
+  const prevState = useRef<string | undefined>(undefined);
+  const [watched, setWatched] = useState(false);
+  const [stay, setStay] = useState(false);
+  useEffect(() => {
+    if (prevState.current === 'RUNNING' && state === 'DONE') setWatched(true);
+    prevState.current = state;
+  }, [state]);
+  const openTo = watched && !stay && state === 'DONE' ? coverLetterToOpen(items) : null;
+  useEffect(() => {
+    if (!openTo) return;
+    const timer = setTimeout(() => nav(openTo), OPEN_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [openTo, nav]);
   const last = items.at(-1);
   const pending = start.isPending || say.isPending;
   // 새로 온 말의 첫 줄이 위에 보이게 맞추고, 다 들어가는 짧은 말이면 맨 아래를 보인다(아래 입력 줄이 가리지 않는 만큼만 본다)
@@ -160,8 +176,14 @@ function AskChat() {
             {choices.map((option) => <button key={option} type="button" disabled={pending} onClick={() => send(option)}>{option}</button>)}
           </div>
         )}
-        {state === 'DONE' && <Outcome items={items} />}
+        {openTo ? (
+          <div className="ask-result__actions">
+            <p>자소서를 열고 있어요</p>
+            <Button variant="secondary" size="sm" onClick={() => setStay(true)}>여기 머무르기</Button>
+          </div>
+        ) : state === 'DONE' && <Outcome items={items} />}
         {failed && <p className="chat-fail" role="alert">{failed}</p>}
+        {state === 'FAILED' && <RetryButton items={items} />}
       </div>
       <p className="sr-only" aria-live="polite">{spoken}</p>
       <div className="ask__dock" ref={dock}>
@@ -207,8 +229,11 @@ function Outcome({ items }: { items: AssistantItem[] }) {
   const link = resultLink(items);
   const matched = link ? null : matchResult(items);
   const titleId = useId();
+  const next = failedNext(items);
   return (
     <>
+      {next === 'RETRY' && <RetryButton items={items} />}
+      {next && next !== 'RETRY' && <ButtonLink to={next.to} variant="primary" className="ask-go">{next.label}</ButtonLink>}
       {matched && (
         <section className="ask-guide" aria-labelledby={titleId}>
           <h2 id={titleId}>{matched.posting.company}, {matched.posting.title}</h2>
@@ -222,6 +247,14 @@ function Outcome({ items }: { items: AssistantItem[] }) {
       {link && <ButtonLink to={link.to} variant="primary" className="ask-go">{link.label}</ButtonLink>}
     </>
   );
+}
+
+/** 이 실행에서 처음 적은 말로 새 실행을 만든다 — 홈 입력 칸과 같은 길(/ask?q=)이다 */
+function RetryButton({ items }: { items: AssistantItem[] }) {
+  const nav = useNavigate();
+  const said = firstUserText(items);
+  if (!said) return null;
+  return <Button variant="primary" className="ask-go" onClick={() => nav(`/ask?q=${encodeURIComponent(said)}`)}>다시 하기</Button>;
 }
 
 /** 앞 실행 하나 — 읽는 동안과 읽지 못했을 때는 아무것도 그리지 않는다 */

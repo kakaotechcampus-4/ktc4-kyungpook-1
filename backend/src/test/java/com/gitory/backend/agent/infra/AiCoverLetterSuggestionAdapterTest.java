@@ -22,6 +22,7 @@ import tools.jackson.databind.node.ObjectNode;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,6 +46,7 @@ class AiCoverLetterSuggestionAdapterTest {
     private volatile String responseBody;
     private volatile String requestPath;
     private volatile String requestBody;
+    private volatile long responseDelayMs;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -54,6 +56,11 @@ class AiCoverLetterSuggestionAdapterTest {
         server.createContext("/", exchange -> {
             requestPath = exchange.getRequestURI().getPath();
             requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            try {
+                Thread.sleep(responseDelayMs);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
             byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(responseStatus, body.length);
@@ -136,6 +143,24 @@ class AiCoverLetterSuggestionAdapterTest {
                 .isInstanceOfSatisfying(AgentUnavailableException.class, failure -> {
                     assertThat(failure.isRetryable()).isFalse();
                     assertThat(failure.isInvalidResponse()).isTrue();
+                });
+
+    }
+
+    @Test
+    @DisplayName("응답이 제안 대기 시간을 넘기면 다시 시도할 수 있는 실패로 끝난다 — 공통 대기 시간이 길어도 제안 값만 따른다")
+    void timesOutBySuggestReadTimeoutOnly() {
+
+        responseDelayMs = 600;
+        AiClientProperties properties = AiTestProperties.defaults()
+                .baseUrl(URI.create("http://127.0.0.1:" + server.getAddress().getPort()))
+                .suggestReadTimeout(Duration.ofMillis(100)).build();
+        AiCoverLetterSuggestionAdapter adapter = new AiCoverLetterSuggestionAdapter(new AiHttpClient(properties, mapper), properties);
+
+        assertThatThrownBy(() -> adapter.suggest(REQUEST))
+                .isInstanceOfSatisfying(AgentUnavailableException.class, failure -> {
+                    assertThat(failure.isRetryable()).isTrue();
+                    assertThat(failure.isInvalidResponse()).isFalse();
                 });
 
     }

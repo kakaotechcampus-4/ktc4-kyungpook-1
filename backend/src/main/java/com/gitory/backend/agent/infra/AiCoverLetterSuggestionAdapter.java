@@ -39,7 +39,7 @@ public class AiCoverLetterSuggestionAdapter implements CoverLetterSuggestionPort
 
         JsonNode data;
         try {
-            data = ai.post(PATH, request, properties.readTimeout());
+            data = ai.post(PATH, request, properties.suggestReadTimeout());
         } catch (AiClientException failure) {
             throw unavailable(failure);
         }

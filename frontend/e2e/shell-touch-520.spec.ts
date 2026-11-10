@@ -52,8 +52,10 @@ test('데스크톱 사이드바와 레포 화면의 이름이 같다 (레포)', 
 });
 
 for (const width of [320, 390]) {
-  test(`${width}px 일부만 정리한 결과의 버튼은 한 줄이고 가로로 넘치지 않는다`, async ({ page }) => {
+  test(`${width}px 일부만 정리한 결과의 안내 줄과 아래 줄이 가로로 넘치지 않는다`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
+    // 일부만 정리한 화면은 1초 안에 카드로 넘어가므로 가짜 시계로 멈춰 두고 잰다
+    await page.clock.install();
     await loginAsDemo(page); await page.goto('/');
     // 목의 r_ratelimit 은 요청 한도에 걸려 일부만 끝난다(이어 읽기까지 기다려야 한다)
     const jobId = await page.evaluate(async () => {
@@ -61,14 +63,16 @@ for (const width of [320, 390]) {
       return (await response.json()).data.jobId as string;
     });
     await page.goto(`/repos/r_ratelimit/run?job=${jobId}`);
-    await expect(page.getByRole('heading', { name: '읽은 데까지 정리했어요' })).toBeVisible({ timeout: 30_000 });
-    const button = page.locator('.partial-card').getByRole('button', { name: /뒤 이어 읽기$/ });
-    await expect(button).toBeVisible();
-    const box = (await button.boundingBox())!;
-    expect(box.height).toBeLessThanOrEqual(48); // 네 줄로 쪼개지면 80px 을 넘는다
-    expect(box.height).toBeGreaterThanOrEqual(44);
-    const card = (await page.locator('.partial-card').boundingBox())!;
-    expect(box.x).toBeGreaterThanOrEqual(card.x); expect(box.x + box.width).toBeLessThanOrEqual(card.x + card.width);
+    const heading = page.getByRole('heading', { name: '읽은 데까지 정리했어요' });
+    for (let i = 0; i < 150 && !(await heading.isVisible()); i += 1) await page.clock.runFor(200); // 끝난 화면은 1초 남짓이라 잘게 돌린다
+    await expect(heading).toBeVisible();
+    const note = page.locator('.run-capnote'); const foot = page.locator('.run-foot');
+    await expect(note).toBeVisible();
+    await expect(foot).toBeVisible();
+    const box = (await note.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(width);
+    const row = (await foot.boundingBox())!;
+    expect(row.x + row.width).toBeLessThanOrEqual(width);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
     await expect(page).toHaveTitle(/일부만 정리 · Gitory$/);
   });

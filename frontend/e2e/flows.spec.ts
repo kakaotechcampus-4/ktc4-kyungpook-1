@@ -12,20 +12,21 @@ test('E-1 수집 실패 — 정리 시작 자체를 막고 다음 행동 3개를
   await expect(page.getByRole('button', { name: '다시 시도' }).first()).toBeEnabled(); // retryable: true
 });
 
-test('E-2 요청 한도 — partial 을 명시하고 읽은 범위의 후보를 보여준다', async ({ page }) => {
+test('E-2 요청 한도 — partial 을 명시하고 이어 읽기를 안내한 뒤 같은 길로 카드까지 간다', async ({ page }) => {
+  // 일부만 정리한 화면은 1초 안에 카드로 넘어가므로 가짜 시계로 멈춰 두고 본다
+  await page.clock.install();
   await login(page);
   await page.goto('/repos?select=r_ratelimit&disclose=1');
   await page.getByRole('button', { name: '정리 시작' }).click();
-  await expect(page.getByRole('heading', { name: '읽은 데까지 정리했어요' })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled(); // GITHUB_RATE_LIMITED
-  await page.getByRole('button', { name: '읽은 범위의 후보 보기' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: / 에서 찾은 일$/ })).toBeVisible();
-  await expect(page.getByText('읽은 기록에서 찾은 후보예요')).toBeVisible();
-  await page.getByRole('button', { name: '정리 기준' }).click();
-  await expect(page.getByRole('button', { name: '다시 정리하기' })).toBeDisabled();
-  await page.getByRole('dialog').getByRole('button', { name: '닫기', exact: true }).last().click();
-  await page.getByRole('link', { name: '작업 상태 보기' }).click();
-  await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled();
+  const heading = page.getByRole('heading', { name: '읽은 데까지 정리했어요' });
+  for (let i = 0; i < 150 && !(await heading.isVisible()); i += 1) await page.clock.runFor(200); // 끝난 화면은 1초 남짓이라 잘게 돌린다
+  await expect(heading).toBeVisible();
+  const note = page.locator('.run-capnote');
+  await expect(note).toBeVisible();
+  await expect(note).toContainText('GitHub 요청 한도에 걸렸어요'); // GITHUB_RATE_LIMITED
+  await expect(note.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled();
+  for (let i = 0; i < 10 && !/\/cards\//.test(page.url()); i += 1) await page.clock.runFor(1_000);
+  await expect(page).toHaveURL(/\/cards\//); // 일부만 읽어도 같은 길로 카드 초안까지 간다
 });
 
 test('되묻기 — 보기에서 고른 답도 읽어서 카드 문장으로 칸이 채워진다', async ({ page }) => {

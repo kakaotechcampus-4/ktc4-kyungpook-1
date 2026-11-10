@@ -184,11 +184,12 @@ describe('분석 화면 — 수집 상한에 걸린 부분 결과', () => {
     });
   };
 
-  it('상한 때문이라는 이유를 말하고, 읽은 범위의 후보로 이어 준다', () => {
+  it('상한 때문이라는 이유를 말하고, 같은 길로 카드까지 이어 가며 직접 고르는 길을 남긴다', () => {
     capped(false);
     expect(screen.getByText(jobErrorTitle.COLLECTION_CAPPED)).toBeInTheDocument();
     expect(screen.getByText(new RegExp(jobErrorHint.COLLECTION_CAPPED))).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '읽은 범위의 후보 보기' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '후보 직접 고르기' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '읽은 범위의 후보 보기' })).not.toBeInTheDocument();
     expect(screen.queryByText('일부 기록만 정리했어요')).not.toBeInTheDocument();   // 이유를 모를 때의 문구가 아니다
   });
 
@@ -212,6 +213,6 @@ describe('분석 화면 — 수집 상한에 걸린 부분 결과', () => {
     });
     expect(screen.getByText('일부 기록만 정리했어요')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /이어 읽기/ })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '읽은 범위의 후보 보기' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '후보 직접 고르기' })).toBeInTheDocument();
   });
 });

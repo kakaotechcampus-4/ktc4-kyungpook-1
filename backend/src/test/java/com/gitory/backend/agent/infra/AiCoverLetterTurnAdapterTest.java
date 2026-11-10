@@ -1,6 +1,8 @@
 package com.gitory.backend.agent.infra;
 
 import com.gitory.backend.agent.port.AgentUnavailableException;
+import com.gitory.backend.agent.port.CoverLetterAppend;
+import com.gitory.backend.agent.port.CoverLetterAppendRequest;
 import com.gitory.backend.agent.port.CoverLetterDrafts;
 import com.gitory.backend.agent.port.CoverLetterFill;
 import com.gitory.backend.agent.port.CoverLetterFillRequest;
@@ -195,6 +197,31 @@ class AiCoverLetterTurnAdapterTest {
         assertThat(adapter().next(REPLY).answers()).containsExactly(
                 new CoverLetterTurnReply.Answer("ACTION", "로그를 같이 보며 원인을 좁혔다", true),
                 new CoverLetterTurnReply.Answer("RESULT", "배포가 빨라졌다", false));
+
+    }
+
+    @Test
+    @DisplayName("덧붙이기 API 에 지금 글과 새 카드를 snake_case 로 보내고, 되돌린 응답은 reverted 로 알린다")
+    void postsAppendRequestAndReadsReverted() {
+
+        ObjectNode data = validFill();
+        data.withArray("steps").addObject().put("seq", 2).put("actor", "CODE").put("kind", "REVERTED")
+                .put("question_id", 1);
+        responseBody = success(data);
+        CoverLetterAppendRequest request = new CoverLetterAppendRequest(7L, "백엔드 개발", null, List.of(), null, OTHERS,
+                new CoverLetterPolishRequest.Target(1, "협업 경험을 쓰세요", 700, null, CARD, CARD, List.of(),
+                        "배포를 함께 고쳤다.", List.of()), 11L);
+
+        CoverLetterAppend appended = new AiCoverLetterAppendAdapter(new AiHttpClient(AiTestProperties.defaults()
+                .baseUrl(URI.create("http://127.0.0.1:" + server.getAddress().getPort())).build(), mapper))
+                .append(request);
+
+        JsonNode sent = mapper.readTree(requestBody);
+        assertThat(requestPath).isEqualTo("/internal/cover-letter-append");
+        assertThat(sent.path("added_card_id").asLong()).isEqualTo(11L);
+        assertThat(sent.path("target").path("current_text").asString()).isEqualTo("배포를 함께 고쳤다.");
+        assertThat(sent.path("target").path("supporting_card").path("card_id").asLong()).isEqualTo(11L);
+        assertThat(appended.reverted()).isTrue();
 
     }
 

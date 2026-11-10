@@ -147,7 +147,7 @@ public class CoverLetterPolishService {
     }
 
     // 사용자가 확인한 추론은 표시가 이미 지워져, 남은 INFERRED 표시가 아직 확인하지 않은 짐작 문장이다
-    private static List<Integer> inferredSeqs(CoverLetterQuestion question) {
+    static List<Integer> inferredSeqs(CoverLetterQuestion question) {
 
         return question.getMarks().stream()
                 .filter(mark -> INFERRED.equals(mark.code()))

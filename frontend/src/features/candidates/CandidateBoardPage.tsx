@@ -96,7 +96,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
     const { cardIds, jobId } = await create.mutateAsync(chosen);
     track('candidates_confirmed', { repoId, count: chosen.length, jobId });
     setSelected(new Set());
-    nav(cardIds.length ? `/cards/${encodeURIComponent(cardIds[0])}` : `/cards/repo/${encodeURIComponent(repoId)}`, { state: cardIds.length ? { cardOrder: cardIds } : undefined });
+    nav(cardIds.length ? `/cards/${encodeURIComponent(cardIds[0])}` : `/cards/repo/${encodeURIComponent(repoId)}`, { state: cardIds.length ? { cardOrder: cardIds, draftJobId: jobId } : undefined });
     });
   };
 

@@ -42,14 +42,14 @@ const typedOf = (field: string) => document.querySelector(`.live-slot[data-field
 const refetchCard = () => act(async () => { await client.invalidateQueries({ queryKey: keys.card('card_01') }); });
 const generationScreen = () => screen.queryByRole('heading', { name: '카드 초안을 쓰고 있어요' });
 
-function mount() {
+function mount(state?: Record<string, unknown>) {
   vi.spyOn(endpoints, 'card').mockImplementation(async (id: string) => id === 'card_01' ? serverCard : Card.parse(raw(id)));
   vi.spyOn(endpoints, 'job').mockImplementation(async () => serverJob);
   vi.spyOn(endpoints, 'cards').mockResolvedValue([]);
   client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const router = createMemoryRouter([
     { path: '/cards/:cardId', element: <CardPage /> }, { path: '/cards/repo/:repoId', element: <p>레포 카드 폴더</p> }, { path: '/cards/repo/:repoId/match', element: <p>기업 고르는 화면</p> },
-  ], { initialEntries: ['/cards/card_01'] });
+  ], { initialEntries: [{ pathname: '/cards/card_01', state }] });
   render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
   return router;
 }
@@ -255,6 +255,17 @@ describe('#617 초안 생성 중 화면의 카드 쓰기', () => {
     await pass(100);
     serverCard = finished();
     serverJob = job('SUCCEEDED', [draft('a', 'DONE', four(40)), draft('b', 'DONE', four(40))], { result: { repoId: 'r_auth', cardIds: ['card_01', 'card_02'] } });
+    await pass(1100);
+
+    expect(screen.getByText('기업 고르는 화면')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/cards/repo/${encodeURIComponent(serverCard.repo!.id)}/match`);
+  });
+
+  it('넘겨받은 초안이 이 화면이 뜨기 전에 이미 다 써져 있어도 기업 고르는 화면으로 간다 (#989)', async () => {
+    stubReducedMotion(true);
+    serverCard = finished();
+    serverJob = job('SUCCEEDED', [draft('a', 'DONE', four(40)), draft('b', 'DONE', four(40))], { result: { repoId: 'r_auth', cardIds: ['card_01', 'card_02'] } });
+    const router = mount({ cardOrder: ['card_01', 'card_02'], draftJobId: 'job_1' });
     await pass(1100);
 
     expect(screen.getByText('기업 고르는 화면')).toBeInTheDocument();

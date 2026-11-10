@@ -41,10 +41,9 @@ public class DraftSaveService {
         Card card = ownership.lockOwned(publicId, userId, AuditAction.EDIT_CARD);
         Map<StarField, String> sent = checkedTexts(texts);
 
-        skipOpenTurnsOfFilledSlots(card.getId(), sent);
-
         CardVersion current = versions.findByCardIdAndVersionNo(card.getId(), card.getCurrentVersion()).orElseThrow();
         VersionSlots currentSlots = reader.read(card.getId(), current.getVersionNo());
+        skipOpenTurnsOfChangedSlots(card.getId(), currentSlots, sent);
 
         // 저장이 실패한 뒤 화면이 같은 글을 다시 보내도, 덮어쓸 수 없는 버전 위에 같은 내용의 새 버전이 생기지 않게 한다
         if (sameTexts(currentSlots, sent)) {
@@ -63,11 +62,12 @@ public class DraftSaveService {
 
     }
 
-    // 손으로 채운 칸을 묻는 질문이 열려 있으면 이미 답한 칸을 다시 묻지 않도록 넘긴 것으로 닫는다
-    private void skipOpenTurnsOfFilledSlots(Long cardId, Map<StarField, String> sent) {
+    // 저장은 네 칸을 늘 다 보내므로, 글이 있는 칸이 아니라 이번에 손으로 바꾼 칸의 열린 질문만 넘긴 것으로 닫는다
+    private void skipOpenTurnsOfChangedSlots(Long cardId, VersionSlots currentSlots, Map<StarField, String> sent) {
 
         for (InterviewTurn turn : turns.findByCardIdOrderBySeqAsc(cardId)) {
-            if (!turn.isClosed() && sent.get(turn.getStarSlot()) != null) {
+            String text = sent.get(turn.getStarSlot());
+            if (!turn.isClosed() && text != null && !text.equals(currentSlots.textOf(turn.getStarSlot()))) {
                 turn.skip();
             }
         }

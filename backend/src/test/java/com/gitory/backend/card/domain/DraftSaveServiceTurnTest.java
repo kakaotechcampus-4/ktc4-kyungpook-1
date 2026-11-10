@@ -68,4 +68,26 @@ class DraftSaveServiceTurnTest {
         assertThat(asksS.isClosed()).isFalse();
 
     }
+
+    @Test
+    @DisplayName("저장이 네 칸을 다 보내도, 지금 글과 같은 칸의 열린 질문은 그대로 두고 바뀐 칸의 질문만 닫는다")
+    void keepsOpenQuestionOfUnchangedSlot() {
+
+        when(reader.read(CARD_ID, (short) 1)).thenReturn(new VersionSlots((short) 1, Map.of(
+                StarField.R, new SlotContent(StarField.R, "원래 결과 글", EvidenceType.USER_STATED, Confidence.HIGH, null, List.of()))));
+        InterviewTurn asksR = InterviewTurn.ask(CARD_ID, (short) 1, StarField.R, QuestionType.EVIDENCE_GAP, "결과 질문");
+        InterviewTurn asksS = InterviewTurn.ask(CARD_ID, (short) 2, StarField.S, QuestionType.EVIDENCE_GAP, "상황 질문");
+        when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(asksR, asksS));
+        Map<StarField, String> texts = new EnumMap<>(StarField.class);
+        texts.put(StarField.S, "새로 쓴 상황");
+        texts.put(StarField.T, null);
+        texts.put(StarField.A, null);
+        texts.put(StarField.R, "원래 결과 글");
+
+        service.save(publicId, USER_ID, texts);
+
+        assertThat(asksR.isClosed()).isFalse();
+        assertThat(asksS.getOutcome()).isEqualTo(TurnOutcome.SKIPPED);
+
+    }
 }

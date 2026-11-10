@@ -70,22 +70,22 @@ describe('레포 목록 세 묶음 (#778)', () => {
     expect(screen.getByRole('link', { name: '다시 정리' })).toHaveAttribute('href', '/repos?select=r%20a%2Fb&disclose=1');
   });
 
-  it('다시 정리를 누르면 그 레포의 읽는 범위 확인 창이 열리고 전에 정리한 레포라는 안내가 보인다', () => {
+  it('다시 정리를 누르면 그 레포의 새 기록만 읽는 창이 열린다', () => {
     mount('/repos');
     const row = screen.getByText('free-tier-sleep').closest('li')!;
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     fireEvent.click(within(row).getByRole('link', { name: '다시 정리' }));
 
-    const dialog = screen.getByRole('dialog', { name: '읽는 범위 확인' });
+    const dialog = screen.getByRole('dialog', { name: '새 기록만 읽어요' });
     expect(within(dialog).getByText('TaeHuiKKIM / free-tier-sleep')).toBeInTheDocument();
-    expect(within(dialog).getByText('전에 정리한 레포예요')).toBeInTheDocument();
+    expect(within(dialog).queryByText('전에 정리한 레포예요')).not.toBeInTheDocument();
   });
 
   it('정리한 레포의 읽는 범위 창을 취소하면 고른 상태가 풀려 아래 막대가 다시 레포를 고르라고 한다', () => {
     mount('/repos?select=r_auth&disclose=1');
 
-    fireEvent.click(within(screen.getByRole('dialog', { name: '읽는 범위 확인' })).getByRole('button', { name: '취소' }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: '새 기록만 읽어요' })).getByRole('button', { name: '취소' }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getByText('정리할 레포를 고르면 다음으로 넘어가요')).toBeInTheDocument();

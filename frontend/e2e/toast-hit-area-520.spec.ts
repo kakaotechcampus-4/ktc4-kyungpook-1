@@ -11,7 +11,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await loginAsDemo(page);
     // 다른 화면에 있는 동안 정리가 끝나면 '보기'가 붙은 알림이 뜬다(후보 보드의 '제외' 실행 취소 알림은 #753 에서 없어졌다)
     await page.goto('/repos?select=r_web&disclose=1');
-    await page.getByRole('button', { name: '정리 시작' }).click();
+    await page.getByRole('button', { name: /정리 시작|다시 정리/ }).click();
     await expect(page).toHaveURL(/\/repos\/r_web\/run/);
     await page.locator('.crumb').getByRole('link', { name: '홈' }).click();
     const toast = page.locator('.toast').filter({ has: page.locator('.toast__action') });

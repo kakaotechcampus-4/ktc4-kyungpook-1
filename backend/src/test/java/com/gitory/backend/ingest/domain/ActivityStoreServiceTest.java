@@ -272,6 +272,35 @@ class ActivityStoreServiceTest {
     }
 
     @Test
+    @DisplayName("정리를 마치면 그때의 GitHub 커밋·PR 수를 남긴다")
+    void keepsGithubCountsWhenAnalysisFinishes() {
+
+        jdbc.update("UPDATE user_repository SET commit_count = 188, pr_count = 50, counted_at = now() WHERE id = ?",
+                userRepositoryId);
+
+        service.store(request(), activityOf(commit(SHA_1)));
+
+        Map<String, Object> row = jdbc.queryForMap(
+                "SELECT analyzed_commit_count, analyzed_pr_count FROM user_repository WHERE id = ?", userRepositoryId);
+        assertThat(row.get("analyzed_commit_count")).isEqualTo(188);
+        assertThat(row.get("analyzed_pr_count")).isEqualTo(50);
+
+    }
+
+    @Test
+    @DisplayName("아직 세지 않은 저장소는 그때의 GitHub 수를 남기지 않는다")
+    void keepsNoCountsForUncountedRepository() {
+
+        service.store(request(), activityOf(commit(SHA_1)));
+
+        Map<String, Object> row = jdbc.queryForMap(
+                "SELECT analyzed_commit_count, analyzed_pr_count FROM user_repository WHERE id = ?", userRepositoryId);
+        assertThat(row.get("analyzed_commit_count")).isNull();
+        assertThat(row.get("analyzed_pr_count")).isNull();
+
+    }
+
+    @Test
     @DisplayName("작성자 로그인이 없고 제외 사유가 있는 커밋도 받은 값 그대로 저장된다")
     void savesExcludedCommitWithoutLogin() {
 

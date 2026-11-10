@@ -39,6 +39,8 @@ public class ConnectedRepository {
     private int reviewedPrCount;
 
     private Instant countedAt;
+    private Integer analyzedCommitCount;
+    private Integer analyzedPrCount;
 
     private String githubDescription;
     private String readmeSummary;
@@ -48,9 +50,15 @@ public class ConnectedRepository {
 
     private String description;
 
+    // 다음 정리 창에서 같은 GitHub 수끼리 빼 새 기록을 세려고 끝난 시점의 수를 남긴다
+    // 아직 세지 않은 저장소는 비교할 수가 없어 비워 둔다
     public void markAnalyzed() {
 
         this.lastAnalyzedAt = Instant.now();
+        if (countedAt != null) {
+            this.analyzedCommitCount = commitCount;
+            this.analyzedPrCount = prCount;
+        }
 
     }
 

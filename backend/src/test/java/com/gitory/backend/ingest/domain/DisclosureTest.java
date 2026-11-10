@@ -85,6 +85,97 @@ class DisclosureTest {
 
     }
 
+    @Test
+    @DisplayName("분석한 적 없는 저장소는 새 커밋·새 PR·다시 분석 예상 시간이 모두 null 이다")
+    void hasNoReanalyzeFieldsBeforeFirstAnalysis() {
+
+        Disclosure disclosure = Disclosure.of(counted(188, 43, 30, 10), LIMITS, true);
+
+        assertThat(disclosure.newCommits()).isNull();
+        assertThat(disclosure.newPullRequests()).isNull();
+        assertThat(disclosure.reanalyzeSeconds()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("분석했고 새 기록이 없으면 새 커밋·PR 은 0 이고 예상 시간은 기본 5초에 커밋 목록 쪽수만 더하며 그룹화 시간은 넣지 않는다")
+    void reanalyzeWithNothingNewSkipsGrouping() {
+
+        Disclosure disclosure = Disclosure.of(analyzed(188, 43, 30, 10, 188, 30), LIMITS, true);
+
+        assertThat(disclosure.newCommits()).isZero();
+        assertThat(disclosure.newPullRequests()).isZero();
+        assertThat(disclosure.reanalyzeSeconds()).isEqualTo(6);
+
+    }
+
+    @Test
+    @DisplayName("새 커밋 5개와 새 PR 2개면 호출 수에 더하고 새 PR 수 × 2.7초와 기본 15초 그룹화 시간도 더한다")
+    void reanalyzeWithNewRecordsAddsCallsAndGrouping() {
+
+        Disclosure disclosure = Disclosure.of(analyzed(188, 43, 30, 10, 183, 28), LIMITS, true);
+
+        assertThat(disclosure.newCommits()).isEqualTo(5);
+        assertThat(disclosure.newPullRequests()).isEqualTo(2);
+        assertThat(disclosure.reanalyzeSeconds()).isEqualTo(31);
+        assertThat(Disclosure.of(analyzed(188, 43, 30, 10, 183, 28), LIMITS, false).reanalyzeSeconds()).isEqualTo(10);
+
+    }
+
+    @Test
+    @DisplayName("지난 정리 때 수가 지금 GitHub 수보다 많아도 새 커밋·PR 은 음수가 아니라 0 이다")
+    void newRecordsAreNeverNegative() {
+
+        Disclosure disclosure = Disclosure.of(analyzed(188, 43, 30, 10, 500, 90), LIMITS, true);
+
+        assertThat(disclosure.newCommits()).isZero();
+        assertThat(disclosure.newPullRequests()).isZero();
+
+    }
+
+    @Test
+    @DisplayName("지난 정리 때 남긴 GitHub 수와 지금 수의 차이로 새 커밋·PR 을 센다")
+    void countsNewRecordsFromGithubTotalsOfBothTimes() {
+
+        Disclosure disclosure = Disclosure.of(analyzed(1000, 120, 70, 15, 900, 62), LIMITS, false);
+
+        assertThat(disclosure.newCommits()).isEqualTo(100);
+        assertThat(disclosure.newPullRequests()).isEqualTo(8);
+
+    }
+
+    @Test
+    @DisplayName("커밋이 상한(1000)을 넘는 레포도 지금 수 - 그때 수로 센다")
+    void countsNewCommitsOfRepositoryOverCap() {
+
+        Disclosure disclosure = Disclosure.of(analyzed(1220, 120, 30, 10, 1200, 30), LIMITS, false);
+
+        assertThat(disclosure.newCommits()).isEqualTo(20);
+        assertThat(disclosure.newPullRequests()).isZero();
+
+    }
+
+    @Test
+    @DisplayName("지난 정리 때 수를 남기지 않았으면 새 기록 수와 다시 정리 시간은 null 이다")
+    void hasNoReanalyzeFieldsWithoutAnalyzedCounts() {
+
+        Disclosure disclosure = Disclosure.of(analyzed(188, 43, 30, 10, null, null), LIMITS, true);
+
+        assertThat(disclosure.newCommits()).isNull();
+        assertThat(disclosure.newPullRequests()).isNull();
+        assertThat(disclosure.reanalyzeSeconds()).isNull();
+
+    }
+
+    private static RepositorySummary analyzed(int commitCount, int ownCommitCount, int prCount, int ownPrCount,
+                                             Integer analyzedCommits, Integer analyzedPrs) {
+
+        return new RepositorySummary(1L, UUID.randomUUID(), "grow22", "gitory", "Java", null, null,
+                Instant.parse("2026-10-06T01:00:00Z"), Instant.parse("2026-10-07T01:00:00Z"), commitCount,
+                ownCommitCount, prCount, ownPrCount, 0, null, null, null, null, analyzedCommits, analyzedPrs);
+
+    }
+
     private static RepositorySummary counted(int commitCount, int ownCommitCount, int prCount, int ownPrCount) {
 
         return summary(Instant.parse("2026-10-05T01:00:00Z"), commitCount, ownCommitCount, prCount, ownPrCount);

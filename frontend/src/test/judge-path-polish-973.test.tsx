@@ -51,8 +51,9 @@ describe('/repos', () => {
 
   it('읽는 범위 확인 창이 열리면 아래 취소·다음 막대가 숨는다', () => {
     mountRepos('/repos?select=r_auth&disclose=1');
-    const dialog = screen.getByRole('dialog', { name: '읽는 범위 확인' });
-    expect(within(dialog).getByRole('button', { name: '정리 시작' })).toBeInTheDocument();
+    // 목의 r_auth 는 정리한 적이 있어 창 제목과 주 버튼이 다시 정리 모양이다(#974)
+    const dialog = screen.getByRole('dialog', { name: /읽는 범위 확인|새 기록만 읽어요/ });
+    expect(within(dialog).getByRole('button', { name: /정리 시작|다시 정리/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '다음' })).not.toBeInTheDocument();
     expect(screen.queryByText(/을 골랐어요$/)).not.toBeInTheDocument();
   });

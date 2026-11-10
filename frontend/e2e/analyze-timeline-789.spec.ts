@@ -6,7 +6,8 @@ const SHOTS = 'docs/screenshots/2026-11-04-analyze-timeline';
 /** 정리 진행 화면(#789) — 단계 4개를 점과 선으로 그리고 지금 단계만 펼친다. 목의 정리는 12초 동안 돈다 */
 async function startAnalysis(page: Page, repoId: string) {
   await page.goto(`/repos?select=${repoId}&disclose=1`);
-  await page.getByRole('button', { name: '정리 시작' }).click();
+  // 정리한 적 있는 레포(r_auth)는 다시 정리 창이라 버튼 이름이 다르다
+  await page.getByRole('button', { name: /정리 시작|다시 정리/ }).click();
   await expect(page.getByRole('heading', { name: '레포를 읽고 있어요' })).toBeVisible();
 }
 

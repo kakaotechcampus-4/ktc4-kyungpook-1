@@ -6,7 +6,7 @@ import { freshSeed, loginAsDemo as login } from './helpers';
 test('E-1 수집 실패 — 정리 시작 자체를 막고 다음 행동 3개를 준다', async ({ page }) => {
   await login(page);
   await page.goto('/repos?select=r_fail&disclose=1');
-  await page.getByRole('button', { name: '정리 시작' }).click();
+  await page.getByRole('button', { name: /정리 시작|다시 정리/ }).click();
   await expect(page.getByRole('heading', { name: 'GitHub에서 답이 오지 않았어요' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('읽은 데까지로는 후보를 만들지 않아요')).toBeVisible();
   await expect(page.getByRole('button', { name: '다시 시도' }).first()).toBeEnabled(); // retryable: true
@@ -17,7 +17,7 @@ test('E-2 요청 한도 — partial 을 명시하고 이어 읽기를 안내한 
   await page.clock.install();
   await login(page);
   await page.goto('/repos?select=r_ratelimit&disclose=1');
-  await page.getByRole('button', { name: '정리 시작' }).click();
+  await page.getByRole('button', { name: /정리 시작|다시 정리/ }).click();
   const heading = page.getByRole('heading', { name: '읽은 데까지 정리했어요' });
   for (let i = 0; i < 150 && !(await heading.isVisible()); i += 1) await page.clock.runFor(200); // 끝난 화면은 1초 남짓이라 잘게 돌린다
   await expect(heading).toBeVisible();
@@ -71,7 +71,7 @@ test('수정 — 쓰는 동안 서버에 저장되고 AI 초안은 작성 이력
 test('새로고침으로 job 이 빠져도 서버의 진행 중 작업으로 되돌아온다', async ({ page }) => {
   await login(page);
   await page.goto('/repos?select=r_auth&disclose=1');
-  await page.getByRole('button', { name: '정리 시작' }).click();
+  await page.getByRole('button', { name: /정리 시작|다시 정리/ }).click();
   await expect(page).toHaveURL(/\/run\?job=/);
   // 주소에서 job 을 떼고 다시 들어가도(= 새로고침으로 잃어도) 진행 화면으로 붙는다
   await page.goto('/repos/r_auth/run');

@@ -344,7 +344,7 @@ export function InterviewPage() {
                   ? <Button onClick={() => nav(`/cards/${cardId}?confirm=1`, { state: location.state })}>카드 검토하기</Button>
                   : <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드로 돌아가기</Button>}
                 {settledHere
-                  ? <Button variant="secondary" onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드 보기</Button>
+                  ? <Button variant="secondary" onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드로 돌아가기</Button>
                   : confirmed ? null
                   : <Button variant="secondary" onClick={() => nav(`/cards/${cardId}?mode=edit`, { state: location.state })}>직접 수정하기</Button>}
               </div>

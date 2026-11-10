@@ -2217,6 +2217,11 @@
             "format" : "date-time",
             "type" : "string"
           },
+          "emptyQuestionCount" : {
+            "description" : "초안이 있지만 빈칸 틀만 남아 글이 없는 문항 수",
+            "format" : "int32",
+            "type" : "integer"
+          },
           "firstQuestion" : {
             "type" : "string"
           },

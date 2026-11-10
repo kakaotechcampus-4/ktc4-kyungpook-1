@@ -146,7 +146,7 @@ class AssistantRunServiceTest {
         CoverLetterView.PostingRef posting = company == null ? null
                 : new CoverLetterView.PostingRef(UUID.randomUUID(), company, "공고");
 
-        return new CoverLetterSummary(UUID.randomUUID(), stage, jobRole, posting, questionCount, "첫 문항",
+        return new CoverLetterSummary(UUID.randomUUID(), stage, jobRole, posting, questionCount, 0, "첫 문항",
                 Instant.parse("2026-11-01T00:00:00Z"), Instant.parse("2026-11-01T00:00:00Z"));
 
     }

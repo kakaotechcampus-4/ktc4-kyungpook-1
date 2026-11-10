@@ -32,6 +32,7 @@ import {
   experienceLabel,
   pickLocation,
   sectionTally,
+  stripLineMark,
   techOverlap,
   type SectionTally,
 } from "./model";
@@ -96,7 +97,7 @@ const displayLines = (conditions: Condition[]) => {
     const quote = condition.quote.trim();
     const line = quote && !seen.has(quote) ? quote : condition.text;
     seen.add(quote);
-    return line;
+    return stripLineMark(line);
   });
 };
 

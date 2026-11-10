@@ -92,6 +92,8 @@ _MAX_TEXT_CHARS = next(
     if hasattr(meta, "max_length")
 )
 _EDGE_PUNCTUATION = "()[]{}<>,.:;!?\"'`·•-–—*"
+# 공고 원문이 줄머리에 두는 기호 — 인용은 원문 그대로 두고 조건 문장에서만 뗀다
+_LINE_MARK = re.compile(r"^[\s□■◻◼▪▫○●◦•·‣▶►\-–—*]+")
 _UPPER_BOUND = re.compile(r"미만|이하|\bunder\b|\bup to\b|\bless than\b", re.IGNORECASE)
 _LOWER_BOUND = re.compile(r"이상|\d\s*(?:년|years?)?\s*\+|or more|at least|more than", re.IGNORECASE)
 
@@ -258,6 +260,7 @@ class JobPostingDetailExtractor:
                 kind = criterion.criterion_type.value
                 dropped[kind] = dropped.get(kind, 0) + 1
                 continue
+            text = _strip_line_mark(text)
             key = (criterion.criterion_type.value, criterion.general_type, text.casefold())
             if key not in seen:
                 seen.add(key)
@@ -318,6 +321,11 @@ def _checked_experience(experience: ExtractedExperience, raw_text: str) -> Optio
     if years is None or re.search(rf"(?<!\d){years}(?!\d)", quote) is None:
         return None
     return {"level": ExperienceLevel.EXPERIENCED, "min_years": years, "source_quote": quote}
+
+
+def _strip_line_mark(text: str) -> str:
+    """줄머리 기호를 뗀 조건 문장이며, 기호뿐인 글은 그대로 둔다."""
+    return _LINE_MARK.sub("", text).strip() or text
 
 
 def _normalize(value: str) -> str:

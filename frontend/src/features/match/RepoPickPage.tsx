@@ -15,7 +15,7 @@ import {
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { CompanyMark } from './CompanyMark';
 import { RepoPickOrbit } from './RepoPickOrbit';
-import { deadlineOf } from './model';
+import { deadlineOf, stripLineMark } from './model';
 import { useRepoPickReplay } from './useRepoPickReplay';
 import './repoPick.css';
 
@@ -269,7 +269,7 @@ function lineText(line: LogLine): ReactNode {
     case 'checking': return <><b>{line.candidate.companyName}</b> 공고의 겹치는 조건 {line.candidate.overlap}개를 내 카드와 맞춰 보고 있어요</>;
     case 'hit': return <>
       <span className={cx('rp-tag', line.hit.type === 'REQUIRED' ? 'rp-tag--req' : 'rp-tag--pref')}>{line.hit.type === 'REQUIRED' ? '필수' : '우대'}</span>
-      <q>{line.hit.text}</q> 조건이 <span className="rp-card-name">{line.hit.cardTitle}</span> 카드와 맞아요
+      <q>{stripLineMark(line.hit.text)}</q> 조건이 <span className="rp-card-name">{line.hit.cardTitle}</span> 카드와 맞아요
     </>;
     case 'miss': return line.why === 'FAILED' ? `${line.candidate.companyName}, 응답을 받지 못해 건너뛰었어요`
       : line.why === 'NO_OVERLAP' ? `${line.candidate.companyName}, 겹치는 조건이 없어요`

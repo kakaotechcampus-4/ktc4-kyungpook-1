@@ -4,10 +4,7 @@ import {
   CAREER_TYPES, EDUCATION_LEVELS, EDUCATION_STATUSES, GPA_MAXES, LANGUAGE_TESTS, PROFILE_ISSUE_CODES, PROFILE_LIMITS, Profile, ProfileInput,
   emptyProfile, isProfileEmpty, issuesOf, serverIssues,
 } from '@/api/profile';
-import {
-  CAREER_TYPE_LABEL, GPA_MAX_OPTIONS, LEVEL_LABEL, STATUS_LABEL, TEST_LABEL, attachableErrors, blankCareer, blankEducation, blankLanguage, blankCertification, issueMessage, toDraft, toForm,
-  type ProfileForm,
-} from '@/lib/profileForm';
+import { attachableErrors, issueMessage, toDraft, toForm, type ProfileForm } from '@/lib/profileForm';
 import { minimalInput, sampleInput } from './profileHarness';
 
 afterEach(() => { vi.unstubAllEnvs(); });
@@ -231,34 +228,14 @@ describe('메일 알림 계약', () => {
   });
 });
 
-describe('form → body (toDraft) always sends all four lists', () => {
-  const emptyForm: ProfileForm = { educations: [], careers: [], languages: [], certifications: [], interests: [], email: '', mailOptIn: false };
+describe('form → body (toDraft) sends interests and mail, and the four unused lists as empty', () => {
+  const emptyForm: ProfileForm = { interests: [], email: '', mailOptIn: false };
   it('an empty form is four empty lists and an empty interest list, not a partial body', () => {
     expect(toDraft(emptyForm)).toEqual({ educations: [], careers: [], languages: [], certifications: [], interests: [], email: '', mailOptIn: false });
   });
-  it('maps the screen-only "still working" box to endMonth null, and a blank end month without it stays blank', () => {
-    const row = { ...blankCareer(), company: 'A', type: 'INTERN' as const, startMonth: '2024-01' };
-    expect(toDraft({ ...emptyForm, careers: [{ ...row, current: true }] }).careers[0].endMonth).toBeNull();
-    expect(toDraft({ ...emptyForm, careers: [{ ...row, current: false }] }).careers[0].endMonth).toBe('');
-  });
-  it('sends the test name only for OTHER, GPA as numbers, and blank optional boxes as null', () => {
-    const lang = { ...blankLanguage(), test: 'TOEIC' as const, testName: '숨은 글', score: '900' };
-    expect(toDraft({ ...emptyForm, languages: [lang] }).languages[0]).toEqual({ test: 'TOEIC', testName: null, score: '900', acquiredMonth: null });
-    expect(toDraft({ ...emptyForm, languages: [{ ...lang, test: 'OTHER' }] }).languages[0].testName).toBe('숨은 글');
-    const edu = { ...blankEducation(), gpa: ' 3.85 ', gpaMax: '4.5', major: '' };
-    expect(toDraft({ ...emptyForm, educations: [edu] }).educations[0]).toMatchObject({ gpa: 3.85, gpaMax: 4.5, major: null, startMonth: null });
-    expect(Number.isNaN(toDraft({ ...emptyForm, educations: [{ ...edu, gpa: '3,8' }] }).educations[0].gpa)).toBe(true);
-  });
-  it('round-trips a saved profile through the form', () => {
+  it('round-trips a saved profile through the form, dropping the four lists the screen no longer asks for', () => {
     const saved = Profile.parse({ ...sampleInput(), savedAt: '2026-10-30T03:00:00Z' });
-    expect(ProfileInput.parse(toDraft(toForm(saved)))).toEqual({ ...sampleInput(), email: '', mailOptIn: false });
-    expect(toForm(saved).careers[0].current).toBe(true);
-    expect(toForm(saved).educations[0].gpaMax).toBe('4.5');
-  });
-  it('keeps a whole-number maximum selectable (4 → "4", 100 → "100")', () => {
-    const values = GPA_MAX_OPTIONS.map((option) => option.value);
-    expect(values).toEqual(['', '4', '4.3', '4.5', '100']);
-    expect(GPA_MAX_OPTIONS.map((option) => option.label)).toEqual(['선택 안 함', '4.0', '4.3', '4.5', '100']);
+    expect(ProfileInput.parse(toDraft(toForm(saved)))).toEqual({ ...minimalInput(), interests: ['BACKEND', 'DEVOPS'], email: '', mailOptIn: false });
   });
 });
 
@@ -309,42 +286,21 @@ describe('server field errors (what we ask BE for; #552 sends only a Korean sent
   it('does not read the server message, even if it is in the details', () => {
     expect(serverIssues({ message: '학력 1번째 학교 이름이 비었어요', fields: [{ path: 'educations[0].school', code: 'REQUIRED', message: '서버 문구' }] })).toEqual([{ path: 'educations[0].school', code: 'REQUIRED' }]);
   });
-  it('attaches only to fields that exist on screen, in either path style', () => {
-    const form: ProfileForm = { educations: [blankEducation()], careers: [blankCareer()], languages: [blankLanguage()], certifications: [blankCertification()], interests: [], email: '', mailOptIn: false };
+  it('attaches only to the interests and mail fields, whole-field errors only', () => {
     const out = attachableErrors([
-      { path: 'educations[0].school', code: 'REQUIRED' }, { path: 'careers.0.company', code: 'REQUIRED' },
-      { path: 'educations[3].school', code: 'REQUIRED' }, // 없는 줄
-      { path: 'educations[0].degree', code: 'REQUIRED' }, // 모르는 칸
-      { path: 'friends[0].name', code: 'REQUIRED' }, // 모르는 목록
-      { path: 'toString', code: 'REQUIRED' }, { path: 'educations[0].school.x', code: 'REQUIRED' }, { path: 'educations[0]', code: 'REQUIRED' },
-      { path: 'certifications', code: 'TOO_MANY' }, // 목록 전체
-    ], form);
-    expect(Object.keys(out)).toEqual(['educations.0.school', 'careers.0.company', 'certifications']);
-    expect(out['educations.0.school']).toBe('학교 이름을 입력해 주세요');
-    expect(out.certifications).toBe('최대 20개까지 입력할 수 있어요');
+      { path: 'interests', code: 'TOO_MANY' }, { path: 'email', code: 'INVALID_FORMAT' },
+      { path: 'educations[0].school', code: 'REQUIRED' }, { path: 'careers', code: 'TOO_MANY' }, // 화면에 없는 칸
+      { path: 'interests[0]', code: 'INVALID_VALUE' }, { path: 'toString', code: 'REQUIRED' },
+    ]);
+    expect(Object.keys(out)).toEqual(['interests', 'email']);
+    expect(out.interests).toBe('관심 분야는 3개까지 고를 수 있어요');
   });
 });
 
-describe('screen words (no English enum names reach the screen)', () => {
-  const tables: [string, readonly string[], Record<string, string>][] = [
-    ['level', EDUCATION_LEVELS, LEVEL_LABEL], ['status', EDUCATION_STATUSES, STATUS_LABEL],
-    ['career type', CAREER_TYPES, CAREER_TYPE_LABEL], ['test', LANGUAGE_TESTS, TEST_LABEL],
-  ];
-  it.each(tables)('every %s value has a Korean label and nothing extra', (_name, values, labels) => {
-    expect(Object.keys(labels).sort()).toEqual([...values].sort());
-    for (const value of values) {
-      expect(labels[value]).not.toMatch(/_/); // ON_LEAVE 같은 열거 이름이 그대로 나가지 않는다
-      // 시험 이름(JLPT·JPT·HSK)은 그 자체가 이름이라 영문 그대로 둔다. 나머지는 한글이 있어야 한다
-      if (!['JLPT', 'JPT', 'HSK'].includes(value)) expect(labels[value]).toMatch(/[가-힣]/);
-    }
-  });
-  it('the documented words are used', () => {
-    expect(Object.values(LEVEL_LABEL)).toEqual(['고등학교', '전문대학', '학사', '석사', '박사']);
-    expect(Object.values(STATUS_LABEL)).toEqual(['재학', '휴학', '졸업 예정', '졸업', '중퇴']);
-  });
-  it('every issue code has a Korean message for every field and never echoes a value', () => {
+describe('screen words', () => {
+  it('every issue code has a Korean message for the interests and mail fields and never echoes a value', () => {
     for (const code of PROFILE_ISSUE_CODES) {
-      for (const key of ['educations.0.school', 'educations.0.gpa', 'educations.0.endMonth', 'careers.0.endMonth', 'languages.0.score', 'languages.0.testName', 'certifications']) {
+      for (const key of ['interests', 'email']) {
         const message = issueMessage(key, code);
         expect(message).toMatch(/[가-힣]/);
         expect(message).not.toMatch(/[A-Z]{3,}|_/);

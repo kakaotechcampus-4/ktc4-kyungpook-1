@@ -42,21 +42,14 @@ test.describe('시나리오 1: 로그인부터 카드 자동 확정과 되묻기
 
     await test.step('1-1. 처음 입력 창', async () => {
       const setup = page.getByRole('dialog');
-      await expect(setup).toHaveAccessibleName('관심 분야'); // 제목은 지금 단계 이름(#802)
+      await expect(setup).toHaveAccessibleName('관심 분야');
       await setup.getByRole('checkbox', { name: '백엔드', exact: true }).check();
-      await setup.getByRole('button', { name: '다음', exact: true }).click();
-      await setup.getByRole('button', { name: '경력 없음', exact: true }).click();
-      await setup.getByRole('radio', { name: '대학교', exact: true }).check(); // 4년제가 먼저 골라진다(#802)
-      await setup.getByRole('button', { name: '다음', exact: true }).click();
-      await setup.getByRole('radio', { name: '졸업', exact: true }).check();
-      await setup.getByRole('button', { name: '다음', exact: true }).click();
-      await setup.getByRole('button', { name: '어학 없음', exact: true }).click();
-      await setup.getByRole('button', { name: '자격증 없음', exact: true }).click();
+      await setup.getByRole('button', { name: '저장하고 시작하기', exact: true }).click();
       await expect(setup).toHaveCount(0);
 
       const profile = await dataOf(await page.request.get('/api/profile'));
       expect(profile.interests).toEqual(['BACKEND']);
-      expect(profile.educations).toHaveLength(1);
+      expect(profile.educations).toEqual([]);
     });
 
     await test.step('2. 저장소 고르기와 개수', async () => {

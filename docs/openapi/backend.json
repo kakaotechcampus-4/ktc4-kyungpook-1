@@ -957,6 +957,10 @@
             "format" : "uuid",
             "type" : "string"
           },
+          "defaultQuestions" : {
+            "description" : "START_COVER_LETTER 가 자주 나오는 문항 3개로 자소서를 만들었을 때만 true, 아니면 null",
+            "type" : "boolean"
+          },
           "error" : {
             "description" : "실패한 걸음의 코드(NOT_FOUND·NO_CONFIRMED_CARDS·RATE_LIMITED·NOT_MATCHED·GITHUB_DISCONNECTED·CAP_REACHED·NOT_READY·FAILED)",
             "type" : "string"
@@ -2138,6 +2142,10 @@
             "format" : "date-time",
             "type" : "string"
           },
+          "defaultQuestions" : {
+            "description" : "사용자가 문항을 주지 않아 자주 나오는 문항 3개로 만든 자소서면 true",
+            "type" : "boolean"
+          },
           "errorCode" : {
             "description" : "AI_UNAVAILABLE 또는 INTERNAL_ERROR. 실패가 아니면 null",
             "type" : "string"
@@ -2752,6 +2760,10 @@
           "askedBy" : {
             "enum" : [ "USER_REQUEST", "FOLLOW_UP" ],
             "type" : "string"
+          },
+          "exampleAnswer" : {
+            "description" : "그 질문에 맞는 예시 답 한 줄('예:' 로 시작)로, 입력칸 안내에 쓰며 AI 가 못 만들었거나 옛 질문이면 null",
+            "type" : [ "string", "null" ]
           },
           "field" : {
             "description" : "질문이 묻는 칸",

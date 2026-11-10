@@ -39,7 +39,7 @@ it('explains search misses without claiming a private-repository permission prob
 it('does not equate a small commit share with exaggerating experience', () => {
   mount(<ReposPage />, '/repos');
   expect(screen.queryAllByText(/부풀린 것처럼/)).toHaveLength(0);
-  expect(screen.getAllByText('맡은 일은 답변으로 채울 수 있어요').length).toBeGreaterThan(0);
+  expect(screen.queryByText('맡은 일은 답변으로 채울 수 있어요')).not.toBeInTheDocument();
 });
 it('does not tell sample visitors their actual login expired', () => {
   vi.stubEnv('VITE_API_MOCK', 'true');

@@ -182,6 +182,23 @@ class InterviewTurnPersistenceTest {
     }
 
     @Test
+    @DisplayName("질문에 붙은 예시 답은 저장되고 다시 읽어도 같으며, 예시 없이 만든 질문은 null 이다")
+    void savesTheExampleAnswer() {
+
+        turns.save(InterviewTurn.asked(cardId, (short) 1, StarField.S, QuestionType.EVIDENCE_GAP, "첫 질문", true, null,
+                AnswerMode.TEXT, List.of(), null, "예: 목록이 느렸어요"));
+        turns.save(InterviewTurn.asked(cardId, (short) 2, StarField.T, QuestionType.EVIDENCE_GAP, "둘째 질문", true, null,
+                AnswerMode.TEXT, List.of(), null, null));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(turns.findByCardIdAndSeq(cardId, (short) 1).orElseThrow().getExampleAnswer())
+                .isEqualTo("예: 목록이 느렸어요");
+        assertThat(turns.findByCardIdAndSeq(cardId, (short) 2).orElseThrow().getExampleAnswer()).isNull();
+
+    }
+
+    @Test
     @DisplayName("답한 질문은 글·출처·결과·답한 시각이 저장되고 다시 읽어도 같으며 질문 쪽 칸은 그대로다")
     void savesTheAnswerOfATurn() {
 

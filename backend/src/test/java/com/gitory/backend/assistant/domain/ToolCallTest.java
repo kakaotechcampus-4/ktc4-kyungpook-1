@@ -65,6 +65,28 @@ class ToolCallTest {
 
     }
 
+    @Test
+    @DisplayName("자소서는 문항을 직접 줬거나 기본 문항이라고 했을 때 둘 중 하나만 실행할 수 있다")
+    void coverLetterNeedsEitherQuestionsOrDefaultFlag() {
+
+        AssistantStepReply.Question question = new AssistantStepReply.Question("지원 동기를 쓰세요", null);
+        AssistantTool tool = AssistantTool.START_COVER_LETTER;
+
+        assertThat(start(List.of(question), false).resolvable()).isTrue();
+        assertThat(start(List.of(), true).resolvable()).isTrue();
+        assertThat(start(List.of(question), true).resolvable()).isFalse();
+        assertThat(start(List.of(), false).resolvable()).isFalse();
+        assertThat(tool).isEqualTo(AssistantTool.START_COVER_LETTER);
+
+    }
+
+    private ToolCall start(List<AssistantStepReply.Question> questions, boolean defaultQuestions) {
+
+        return ToolCall.of(run, AssistantStepReply.call(AssistantTool.START_COVER_LETTER, null, null, null, null, null,
+                "백엔드", questions, defaultQuestions));
+
+    }
+
     private static ToolCall fill(RunItem.Posting posting) {
 
         return new ToolCall(UUID.randomUUID(), AssistantTool.FILL_POSTING_GAPS, null, "p1", posting, null, null, null,

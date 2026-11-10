@@ -3,7 +3,7 @@ import { loginAsDemo, freshSeed, showCardTiles } from './helpers';
 
 test('demo starts in one action without repeating mode explanations', async ({ page }) => {
   await freshSeed(page); await page.goto('/login');
-  const trigger = page.locator('.landing__actions').getByRole('button', { name: '샘플로 체험하기' });
+  const trigger = page.locator('.landing__hero .landing__actions').getByRole('button', { name: '샘플로 체험하기' });
   await trigger.click();
   await expect(page.getByRole('heading', { name: /^지원할 곳/ })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);

@@ -70,7 +70,7 @@ class CoverLetterViewFactory {
                                 writing.get((int) question.getSeq())))
                         .toList(),
                 assignSteps.stream().map(step -> step(step, questionIds, labels)).toList(),
-                draftSteps.stream().map(step -> writingStep(step, questionIds)).toList());
+                draftSteps.stream().map(step -> writingStep(step, questionIds)).toList(), letter.isDefaultQuestions());
 
     }
 

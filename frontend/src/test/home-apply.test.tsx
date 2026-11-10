@@ -136,20 +136,22 @@ describe('홈 — 지원할 곳', () => {
     expect(within(card).getByRole('link', { name: '공고 보기' })).toHaveAttribute('href', '/match/p_a');
   });
 
-  it('H7 머리 설명 줄은 새 공고가 있으면 새 공고 k곳을 앞에 붙이고, 읽은 알림의 공고는 새 공고로 세지 않는다', async () => {
+  it('H7 머리 설명 줄은 새 공고가 있을 때만 새 공고 k곳이고 내 카드와 맞는 공고예요 문구는 쓰지 않으며, 읽은 알림의 공고는 새 공고로 세지 않는다', async () => {
     serve({ overall: overall([company('a', 5), company('b', 9)]), notices: [notice(['p_b'])], details: { p_a: detail('p_a'), p_b: detail('p_b') } });
     mount();
 
-    const lede = await screen.findByText(/내 카드와 맞는 공고예요/);
-    expect(lede).toHaveTextContent('새 공고 1곳, 내 카드와 맞는 공고예요');
+    const lede = await screen.findByText(/새 공고 1곳/);
+    expect(lede).toHaveTextContent(/^새 공고 1곳$/);
+    expect(screen.queryByText(/내 카드와 맞는 공고예요/)).not.toBeInTheDocument();
     expect(screen.getAllByRole('tab').map((node) => node.textContent)).toEqual(['회사 bD-9', '회사 aD-5']);
     expect(screen.getByRole('img', { name: '새 공고' })).toBeInTheDocument();
     cleanup();
 
     serve({ overall: overall([company('a', 5), company('b', 9)]), notices: [notice(['p_b'], '2026-11-07T01:00:00Z')], details: { p_a: detail('p_a'), p_b: detail('p_b') } });
     mount();
-    const plain = await screen.findByText(/내 카드와 맞는 공고예요/);
-    expect(plain).toHaveTextContent(/^내 카드와 맞는 공고예요$/);
+    await screen.findAllByRole('tab');
+    expect(screen.queryByText(/내 카드와 맞는 공고예요/)).not.toBeInTheDocument();
+    expect(document.querySelector('.home3-lede')).toBeNull();
   });
 
   it('H8 맞는 공고가 없고 확정 카드가 있는데 다 계산했으면 아직 맞는 공고가 없어요와 레포 더 정리하기를 보인다', async () => {

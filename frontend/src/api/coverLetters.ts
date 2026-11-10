@@ -165,6 +165,7 @@ export const CoverLetter = z.object({
   /** 질문 단계가 지원 이유를 글로 쓸 만하다고 봤는지. 판정 전이면 null, false 면 채팅에서 다시 묻는다 */
   memoUsable: nullable(z.boolean()),
   posting: nullable(Posting),
+  defaultQuestions: z.boolean().default(false),
   createdAt: z.string(),
   updatedAt: z.string(),
   questions: z.array(Question),

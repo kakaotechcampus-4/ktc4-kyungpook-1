@@ -116,10 +116,12 @@ export function HomePage() {
             <div>
               <p className="home3-date">{todayLabel()}</p>
               <div className="page-title"><h1>지원할 곳{items.length > 0 && <TitleCount n={items.length} />}</h1></div>
-              <p className="home3-lede">
-                {newCount > 0 && <><b>새 공고 {newCount}곳</b>, </>}
-                {items.length === 0 ? '아직 모인 공고가 없어요' : '내 카드와 맞는 공고예요'}
-              </p>
+              {(newCount > 0 || items.length === 0) && (
+                <p className="home3-lede">
+                  {newCount > 0 && <b>새 공고 {newCount}곳</b>}
+                  {items.length === 0 && '아직 모인 공고가 없어요'}
+                </p>
+              )}
             </div>
           )}
           {!loading && items.length > 0 && <Link to="/match" className="home3-all">모두 보기<ChevronRight size={18} aria-hidden /></Link>}

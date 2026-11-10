@@ -243,7 +243,8 @@ public class InterviewAskService {
 
         InterviewTurn saved = turns.save(InterviewTurn.asked(card.getId(), nextSeq(asked), slot,
                 QuestionType.valueOf(question.questionType().name()), question.questionText(), target != null,
-                lastTurnId(asked), answerModeOf(slot, question), question.suggestedAnswers(), question.reason()));
+                lastTurnId(asked), answerModeOf(slot, question), question.suggestedAnswers(), question.reason(),
+                question.exampleAnswer()));
         card.resumeInterview();
 
         return viewOf(saved, sourceType);

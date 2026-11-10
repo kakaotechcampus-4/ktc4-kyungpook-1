@@ -17,14 +17,15 @@ describe('repoSentence', () => {
     const s = repoSentence(repo({ countedAt: null, contribution: { mine: 0, team: 0, ratio: 0, level: 'NONE' }, prCount: 0, reviewCount: 0 }));
     expect(s.before).toBe('기여 개수를 세는 중이에요');
     expect(s.caution).toBeUndefined();
-    expect(`${s.before}${s.hint}`).not.toMatch(/\d개|PR/);
+    expect(s.before).not.toMatch(/\d개|PR/);
+    expect(s).not.toHaveProperty('hint');
   });
 
-  it('기여가 적으면 팀 커밋 중 내 커밋 수를 말하고 내 커밋 수만 호박색 자리에 둔다, 뒤에 답변 안내를 붙인다', () => {
+  it('기여가 적으면 팀 커밋 중 내 커밋 수를 말하고 내 커밋 수만 호박색 자리에 둔다', () => {
     const s = repoSentence(repo({ contribution: { mine: 13, team: 116, ratio: 0.11, level: 'PARTIAL' }, prCount: 4 }));
     expect(text(repo({ contribution: { mine: 13, team: 116, ratio: 0.11, level: 'PARTIAL' }, prCount: 4 }))).toBe('팀 커밋 116개 중 내 커밋이 13개라 확인되는 일이 적어요');
     expect(s.caution).toBe('내 커밋이 13개');
-    expect(s.hint).toBe('맡은 일은 답변으로 채울 수 있어요');
+    expect(s).not.toHaveProperty('hint');
   });
 
   it('PR 이 없으면 커밋을 묶어 후보를 만든다고 말한다', () => {
@@ -49,8 +50,8 @@ describe('repoSentence', () => {
     expect(repoPeriod('2026-08-01T00:00:00Z', '2026-11-30T23:30:00Z')).toBe('8월부터 11월까지');
   });
 
-  it('메타 줄은 언어와 연월 범위이고, 언어가 없으면 범위만 둔다', () => {
-    expect(repoMeta(repo())).toBe('Java, 2026.08 ~ 2026.11');
-    expect(repoMeta(repo({ language: null }))).toBe('2026.08 ~ 2026.11');
+  it('메타 줄은 언어만 두고(기간은 문장이 이미 말한다), 언어가 없으면 비운다', () => {
+    expect(repoMeta(repo())).toBe('Java');
+    expect(repoMeta(repo({ language: null }))).toBe('');
   });
 });

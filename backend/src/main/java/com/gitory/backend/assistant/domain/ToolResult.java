@@ -6,47 +6,47 @@ import java.util.UUID;
 public record ToolResult(ToolError error, List<RunItem.Posting> postings, Integer totalFound, RunItem.Posting posting,
                          RunItem.Match match, Integer questionCount, UUID coverLetterId, UUID repoId, UUID jobId,
                          UUID cardId, String cardTitle, UUID letterId, Integer gapsFilled, RunItem.Question question,
-                         List<RunItem.Polished> polished, Integer remainingQuestions) {
+                         List<RunItem.Polished> polished, Integer remainingQuestions, Boolean defaultQuestions) {
 
     public static ToolResult failed(ToolError error) {
 
         return new ToolResult(error, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null);
+                null, null, null);
 
     }
 
     public static ToolResult found(List<RunItem.Posting> postings, int totalFound) {
 
         return new ToolResult(null, postings, totalFound, null, null, null, null, null, null, null, null, null, null,
-                null, null, null);
+                null, null, null, null);
 
     }
 
     public static ToolResult matched(RunItem.Posting posting, RunItem.Match match) {
 
         return new ToolResult(null, null, null, posting, match, null, null, null, null, null, null, null, null, null,
-                null, null);
+                null, null, null);
 
     }
 
-    public static ToolResult coverLetter(int questionCount, UUID coverLetterId) {
+    public static ToolResult coverLetter(int questionCount, UUID coverLetterId, boolean defaultQuestions) {
 
         return new ToolResult(null, null, null, null, null, questionCount, coverLetterId, null, null, null, null,
-                null, null, null, null, null);
+                null, null, null, null, null, defaultQuestions ? Boolean.TRUE : null);
 
     }
 
     public static ToolResult repoAnalysis(UUID repoId, UUID jobId) {
 
         return new ToolResult(null, null, null, null, null, null, null, repoId, jobId, null, null, null, null, null,
-                null, null);
+                null, null, null);
 
     }
 
     public static ToolResult gapsFilled(RunItem.Posting posting, RunItem.Match match, int gapsFilled) {
 
         return new ToolResult(null, null, null, posting, match, null, null, null, null, null, null, null, gapsFilled,
-                null, null, null);
+                null, null, null, null);
 
     }
 
@@ -54,14 +54,14 @@ public record ToolResult(ToolError error, List<RunItem.Posting> postings, Intege
     public static ToolResult asked(UUID cardId, String cardTitle, String field, String text) {
 
         return new ToolResult(null, null, null, null, null, null, null, null, null, cardId, cardTitle, null, null,
-                text == null ? null : new RunItem.Question(field, text), null, null);
+                text == null ? null : new RunItem.Question(field, text), null, null, null);
 
     }
 
     public static ToolResult polished(UUID letterId, List<RunItem.Polished> polished, int remainingQuestions) {
 
         return new ToolResult(null, null, null, null, null, null, null, null, null, null, null, letterId, null, null,
-                List.copyOf(polished), remainingQuestions);
+                List.copyOf(polished), remainingQuestions, null);
 
     }
 

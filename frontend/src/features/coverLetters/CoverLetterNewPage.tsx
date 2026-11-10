@@ -142,6 +142,7 @@ export function CoverLetterNewPage() {
 
       <section className="cl-group" aria-labelledby="cl-group-where">
         <h2 className="cl-group__head" id="cl-group-where"><span className="cl-group__n" aria-hidden>1</span>어디에 내나요</h2>
+        {!postingId && !from && <p className="t-13 c-2">지원할 공고가 있으면 <Link to="/match" className="cl-inline-link">공고 목록</Link>의 '자소서 쓰기' 로 시작해 보세요. 직무가 채워져요.</p>}
         <Field label="지원 직무" right={`${jobRole.length}/${L.JOB_ROLE}`}>
           <Input value={jobRole} maxLength={L.JOB_ROLE} placeholder="예: 백엔드 개발" aria-invalid={!!show(jobError)}
             onChange={(e) => edit(() => setJobRole(e.target.value))} />
@@ -183,7 +184,6 @@ export function CoverLetterNewPage() {
 
       <div className="sticky-footer">
         <div className="sticky-footer__text">
-          <strong>만들면 카드를 고르고 초안까지 이어서 써요</strong>
           {footWarn && <span className="cl-foot-warn">{footWarn}</span>}
         </div>
         <div className="sticky-footer__actions">

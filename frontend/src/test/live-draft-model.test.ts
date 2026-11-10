@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DraftLive, DraftStep, type StarField } from '@/api/schemas';
-import { DWELL_MS, DraftPlayback, ENDED_MAX_MS, ERASE_MAX_MS, REWRITE_MAX_MS, TYPING_CPS } from '@/lib/liveDraft';
+import { CATCH_UP_BACKLOG, DWELL_MS, DraftPlayback, ENDED_MAX_MS, ERASE_MAX_MS, REWRITE_MAX_MS, TYPING_CPS } from '@/lib/liveDraft';
 
 /** #617 카드 초안 펼침 모델 — 시계를 직접 읽지 않으므로 시각(ms)을 넣어 가며 시험한다 */
 const T0 = 1_000_000;
@@ -277,16 +277,22 @@ describe('#617 카드 넘기기', () => {
     return pb;
   };
 
-  it('뒤 카드가 글을 쓰기 시작하면 앞 카드의 남은 글은 바로 마친다', () => {
+  it('뒤 카드가 글을 쓰기 시작해도 앞 카드의 남은 글을 끝까지 펼친 뒤 넘어간다 (#980)', () => {
     const pb = watching();
     pb.advance(T0 + 500);
     expect(pb.view().current!.cardId).toBe('a');
     expect(typed(pb, 'S')).toBe(20);
     pb.receive(two('DONE', 'WRITING', four(40), [slot('S', ko(40), { done: false })]), { ended: false, now: T0 + 600 });
+    pb.advance(T0 + 1000);
+    expect(pb.view().current!.cardId).toBe('a'); // 서버가 a 를 끝냈고 b 가 쓰는 중이어도 a 를 계속 펼친다
+    expect(typed(pb, 'S')).toBe(40);
+    expect(typed(pb, 'A')).toBe(0);
+    pb.advance(T0 + 4000); // 160자 = 4초에 다 보임
+    expect(pb.view().current!.cardId).toBe('a');
+    pb.advance(T0 + 4000 + DWELL_MS + 100);
     const view = pb.view();
     expect(view.current!.cardId).toBe('b');
     expect(view.finished.map((c) => c.cardId)).toEqual(['a']);
-    expect(view.finished[0].slots.map((s) => s.text.length)).toEqual([40, 40, 40, 40]);
     expect(view.finished[0].slots.every((s) => s.phase === 'DONE')).toBe(true);
   });
 
@@ -311,13 +317,16 @@ describe('#617 카드 넘기기', () => {
     expect(typed(pb, 'R')).toBeLessThan(40);
   });
 
-  it('폴링이 밀려 한 번에 여러 카드가 와도 건너뛰며 마지막 카드부터 쓴다', () => {
+  it('폴링이 밀려 끝난 카드가 둘 한꺼번에 와도 CATCH_UP_BACKLOG 장 미만이면 차례로 펼친다 (#980)', () => {
     const pb = player([card('a', 'READING'), card('b', 'WAITING'), card('c', 'WAITING')]);
     pb.advance(T0 + 1000);
     pb.receive([card('a', 'DONE', four(40)), card('b', 'DONE', four(40)), card('c', 'WRITING', [slot('S', ko(40), { done: false })])], { ended: false, now: T0 + 2000 });
+    expect(pb.view().current!.cardId).toBe('a'); // 두 장씩 쓰는 서버는 끝난 카드가 짝으로 오므로 하나 밀린 것은 끊지 않는다
+    pb.advance(T0 + 2000 + 4000 + DWELL_MS + 100);
     const view = pb.view();
-    expect(view.current!.cardId).toBe('c');
-    expect(view.finished.map((c) => c.cardId)).toEqual(['a', 'b']);
+    expect(view.current!.cardId).toBe('b');
+    expect(view.finished.map((c) => c.cardId)).toEqual(['a']);
+    expect(view.finished[0].slots.every((s) => s.phase === 'DONE')).toBe(true);
   });
 
   it('중간에 들어와도(첫 snapshot 에 끝난 카드가 있어도) 끝나지 않은 첫 카드부터 보이고 앞 카드는 끝난 목록에 있다', () => {
@@ -335,9 +344,11 @@ describe('#617 카드 넘기기', () => {
     const fresh = player([card('a', 'READING'), card('b', 'WAITING'), card('c', 'WAITING')]);
     fresh.advance(T0 + 100);
     fresh.receive([card('a', 'DONE', four(20)), failed, card('c', 'READING')], { ended: false, now: T0 + 200 });
-    expect(fresh.view().current!.cardId).toBe('b');
-    fresh.advance(T0 + 200 + 1000);
+    expect(fresh.view().current!.cardId).toBe('a'); // 끝난 a 를 먼저 다 펼친다(80자 2초 + DWELL_MS)
+    fresh.advance(T0 + 5000); // a 가 끝나고 쉰 뒤 b 로 넘어간 직후
+    fresh.advance(T0 + 6000); // b 의 쓰다 만 글 30자를 펼친다
     const shown = fresh.view().current!;
+    expect(shown.cardId).toBe('b');
     expect(shown.state).toBe('FAILED');
     expect(shown.slots.map((s) => s.phase)).toEqual(['DONE', 'MISSED', 'MISSED', 'MISSED']);
     expect(shown.slots[1].text).toBe(ko(10));
@@ -514,9 +525,26 @@ describe('#953 서버가 두 장씩 동시에 써도 화면은 한 장씩', () =
     expect(pb.view().current!.cardId).toBe('a'); // b 가 시작했어도 a 를 끝까지 보인다
   });
 
-  it('보이는 카드가 서버에서 끝났고 뒤 카드가 이미 쓰기 시작했으면 남은 글을 바로 마치고 넘어간다', () => {
-    const pb = player([card('a', 'DONE', four(40)), card('b', 'WRITING', four(40))]);
+  it('보이는 카드가 서버에서 끝났고 뒤 카드가 이미 쓰기 시작했어도 보이는 카드를 끝까지 펼친다 (#980)', () => {
+    const pb = player([card('a', 'WRITING', four(40)), card('b', 'WAITING')]);
+    pb.receive([card('a', 'DONE', four(40)), card('b', 'WRITING', four(40))], { ended: false, now: T0 });
     pb.advance(T0 + 1000);
+    expect(pb.view().current!.cardId).toBe('a');
+    expect(typed(pb, 'S')).toBe(40);
+    pb.advance(T0 + 4000 + DWELL_MS + 100);
     expect(pb.view().current!.cardId).toBe('b');
+  });
+
+  it('뒤에 끝난 카드가 CATCH_UP_BACKLOG 장 이상 밀려 있으면 남은 글을 바로 마치고 따라잡는다 (#980)', () => {
+    const behind = Array.from({ length: CATCH_UP_BACKLOG }, (_, i) => card(`b${i}`, 'DONE', four(40)));
+    const pb = player([card('a', 'WRITING', four(40)), ...behind.map((c) => card(c.cardId, 'WAITING')), card('c', 'WAITING')]);
+    pb.receive([card('a', 'DONE', four(40)), ...behind, card('c', 'WRITING', four(40))], { ended: false, now: T0 });
+    pb.advance(T0 + 1000);
+    const view = pb.view();
+    expect(view.finished.map((c) => c.cardId)).toEqual(['a']); // a 는 바로 마쳤다
+    expect(view.finished[0].slots.every((s) => s.phase === 'DONE')).toBe(true);
+    expect(view.current!.cardId).toBe('b0'); // 밀린 카드가 하나 줄었으니 b0 부터는 다시 펼친다
+    expect(typed(pb, 'S')).toBe(40);
+    expect(typed(pb, 'T')).toBe(0);
   });
 });

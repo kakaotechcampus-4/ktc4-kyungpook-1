@@ -4,7 +4,7 @@ import { loginAsDemo } from './helpers';
 test('들어오면 스스로 맞춰 보기를 시작해 — 진행을 보이다가 맞춰 본 공고를 상자의 타일로 올리고, 타일을 누르면 공고 상세로 간다', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/match');
   await expect(page.getByRole('status').filter({ hasText: '곳을 확인했어요' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '맞춰 보는 중', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '맞춰 보는 중', exact: true })).toHaveCount(0);
 
   await expect(page.getByRole('button', { name: '다시 맞춰 보기', exact: true })).toBeEnabled({ timeout: 15_000 });
   const box = page.getByRole('region', { name: '내 카드로 맞춰 본 공고' });

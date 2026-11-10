@@ -1,3 +1,5 @@
+import { sampleTourActive } from '@/mock/sampleTour';
+
 /** Enable the proposed metadata endpoint only in Mock or after its server contract is confirmed. */
 export const cardMetadataSupported = (env: { VITE_API_MOCK?: string; VITE_CARD_METADATA_ENABLED?: string } = {
   VITE_API_MOCK: import.meta.env.VITE_API_MOCK, VITE_CARD_METADATA_ENABLED: import.meta.env.VITE_CARD_METADATA_ENABLED,
@@ -21,8 +23,8 @@ export const profileSupported = (env: { VITE_API_MOCK?: string; VITE_PROFILE_ENA
 
 /**
  * 홈의 한 줄 입력(할 일을 적으면 공고 찾기부터 자소서까지 이어서 한다) — 서버가 배포된 뒤 `VITE_ASSISTANT_ENABLED=true` 로 연다.
- * 목 서버에도 아직 없어서, 다른 기능과 달리 Mock 에서도 기본은 꺼져 있다.
+ * 목 서버에도 아직 없어서, 다른 기능과 달리 Mock 에서도 기본은 꺼져 있다. 둘러보기 중에는 켠다.
  */
 export const assistantSupported = (env: { VITE_ASSISTANT_ENABLED?: string } = {
   VITE_ASSISTANT_ENABLED: import.meta.env.VITE_ASSISTANT_ENABLED,
-}) => env.VITE_ASSISTANT_ENABLED === 'true';
+}, storage?: Parameters<typeof sampleTourActive>[0]) => env.VITE_ASSISTANT_ENABLED === 'true' || sampleTourActive(storage);

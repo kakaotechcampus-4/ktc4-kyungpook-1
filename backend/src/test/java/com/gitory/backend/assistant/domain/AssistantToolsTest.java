@@ -65,6 +65,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -206,7 +207,7 @@ class AssistantToolsTest {
         UUID letterId = UUID.randomUUID();
         List<NewQuestion> questions = List.of(new NewQuestion("지원 동기를 쓰세요", null), new NewQuestion("협업 경험을 쓰세요", 700));
         RunItem.Posting posting = new RunItem.Posting("p1", POSTING, "토스", "가".repeat(120), 2, null, null);
-        given(coverLetters.create(any(), any(), any(), any(), any(), any(), any())).willReturn(letterView(letterId));
+        given(coverLetters.create(any(), any(), any(), any(), any(), any(), any(), anyBoolean())).willReturn(letterView(letterId));
 
         ToolResult withPosting = tools.execute(USER, 3, new ToolCall(RUN, AssistantTool.START_COVER_LETTER, null,
                 "p1", posting, null, null, null, questions, null, null, null, null));
@@ -217,8 +218,46 @@ class AssistantToolsTest {
         assertThat(withPosting.questionCount()).isEqualTo(2);
         assertThat(withoutPosting.ok()).isTrue();
         verify(coverLetters).create(USER, "가".repeat(100), null, List.of(), questions, POSTING,
-                "assistant-" + RUN + "-3");
-        verify(coverLetters).create(USER, "백엔드 개발자", null, List.of(), questions, null, "assistant-" + RUN + "-5");
+                "assistant-" + RUN + "-3", false);
+        verify(coverLetters).create(USER, "백엔드 개발자", null, List.of(), questions, null, "assistant-" + RUN + "-5",
+                false);
+
+    }
+
+    @Test
+    @DisplayName("기본 문항이면 자주 나오는 문항 3개를 순서대로 넣어 만들고 결과에 기본 문항 표시와 문항 수 3 을 남긴다")
+    void startsCoverLetterWithDefaultQuestions() {
+
+        UUID letterId = UUID.randomUUID();
+        List<NewQuestion> expected = List.of(
+                new NewQuestion("지원 동기와 입사 후 포부를 적어 주세요", null),
+                new NewQuestion("직무와 관련된 기술로 문제를 해결한 경험을 적어 주세요", null),
+                new NewQuestion("팀과 협업하며 성과를 낸 경험을 적어 주세요", null));
+        given(coverLetters.create(any(), any(), any(), any(), any(), any(), any(), anyBoolean()))
+                .willReturn(letterView(letterId));
+
+        ToolResult result = tools.execute(USER, 3, new ToolCall(RUN, AssistantTool.START_COVER_LETTER, null, null,
+                null, null, null, "백엔드 개발자", List.of(), null, null, null, null, true));
+
+        assertThat(result.defaultQuestions()).isTrue();
+        assertThat(result.questionCount()).isEqualTo(3);
+        verify(coverLetters).create(USER, "백엔드 개발자", null, List.of(), expected, null, "assistant-" + RUN + "-3",
+                true);
+
+    }
+
+    @Test
+    @DisplayName("문항을 직접 줬으면 기본 문항 표시를 남기지 않는다")
+    void givenQuestionsLeaveNoDefaultMark() {
+
+        given(coverLetters.create(any(), any(), any(), any(), any(), any(), any(), anyBoolean()))
+                .willReturn(letterView(UUID.randomUUID()));
+
+        ToolResult result = tools.execute(USER, 3, new ToolCall(RUN, AssistantTool.START_COVER_LETTER, null, null,
+                null, null, null, "백엔드 개발자", List.of(new NewQuestion("지원 동기를 쓰세요", null)), null, null,
+                null, null));
+
+        assertThat(result.defaultQuestions()).isNull();
 
     }
 
@@ -407,7 +446,7 @@ class AssistantToolsTest {
         given(cardStats.confirmedCards(USER)).willReturn(1);
         given(matchList.list(null)).willThrow(thrown);
         given(matchDetails.detail(any(), any())).willThrow(thrown);
-        given(coverLetters.create(any(), any(), any(), any(), any(), any(), any())).willThrow(thrown);
+        given(coverLetters.create(any(), any(), any(), any(), any(), any(), any(), anyBoolean())).willThrow(thrown);
         given(repoAnalysis.start(any(), any())).willThrow(thrown);
         given(gapFills.start(any(), any(), any())).willThrow(thrown);
         given(interviews.ask(any(), any(), any())).willThrow(thrown);
@@ -541,7 +580,7 @@ class AssistantToolsTest {
     private static InterviewTurnView turn(StarField field, String question) {
 
         return new InterviewTurnView(1, field, TriggerSource.USER, InterviewSourceType.DIRECT_CARD,
-                QuestionType.EVIDENCE_GAP, question, null, AnswerMode.TEXT, List.of(), null, null, 5, 6);
+                QuestionType.EVIDENCE_GAP, question, null, null, AnswerMode.TEXT, List.of(), null, null, 5, 6);
 
     }
 
@@ -563,7 +602,7 @@ class AssistantToolsTest {
     private static CoverLetterView letter(CoverLetterStage stage, List<CoverLetterView.Question> questions) {
 
         return new CoverLetterView(LETTER, stage, null, null, null, false, "백엔드", null, List.of(), null, null, null,
-                null, questions, List.of(), List.of());
+                null, questions, List.of(), List.of(), false);
 
     }
 
@@ -576,7 +615,7 @@ class AssistantToolsTest {
     private static CoverLetterView letterView(UUID id) {
 
         return new CoverLetterView(id, CoverLetterStage.ASSIGNING, null, null, null, true, "백엔드", null, List.of(),
-                null, null, null, null, List.of(), List.of(), List.of());
+                null, null, null, null, List.of(), List.of(), List.of(), false);
 
     }
 }

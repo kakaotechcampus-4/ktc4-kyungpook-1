@@ -18,6 +18,9 @@ import com.gitory.backend.coverletter.domain.MaterialAnswer;
 import com.gitory.backend.coverletter.domain.MaterialAsk;
 import com.gitory.backend.coverletter.domain.MaterialItem;
 import com.gitory.backend.coverletter.domain.QuestionTheme;
+import com.gitory.backend.coverletter.domain.CoverLetterService;
+import com.gitory.backend.coverletter.domain.CoverLetterView;
+import com.gitory.backend.coverletter.domain.NewQuestion;
 import com.gitory.backend.coverletter.infra.CardMaterialAnswerRepository;
 import com.gitory.backend.coverletter.infra.CoverLetterQuestionRepository;
 import com.gitory.backend.coverletter.infra.CoverLetterRepository;
@@ -97,6 +100,9 @@ class CoverLetterApiTest {
     JdbcTemplate jdbc;
 
     @Autowired
+    CoverLetterService coverLetters;
+
+    @Autowired
     CoverLetterRepository letters;
 
     @Autowired
@@ -145,6 +151,24 @@ class CoverLetterApiTest {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM cover_letter WHERE running_since IS NULL", Integer.class))
                 .isEqualTo(1);
         verify(rateLimiter).acquire(RateLimitedAction.COVER_LETTER, myUserId, 1);
+
+    }
+
+    @Test
+    @DisplayName("직접 만든 자소서는 기본 문항 표시가 false 이고, 서비스가 기본 문항으로 만들면 true 로 저장되어 응답에 보인다")
+    void showsDefaultQuestionsFlag() throws Exception {
+
+        confirmedCard(myUserId, "배포 시간 단축", "A");
+
+        create(BODY, "key-1")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.defaultQuestions").value(false));
+        CoverLetterView view = coverLetters.create(myUserId, "백엔드", null, List.of(),
+                List.of(new NewQuestion("지원 동기를 쓰세요", null)), null, "key-2", true);
+
+        assertThat(view.defaultQuestions()).isTrue();
+        assertThat(jdbc.queryForObject("SELECT default_questions FROM cover_letter WHERE idempotency_key = 'key-2'",
+                Boolean.class)).isTrue();
 
     }
 

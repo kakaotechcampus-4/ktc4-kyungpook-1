@@ -23,6 +23,7 @@ import './styles/guidance.css';
 import './styles/card-tile.css';
 import './styles/mono-pastel.css';
 import './styles/job-calendar.css';
+import './styles/landing-page.css';
 
 applyTheme(getTheme());
 installChunkReload();

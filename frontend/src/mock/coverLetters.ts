@@ -312,7 +312,7 @@ function view(letter: Any) {
     retryable: letter.stage === 'FAILED' ? letter.errorCode === 'AI_UNAVAILABLE' : null,
     pollAfterMs: running ? COVER_LETTER_POLL_MS : null,
     jobRole: letter.jobRole, memo: letter.memo, strengths: letter.strengths ?? [], memoUsable: letter.memoUsable ?? null,
-    posting: letter.posting ?? null, createdAt: letter.createdAt, updatedAt: letter.updatedAt,
+    posting: letter.posting ?? null, defaultQuestions: letter.defaultQuestions === true, createdAt: letter.createdAt, updatedAt: letter.updatedAt,
     questions: letter.questions.map((q: Any) => {
       const primary = assigned ? cardRef(q.primaryCardId) : null;
       const answers = new Map((q.answers ?? []).map((a: Any) => [a.item, a]));
@@ -376,7 +376,7 @@ export function createCoverLetter(body: Any, key: string | undefined): CoverLett
   const at = now();
   const letter: Any = {
     id: nextId('cl'), key: key || null, stage: 'ASSIGNING', failedStep: null, errorCode: null,
-    jobRole: body.jobRole.trim(), memo: blank(body.memo) ? null : body.memo.trim(), strengths: body.strengths ?? [], memoUsable: null, posting, createdAt: at, updatedAt: at, startedAt: Date.now(),
+    jobRole: body.jobRole.trim(), memo: blank(body.memo) ? null : body.memo.trim(), strengths: body.strengths ?? [], memoUsable: null, posting, defaultQuestions: body.defaultQuestions === true, createdAt: at, updatedAt: at, startedAt: Date.now(),
     questions: body.questions.map((q: Any, i: number) => ({ id: nextId('clq'), seq: i + 1, text: q.text.trim(), charLimit: q.charLimit ?? L.CHAR_DEFAULT })),
     _failAssign: failNextAssign,
   };

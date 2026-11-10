@@ -27,7 +27,7 @@ export async function queueLogin(request: APIRequestContext, login: string) {
 export async function loginAndSetUp(page: Page, login: string) {
   await page.goto('/');
   await expect(page).toHaveURL(/\/login/);
-  await page.locator('.landing__actions').getByRole('button', { name: 'GitHub로 시작' }).click();
+  await page.locator('.landing__hero .landing__actions').getByRole('button', { name: 'GitHub로 시작' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'GitHub으로 이동' }).click();
   await expect(page).toHaveURL('/', { timeout: 15_000 });
   expect((await dataOf(await page.request.get('/api/me'))).login).toBe(login);

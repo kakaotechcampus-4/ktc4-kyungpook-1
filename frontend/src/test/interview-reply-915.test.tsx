@@ -202,7 +202,7 @@ describe('답을 읽고 카드에 넣는 되묻기', () => {
   });
 
   it("입력칸 예시는 말하듯 적혀 있고, 보기가 있으면 끝에 '잘 기억나지 않아요' 가 붙으며 보기가 없으면 보기 묶음을 그리지 않는다", () => {
-    mount([open({ options: ['로그를 보고 고쳤어요'] })]);
+    mount([open({ options: ['로그를 보고 고쳤어요'], exampleAnswer: null })]);
 
     expect(screen.getByRole('textbox', { name: '답변' })).toHaveAttribute('placeholder', starFieldSpoken.T);
     expect(starFieldSpoken.T).toMatch(/요$/);

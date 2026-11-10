@@ -80,7 +80,7 @@ class InterviewAskApiTest {
 
     // FE schemas.ts 의 InterviewTurn 이 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
     private static final String[] TURN_KEYS = {"turnNo", "field", "askedBy", "sourceType", "questionType", "question",
-            "reason", "options", "answerMode", "outcome", "answer", "remaining", "maxTurns"};
+            "reason", "exampleAnswer", "options", "answerMode", "outcome", "answer", "remaining", "maxTurns"};
 
     @Container
     @ServiceConnection
@@ -415,7 +415,7 @@ class InterviewAskApiTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"S", "T", "A", "R"})
-    @DisplayName("질문을 받으면 요청한 칸의 질문을 200 으로 돌려주고, FE InterviewTurn 의 13개 키를 모두 담는다")
+    @DisplayName("질문을 받으면 요청한 칸의 질문을 200 으로 돌려주고, FE InterviewTurn 의 14개 키를 모두 담는다")
     void returnsTheNewQuestionWithTwelveKeys(String field) throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);

@@ -217,8 +217,8 @@ class AssistantRunApiTest {
                  {"seq":3,"kind":"STEP","tool":"MATCH_POSTING","postingRef":"p1",
                   "posting":{"ref":"p1","postingId":"%s","company":"토스","title":"백엔드","daysLeft":2,
                              "requiredMet":null,"requiredTotal":null}},
-                 {"seq":4,"kind":"STEP","tool":"START_COVER_LETTER","postingRef":"p1","ok":true,"questionCount":2,
-                  "coverLetterId":"%s"},
+                 {"seq":4,"kind":"STEP","tool":"START_COVER_LETTER","postingRef":"p1","ok":true,"questionCount":3,
+                  "coverLetterId":"%s","defaultQuestions":true},
                  {"seq":5,"kind":"STEP","tool":"FILL_POSTING_GAPS","postingRef":"p1","ok":true,"gapsFilled":2,
                   "posting":{"ref":"p1","postingId":"%s","company":"토스","title":"백엔드","daysLeft":2,
                              "requiredMet":3,"requiredTotal":3}},
@@ -243,6 +243,8 @@ class AssistantRunApiTest {
                 .andExpect(jsonPath("$.data.items[2].ok").doesNotExist())
                 .andExpect(jsonPath("$.data.items[3].coverLetterId").value(coverLetterId.toString()))
                 .andExpect(jsonPath("$.data.items[3].postingRef").doesNotExist())
+                .andExpect(jsonPath("$.data.items[3].defaultQuestions").value(true))
+                .andExpect(jsonPath("$.data.items[4].defaultQuestions").doesNotExist())
                 .andExpect(jsonPath("$.data.items[4].gapsFilled").value(2))
                 .andExpect(jsonPath("$.data.items[4].posting.requiredMet").value(3))
                 .andExpect(jsonPath("$.data.items[4].postingRef").doesNotExist())

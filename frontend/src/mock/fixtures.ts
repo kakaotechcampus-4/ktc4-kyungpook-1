@@ -370,11 +370,11 @@ export const seedInterview: Record<string, unknown[]> = {
 };
 
 // 되묻기 질문 은행 — 칸별 · "코드에서 찾은 것"은 카드의 근거에서 조립
-export const interviewBank: Record<string, { question: string; options: string[] }> = {
-  S: { question: '이 작업을 시작하게 된 계기가 무엇이었나요?', options: ['운영 중 버그 제보가 들어왔어요', '기획이 바뀌어서 새로 필요해졌어요', '리뷰에서 지적을 받았어요'] },
-  T: { question: '그때 무엇을 해내야 하는 상황이었나요?', options: ['사용자가 다시 로그인하지 않도록 해야 했어요', '반복되는 오류를 해결해야 했어요', '정해진 기한 안에 기능을 완성해야 했어요'] },
-  A: { question: '문제를 해결하기 위해 어떤 방법을 썼나요?', options: ['테스트를 먼저 붙이고 고쳤어요', '설계를 바꿔서 다시 짰어요', '문서와 로그를 보며 원인을 좁혔어요'] },
-  R: { question: '작업을 마친 뒤 무엇이 달라졌나요?', options: ['오류가 줄었어요', '사용자가 작업을 더 빠르게 마칠 수 있게 됐어요', '아직 결과를 확인하지 못했어요'] },
+export const interviewBank: Record<string, { question: string; options: string[]; example: string }> = {
+  S: { example: '예: 로그인이 자꾸 풀린다는 제보가 들어왔어요', question: '이 작업을 시작하게 된 계기가 무엇이었나요?', options: ['운영 중 버그 제보가 들어왔어요', '기획이 바뀌어서 새로 필요해졌어요', '리뷰에서 지적을 받았어요'] },
+  T: { example: '예: 사용자가 다시 로그인하지 않게 만들어야 했어요', question: '그때 무엇을 해내야 하는 상황이었나요?', options: ['사용자가 다시 로그인하지 않도록 해야 했어요', '반복되는 오류를 해결해야 했어요', '정해진 기한 안에 기능을 완성해야 했어요'] },
+  A: { example: '예: 로그를 보고 세션 설정을 고쳤어요', question: '문제를 해결하기 위해 어떤 방법을 썼나요?', options: ['테스트를 먼저 붙이고 고쳤어요', '설계를 바꿔서 다시 짰어요', '문서와 로그를 보며 원인을 좁혔어요'] },
+  R: { example: '예: 로그인이 풀리는 일이 거의 없어졌어요', question: '작업을 마친 뒤 무엇이 달라졌나요?', options: ['오류가 줄었어요', '사용자가 작업을 더 빠르게 마칠 수 있게 됐어요', '아직 결과를 확인하지 못했어요'] },
 };
 
 export const seedRecall = {

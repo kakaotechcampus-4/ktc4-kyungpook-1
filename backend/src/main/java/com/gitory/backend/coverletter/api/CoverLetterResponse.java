@@ -25,7 +25,8 @@ public record CoverLetterResponse(
         Instant createdAt,
         Instant updatedAt,
         List<CoverLetterView.Question> questions,
-        Steps steps) {
+        Steps steps,
+        @Schema(description = "사용자가 문항을 주지 않아 자주 나오는 문항 3개로 만든 자소서면 true") boolean defaultQuestions) {
 
     // AI 가 도는 단계를 화면이 조금 늦게 보여도 되는 만큼만 자주 읽는다
     static final int POLL_AFTER_MS = 1500;
@@ -49,6 +50,7 @@ public record CoverLetterResponse(
                 letter.createdAt(),
                 letter.updatedAt(),
                 letter.questions(),
-                new Steps(letter.assignSteps(), letter.draftSteps()));
+                new Steps(letter.assignSteps(), letter.draftSteps()),
+                letter.defaultQuestions());
     }
 }

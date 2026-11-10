@@ -9,7 +9,7 @@ test('개수를 못 센 레포는 숫자 대신 "세는 중"이고, 0 으로 오
   const counting = page.getByRole('radio', { name: /side-project-new/ });
   await expect(counting).toBeVisible();
   await expect(counting).toContainText('세는 중');
-  await expect(counting).toContainText('집계 전이에요');
+  await expect(counting).not.toContainText('집계 전이에요');
   await expect(counting).not.toContainText('내 기여');
   await expect(counting).not.toContainText('PR 없이');
   // 실제로 센 0 은 그대로 보인다 — 구분이 사라지면 안 된다

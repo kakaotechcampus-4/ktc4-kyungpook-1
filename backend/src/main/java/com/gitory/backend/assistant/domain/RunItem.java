@@ -12,7 +12,7 @@ public record RunItem(int seq, Kind kind, String text, AssistantTool tool, Boole
                       Match match, Integer questionCount, UUID coverLetterId, UUID jobId, UUID repoId,
                       String repoName, String askKind, List<String> options, String cardRef, UUID cardId,
                       String cardTitle, String letterRef, UUID letterId, Integer gapsFilled, Question question,
-                      List<Polished> polished, Integer remainingQuestions) {
+                      List<Polished> polished, Integer remainingQuestions, Boolean defaultQuestions) {
 
     public enum Kind {
         USER,
@@ -102,14 +102,14 @@ public record RunItem(int seq, Kind kind, String text, AssistantTool tool, Boole
                 result.coverLetterId(), result.jobId(), result.repoId(), repoName, askKind, options, cardRef,
                 result.cardId(), result.cardTitle() == null ? cardTitle : result.cardTitle(), letterRef,
                 result.letterId(), result.gapsFilled(), result.question(), result.polished(),
-                result.remainingQuestions());
+                result.remainingQuestions(), result.defaultQuestions());
 
     }
 
     private static RunItem plain(int seq, Kind kind, String text, String askKind, List<String> options) {
 
         return new RunItem(seq, kind, text, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, askKind, options, null, null, null, null, null, null, null, null, null);
+                null, null, null, askKind, options, null, null, null, null, null, null, null, null, null, null);
 
     }
 
@@ -119,7 +119,7 @@ public record RunItem(int seq, Kind kind, String text, AssistantTool tool, Boole
 
         return new RunItem(seq, Kind.STEP, null, tool, null, null, find, postingRef, repoRef, null, null, posting,
                 null, null, null, null, null, repoName, null, null, cardRef, null, cardTitle, letterRef, null, null,
-                null, null, null);
+                null, null, null, null);
 
     }
 }

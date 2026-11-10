@@ -16,6 +16,8 @@ const fail = (status: number, code: string, message: string): AssistantResult =>
 
 const STEP_MS = 1000, POLL_MS = 1000, STEP_LIMIT = 6, DAY_MS = 86_400_000;
 const MOCK_MISSING = 'Docker 배포 경험';
+const OPTION_DEFAULT = '자주 나오는 문항으로 쓰기', OPTION_PASTE = '문항 붙여 넣기';
+const DEFAULT_QUESTIONS = ['지원 동기와 입사 후 포부를 적어 주세요', '직무와 관련된 기술로 문제를 해결한 경험을 적어 주세요', '팀과 협업하며 성과를 낸 경험을 적어 주세요'];
 
 /** result 가 있으면 걸음이다 — item 은 하는 중의 모습이고 result 는 끝난 뒤에 붙는 값 */
 type Part = { item: Any; result?: Any };
@@ -84,7 +86,7 @@ function firstParts(script: Script, text: string): Part[] {
     return [
       step('FIND_POSTINGS', { find: { company, keywords: [] } }, { postings: found.slice(0, 3).map(postingOf), totalFound: found.length }),
       step('MATCH_POSTING', { posting }, { posting: { ...posting, requiredMet: met, requiredTotal: total }, match: { requiredMet: met, requiredTotal: total, met: [], missing: met < total ? [MOCK_MISSING] : [] } }),
-      ask('QUESTIONS', '자소서를 쓰려면 문항이 필요해요. 지원서에 있는 문항을 그대로 붙여 넣어 주세요.'),
+      ask('CHOICE', `${posting.company} 공고의 문항은 알 수 없어요. 자주 나오는 문항 3개로 바로 쓸까요, 지원서 문항을 붙여 넣을까요?`, [OPTION_DEFAULT, OPTION_PASTE]),
     ];
   }
   if (script === 'REPO') return [ask('CHOICE', '어느 레포를 정리할까요?', db.repos.slice(0, 3).map((r) => r.name))];
@@ -100,11 +102,13 @@ function firstParts(script: Script, text: string): Part[] {
 function answerParts(run: Any, text: string): Part[] {
   if (run.script === 'LETTER') {
     const posting = run.entries.find((e: Any) => e.item.tool === 'MATCH_POSTING').item.posting;
-    const questions = text.split('\n').map((line) => line.trim()).filter(Boolean).slice(0, L.QUESTIONS).map((line) => ({ text: line, charLimit: null }));
-    const made = createCoverLetter({ jobRole: posting.title, memo: `${posting.company} 공고에 지원하려고 홈에서 자소서를 부탁했어요`, postingId: posting.postingId, questions }, undefined);
+    if (text === OPTION_PASTE) return [ask('QUESTIONS', '자소서를 쓰려면 문항이 필요해요. 지원서에 있는 문항을 그대로 붙여 넣어 주세요.')];
+    const byDefault = text === OPTION_DEFAULT;
+    const questions = byDefault ? DEFAULT_QUESTIONS.map((line) => ({ text: line, charLimit: null })) : text.split('\n').map((line) => line.trim()).filter(Boolean).slice(0, L.QUESTIONS).map((line) => ({ text: line, charLimit: null }));
+    const made = createCoverLetter({ jobRole: posting.title, memo: `${posting.company} 공고에 지원하려고 홈에서 자소서를 부탁했어요`, postingId: posting.postingId, questions, defaultQuestions: byDefault }, undefined);
     if (!made.ok) return [stepFailed('START_COVER_LETTER', {}, made.code)];
     return [
-      step('START_COVER_LETTER', {}, { questionCount: questions.length, coverLetterId: (made.data as Any).id }),
+      step('START_COVER_LETTER', {}, { questionCount: questions.length, coverLetterId: (made.data as Any).id, ...(byDefault ? { defaultQuestions: true } : {}) }),
       say('자소서를 쓰기 시작했어요. 열어서 초안이 나오는 걸 볼 수 있어요.'),
     ];
   }

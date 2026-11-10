@@ -72,11 +72,6 @@ export function ReposPage() {
 
   return (
     <main className="main main--footer main--tight">
-      <ol className="wizard__steps repo-picker__steps" aria-label="진행 단계">
-        <li className="wstep wstep--now"><span className="wstep__no">1</span>레포 선택</li>
-        <li className="wstep"><span className="wstep__no">2</span>읽는 범위 확인</li>
-        <li className="wstep"><span className="wstep__no">3</span>후보 고르기</li>
-      </ol>
       <div className="list-head">
         {/* 아직 못 받았으면 개수를 모른다 — 0 으로 보이면 "레포가 없다"로 읽힌다 */}
         <PageTitle>레포{repos.data && <TitleCount n={repos.data.length} />}</PageTitle>
@@ -110,10 +105,11 @@ export function ReposPage() {
         </div>
       )}
 
-      <StickyFooter strong={selected ? `${selected.name} 을 골랐어요` : '정리할 레포를 고르면 다음으로 넘어가요'}>
+      {/* 읽는 범위 확인 창이 떠 있으면 창의 버튼만 주된 동작이 되게 아래 막대를 숨긴다 */}
+      {!(disclose && selected) && <StickyFooter strong={selected ? `${selected.name} 을 골랐어요` : '정리할 레포를 고르면 다음으로 넘어가요'}>
         <ButtonLink to="/" variant="secondary">취소</ButtonLink>
         <Button size="lg" disabled={!selected} onClick={openDisclose}>다음</Button>
-      </StickyFooter>
+      </StickyFooter>}
 
       {disclose && selected && (
         <Modal title={again ? '새 기록만 읽어요' : '읽는 범위 확인'} width={720} onClose={closeDisclose}
@@ -126,7 +122,7 @@ export function ReposPage() {
                 <IconBox icon={FolderGit2} size={36} />
                 <div className="stack grow" style={{ gap: 3 }}>
                   <span className="w-bold" style={{ fontSize: 14 }}>{selected.owner} / {selected.name}</span>
-                  <span className="t-12 c-2">{isCounting(selected) ? `기여 개수를 ${COUNTING}이에요 — 0건이 아니라 집계 전이에요` : `내 커밋 ${selected.contribution.mine} / 팀 ${selected.contribution.team}, PR ${selected.prCount}, 리뷰 ${selected.reviewCount}`}</span>
+                  <span className="t-12 c-2">{isCounting(selected) ? `기여 개수를 ${COUNTING}이에요` : `내 커밋 ${selected.contribution.mine} / 팀 ${selected.contribution.team}, PR ${selected.prCount}, 리뷰 ${selected.reviewCount}`}</span>
                 </div>
                 <Badge kind="NEUTRAL">읽기 전용</Badge>
               </div>
@@ -177,7 +173,6 @@ function RepoRow({ r, selected, onSelect }: { r: RepoSummary; selected: boolean;
         {r.description && <span className="repo-row__desc">{r.description}</span>}
         <span className="repo-row__line">
           {line.before}{line.caution && <span className="repo-row__caution">{line.caution}</span>}{line.after}
-          {line.hint && <>{'. '}<span className="repo-row__hint">{line.hint}</span></>}
         </span>
         {meta && <span className="repo-row__foot"><span className="repo-row__meta">{meta}</span></span>}
       </div>

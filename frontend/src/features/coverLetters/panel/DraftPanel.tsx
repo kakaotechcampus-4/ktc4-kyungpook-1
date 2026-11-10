@@ -5,6 +5,7 @@ import { errorView } from '@/api/errorView';
 import { checkMessage } from '@/lib/coverLetterCopy';
 import { buildQuestionNotes, flaggedSentences } from '@/lib/coverLetterNotes';
 import { locateSentence, withoutSentence } from '@/lib/draftPaper';
+import { blankCount } from '@/lib/draftText';
 import { track } from '@/lib/track';
 import { useReducedMotion } from '@/lib/useLiveText';
 import { FillTab, type AutoAsk } from './FillTab';
@@ -110,10 +111,13 @@ export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, on
   };
   const applyTo = (x: CoverLetterQuestion) => {
     setError(null);
+    const before = blankCount(textOf(x));
     apply.mutate({ questionId: x.id }, {
       onSuccess: (l) => {
         const next = l.questions.find((y) => y.id === x.id)?.draft?.text;
         if (next != null) onText(x.id, next);
+        // 첨삭이 글 끝에 '더 쓸 거리' 같은 빈칸을 새로 만들었으면 대화가 그 문항 이야기를 바로 연다 — 닫힌 대화가 '채울 곳이 생기면 물어볼게요' 라고 해 놓고 가만히 있지 않게
+        if (next != null && blankCount(next) > before) onTalk(x.id);
         setApplied((a) => ({ ...a, [x.id]: true }));
       },
       onError: (e) => setError({ id: x.id, message: errorView(e).message }),

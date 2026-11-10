@@ -43,7 +43,7 @@ export function DraftPaper({ letter, mode, texts, onText, activeId, focus, flash
       </header>
       {letter.questions.map((q, i) => (
         <PaperQuestion key={q.id} letterId={letter.id} q={q} draftSteps={letter.steps.draft} assignSteps={letter.steps.assign}
-          mode={mode} layout={layout} assigning={assigning} pollMs={letter.pollAfterMs ?? 1500} last={i === letter.questions.length - 1}
+          mode={mode} layout={layout} assigning={assigning} othersWriting={letter.questions.some((x) => x.id !== q.id && x.writing != null)} pollMs={letter.pollAfterMs ?? 1500} last={i === letter.questions.length - 1}
           text={texts?.[q.id]} onText={onText} inView={activeId === q.id}
           focusRequest={focus?.questionId === q.id ? focus : null} flash={flash?.questionId === q.id ? flash : null} />
       ))}

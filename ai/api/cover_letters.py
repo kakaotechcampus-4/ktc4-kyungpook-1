@@ -19,6 +19,8 @@ from api.openapi import INVALID_PAYLOAD_RESPONSE, LLM_UNAVAILABLE_RESPONSE
 from api.progress_stream import NDJSON, stream_with_progress
 from schemas.common import Envelope, ErrorDetail
 from schemas.cover_letter import (
+    AppendCardRequest,
+    AppendCardResult,
     AssignmentRequest,
     AssignmentResult,
     DraftsRequest,
@@ -34,6 +36,7 @@ from schemas.cover_letter import (
     TurnRequest,
     TurnResult,
 )
+from services.cover_letter_append import CoverLetterAppender
 from services.cover_letter_asker import CoverLetterAsker
 from services.cover_letter_assigner import CoverLetterAssigner
 from services.cover_letter_drafter import CoverLetterDrafter
@@ -69,6 +72,7 @@ _polisher = CoverLetterPolisher(EnvironmentLLMClient("COVER_LETTER_POLISH"), _ju
 _turns = CoverLetterTurns(EnvironmentLLMClient("COVER_LETTER_TURN"))
 # 답으로 다시 쓰기는 초안 쓰기의 고치기 경로라 초안과 같은 쓰기 모델을 쓴다
 _filler = CoverLetterFiller(EnvironmentLLMClient("COVER_LETTER_WRITE"), _judge)
+_appender = CoverLetterAppender(EnvironmentLLMClient("COVER_LETTER_WRITE"), _judge)
 
 _suggester = CoverLetterSuggester(EnvironmentLLMClient("COVER_LETTER_SUGGEST"))
 
@@ -76,6 +80,7 @@ _SUGGEST_PATH = "/internal/cover-letter-suggestions"
 _POLISH_PATH = "/internal/cover-letter-polish"
 _TURN_PATH = "/internal/cover-letter-turns"
 _FILL_PATH = "/internal/cover-letter-fill"
+_APPEND_PATH = "/internal/cover-letter-append"
 
 
 @router.post(
@@ -202,6 +207,26 @@ async def fill_question(request: FillRequest):
         result = await _filler.fill(request)
     except CoverLetterLLMUnavailable as exc:
         return _unavailable("자소서 답으로 다시 쓰기", _FILL_PATH, started, exc, request.cover_letter_id)
+    return Envelope(success=True, data=result, meta=usage_meta(started, "COMPLETED"), error=None)
+
+
+@router.post(
+    "/cover-letter-append", response_model=Envelope[AppendCardResult],
+    responses={503: LLM_UNAVAILABLE_RESPONSE},
+    summary="이미 쓴 글에 새 카드 내용 덧붙이기",
+    description=(
+        "target.current_text 의 문장은 그대로 두고, 새 카드(target.supporting_card, added_card_id)의 내용을 알맞은 자리에 한두 문장으로 더합니다. "
+        "초안 쓰기의 고치기 경로로 쓰므로 근거 없는 수치·낱말 검사와 추론(INFERRED) 표시가 초안과 같고, 새로 더한 문장만 감독이 한 번 더 봅니다. "
+        "원래 문장이 하나라도 바뀌었거나 더한 문장이 없으면 앞 글로 되돌리고 steps 에 REVERTED(reason 에 까닭)를 남깁니다. "
+        "쓰기 답을 60초 안에 받지 못하면 503 LLM_UNAVAILABLE(retryable=true)입니다."
+    ),
+)
+async def append_card(request: AppendCardRequest):
+    started = time.perf_counter()
+    try:
+        result = await _appender.append(request)
+    except CoverLetterLLMUnavailable as exc:
+        return _unavailable("자소서 새 카드 덧붙이기", _APPEND_PATH, started, exc, request.cover_letter_id)
     return Envelope(success=True, data=result, meta=usage_meta(started, "COMPLETED"), error=None)
 
 

@@ -19,8 +19,11 @@ export function CardSuggestBanner({ letter }: { letter: CoverLetter }) {
   return (
     <div className="note cl-suggest">
       <strong>새 카드 '{title}'{objectParticle(title)} {text} 문항에 쓸 수 있어요</strong>
+      {!question.primaryCard && question.draft?.edited && <p className="cl-suggest__warn">지금 글은 손으로 고친 글이에요. 다시 쓰면 그 문장은 사라지고 AI 원본 보기에서만 볼 수 있어요.</p>}
       <span className="cl-suggest__actions">
-        <Button size="sm" onClick={() => setSp({ useCard: cardId, question: question.id }, { replace: true })}>이 카드로 다시 쓰기</Button>
+        <Button size="sm" onClick={() => setSp({ useCard: cardId, question: question.id }, { replace: true })}>
+          {question.primaryCard ? '이 카드도 넣어 다시 쓰기' : '이 카드로 다시 쓰기'}
+        </Button>
         <Button size="sm" variant="text" onClick={() => setSp({}, { replace: true })}>닫기</Button>
       </span>
     </div>

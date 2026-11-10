@@ -19,10 +19,10 @@ let shift = 0;
 const realNow = Date.now;
 const advance = (sec: number) => { shift += sec * 1000; Date.now = () => realNow() + shift; };
 
-function drafted() {
+function drafted(primaryCardId: string | null = null) {
   const created = CoverLetter.parse(req('POST', '/cover-letters', { jobRole: '백엔드 개발', memo: null, questions: [{ text: '의견 차이를 조율해 해결한 경험을 적어 주세요', charLimit: null }] }).data);
   advance(7);
-  req('PUT', `/cover-letters/${created.id}/questions/${created.questions[0].id}/cards`, { primaryCardId: null, supportingCardId: null });
+  req('PUT', `/cover-letters/${created.id}/questions/${created.questions[0].id}/cards`, { primaryCardId, supportingCardId: null });
   req('POST', `/cover-letters/${created.id}/asks`);
   advance(5);
   req('POST', `/cover-letters/${created.id}/drafts`);
@@ -106,5 +106,33 @@ describe('자소서 새 카드 안내', () => {
     mount(l, `/cover-letters/${l.id}?card=card_x&question=q_none`);
     await screen.findByLabelText('1번 문항 초안');
     expect(screen.queryByRole('button', { name: '이 카드로 다시 쓰기' })).toBeNull();
+  });
+
+  it('B5 중심 카드가 있는 문항의 띠는 이 카드도 넣어 다시 쓰기라고 말한다', { timeout: 15000 }, async () => {
+    const [primary, added] = db.cards.filter((c) => c.status === 'CONFIRMED');
+    const l = drafted(primary.id);
+    stubFetch([]);
+    mount(l, `/cover-letters/${l.id}?card=${added.id}&question=${l.questions[0].id}`);
+    expect(await screen.findByRole('button', { name: '이 카드도 넣어 다시 쓰기' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '이 카드로 다시 쓰기' })).toBeNull();
+  });
+
+  it('B6 중심 카드가 없는 문항의 손으로 고친 글은 다시 쓰면 사라진다고 먼저 알린다', { timeout: 15000 }, async () => {
+    const l = drafted();
+    l.questions[0].draft!.edited = true;
+    stubFetch([]);
+    const card = db.cards.find((c) => c.status === 'CONFIRMED')!;
+    mount(l, `/cover-letters/${l.id}?card=${card.id}&question=${l.questions[0].id}`);
+    expect(await screen.findByText('지금 글은 손으로 고친 글이에요. 다시 쓰면 그 문장은 사라지고 AI 원본 보기에서만 볼 수 있어요.')).toBeInTheDocument();
+  });
+
+  it('B7 중심 카드가 있으면 고친 글이어도 경고하지 않는다', { timeout: 15000 }, async () => {
+    const [primary, added] = db.cards.filter((c) => c.status === 'CONFIRMED');
+    const l = drafted(primary.id);
+    l.questions[0].draft!.edited = true;
+    stubFetch([]);
+    mount(l, `/cover-letters/${l.id}?card=${added.id}&question=${l.questions[0].id}`);
+    expect(await screen.findByRole('button', { name: '이 카드도 넣어 다시 쓰기' })).toBeInTheDocument();
+    expect(screen.queryByText(/손으로 고친 글이에요/)).toBeNull();
   });
 });

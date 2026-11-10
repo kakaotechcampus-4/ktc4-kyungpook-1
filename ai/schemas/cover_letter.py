@@ -577,6 +577,39 @@ class FillResult(BaseModel):
     steps: list[DraftStep]
 
 
+class AppendCardRequest(StrictRequestModel):
+    """`POST /internal/cover-letter-append` 요청 모델."""
+
+    cover_letter_id: PositiveId
+    job_role: NonBlankText = Field(..., max_length=100)
+    memo: Optional[str] = Field(None, max_length=1_000)
+    posting: Optional[Posting] = None
+    others: list[PolishOther] = Field(default_factory=list, max_length=9, description="같은 자소서의 다른 문항")
+    target: PolishTarget = Field(
+        ..., description="글을 지킬 문항. current_text 는 그대로 둘 글이고, primary_card 는 이미 쓴 카드, supporting_card 는 새로 더할 카드다",
+    )
+    added_card_id: PositiveId = Field(..., description="새로 더할 카드. target.supporting_card 의 card_id 와 같아야 한다")
+    strengths: Strengths = []
+
+    @model_validator(mode="after")
+    def _check_ids_and_added_card(self) -> "AppendCardRequest":
+        ids = [other.question_id for other in self.others] + [self.target.question_id]
+        if len(set(ids)) != len(ids):
+            raise ValueError("others 와 target 에 같은 question_id 가 두 번 있습니다.")
+        if self.target.supporting_card is None or self.target.supporting_card.card_id != self.added_card_id:
+            raise ValueError("added_card_id 가 target.supporting_card 의 card_id 와 다릅니다.")
+        return self
+
+
+class AppendCardResult(BaseModel):
+    """`POST /internal/cover-letter-append` 응답 `data` 모델."""
+
+    draft: QuestionDraft = Field(
+        ..., description="새 카드 내용을 더한 글. 원래 문장이 바뀌었거나 더한 문장이 없으면 앞 글로 되돌리고 steps 에 REVERTED 가 남는다",
+    )
+    steps: list[DraftStep]
+
+
 SuggestionSource = Literal["CARD", "CANDIDATE"]
 
 

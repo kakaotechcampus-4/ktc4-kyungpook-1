@@ -12,7 +12,7 @@ for (const width of [320, 390, 768, 1440]) {
     expect(brand!.y).toBeLessThan(60);
     expect(brand!.x).toBeGreaterThanOrEqual(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    await page.getByRole('button', { name: '샘플로 체험하기', exact: true }).click();
+    await page.locator('.landing__hero').getByRole('button', { name: '샘플로 체험하기', exact: true }).click();
     await expect(page.getByRole('heading', { name: /^지원할 곳/ })).toBeVisible();
   });
 }

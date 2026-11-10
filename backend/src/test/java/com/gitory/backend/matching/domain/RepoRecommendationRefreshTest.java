@@ -206,7 +206,7 @@ class RepoRecommendationRefreshTest {
         ready(userId, blog);
         ready(otherUser, otherRepo);
 
-        profiles.replace(userId, new ProfileInput(List.of(), List.of(), List.of(), List.of(), List.of("BACKEND"), null, null));
+        profiles.replace(userId, new ProfileInput(List.of("BACKEND"), null, null));
 
         assertThat(jdbc.queryForList("""
                 SELECT user_repository_id FROM repo_recommendation WHERE status = 'COMPUTING' AND stale_since IS NOT NULL

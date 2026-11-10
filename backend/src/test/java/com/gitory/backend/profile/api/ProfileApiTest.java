@@ -25,7 +25,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -55,15 +54,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ProfileApiTest {
 
     private static final String FULL = """
-            {"educations":[{"level":"BACHELOR","school":"  경북대학교  ","major":"컴퓨터학부","status":"GRADUATION_EXPECTED",
-                            "startMonth":"2021-03","endMonth":"2027-02","gpa":3.8,"gpaMax":4.5}],
-             "careers":[{"company":"카카오","role":"","type":"INTERN","startMonth":"2025-07","endMonth":null}],
-             "languages":[{"test":"OPIC","testName":"남겨도 버림","score":"IH","acquiredMonth":"2025-05"},
-                          {"test":"OTHER","testName":"TOPIK","score":"6급","acquiredMonth":null}],
-             "certifications":[{"name":"정보처리기사","issuer":"한국산업인력공단","acquiredMonth":"2026-06"}]}""";
+            {"interests":["BACKEND","DEVOPS"]}""";
 
     private static final String EMPTY = """
-            {"educations":[],"careers":[],"languages":[],"certifications":[]}""";
+            {"interests":[]}""";
 
     @Container
     @ServiceConnection
@@ -90,15 +84,11 @@ class ProfileApiTest {
     }
 
     @Test
-    @DisplayName("한 번도 저장하지 않았으면 네 목록과 관심 분야가 비고 savedAt 이 null 이다")
+    @DisplayName("한 번도 저장하지 않았으면 관심 분야가 비고 savedAt 이 null 이다")
     void neverSavedProfileIsEmptyWithoutSavedAt() throws Exception {
 
         profile(myUserId)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.educations", hasSize(0)))
-                .andExpect(jsonPath("$.data.careers", hasSize(0)))
-                .andExpect(jsonPath("$.data.languages", hasSize(0)))
-                .andExpect(jsonPath("$.data.certifications", hasSize(0)))
                 .andExpect(jsonPath("$.data.interests", hasSize(0)))
                 .andExpect(jsonPath("$.data.savedAt").value(nullValue()));
 
@@ -108,7 +98,8 @@ class ProfileApiTest {
     @DisplayName("메일 주소와 수신 여부를 저장한 뒤 다시 읽으면 같은 값이 나온다")
     void mailAddressAndOptInSurviveTheDatabaseRoundTrip() throws Exception {
 
-        save(myUserId, EMPTY.replace("\"certifications\":[]}", "\"certifications\":[],\"email\":\" me@example.com \",\"mailOptIn\":true}"))
+        save(myUserId, """
+                {"interests":[],"email":" me@example.com ","mailOptIn":true}""")
                 .andExpect(status().isOk());
 
         profile(myUserId)
@@ -118,8 +109,8 @@ class ProfileApiTest {
     }
 
     @Test
-    @DisplayName("저장하면 보낸 순서대로 남고, 글은 앞뒤 공백을 지우며 빈 글은 null, 목록에 있는 시험의 이름 칸은 버린다")
-    void savesWhatWasSentAndReadsItBack() throws Exception {
+    @DisplayName("관심 분야는 보낸 순서대로 남고, 다시 보내면 통째로 바뀐다")
+    void savesInterestsAsSentAndReplacesThemWhole() throws Exception {
 
         String savedAt = JsonPath.read(
                 save(myUserId, FULL).andExpect(status().isOk()).andReturn().getResponse()
@@ -127,66 +118,6 @@ class ProfileApiTest {
 
         profile(myUserId)
                 .andExpect(jsonPath("$.data.savedAt").value(savedAt))
-                .andExpect(jsonPath("$.data.educations[0].level").value("BACHELOR"))
-                .andExpect(jsonPath("$.data.educations[0].school").value("경북대학교"))
-                .andExpect(jsonPath("$.data.educations[0].status").value("GRADUATION_EXPECTED"))
-                .andExpect(jsonPath("$.data.educations[0].endMonth").value("2027-02"))
-                .andExpect(jsonPath("$.data.educations[0].gpa").value(3.8))
-                .andExpect(jsonPath("$.data.educations[0].gpaMax").value(4.5))
-                .andExpect(jsonPath("$.data.careers[0].role").value(nullValue()))
-                .andExpect(jsonPath("$.data.careers[0].endMonth").value(nullValue()))
-                .andExpect(jsonPath("$.data.languages[*].test").value(contains("OPIC", "OTHER")))
-                .andExpect(jsonPath("$.data.languages[0].testName").value(nullValue()))
-                .andExpect(jsonPath("$.data.languages[1].testName").value("TOPIK"))
-                .andExpect(jsonPath("$.data.certifications[0].name").value("정보처리기사"));
-
-    }
-
-    @Test
-    @DisplayName("다시 저장하면 네 목록을 통째로 바꾸고, 빈 목록 네 개로 저장하면 비지만 savedAt 은 남아 처음 입력을 다시 띄우지 않는다")
-    void replacesWholeProfileAndKeepsSavedAtWhenSkipped() throws Exception {
-
-        save(myUserId, FULL).andExpect(status().isOk());
-        save(myUserId, EMPTY).andExpect(status().isOk());
-
-        profile(myUserId)
-                .andExpect(jsonPath("$.data.educations", hasSize(0)))
-                .andExpect(jsonPath("$.data.certifications", hasSize(0)))
-                .andExpect(jsonPath("$.data.savedAt").isString());
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM user_profile WHERE user_id = ?", Integer.class, myUserId))
-                .isEqualTo(1);
-
-    }
-
-    @Test
-    @DisplayName("남의 인적사항은 보이지 않고 바뀌지도 않는다")
-    void profilesAreSeparatedByUser() throws Exception {
-
-        save(othersUserId, FULL).andExpect(status().isOk());
-
-        profile(myUserId).andExpect(jsonPath("$.data.savedAt").value(nullValue()));
-        save(myUserId, EMPTY).andExpect(status().isOk());
-        profile(othersUserId).andExpect(jsonPath("$.data.educations", hasSize(1)));
-
-    }
-
-    @Test
-    @DisplayName("학력은 학력 구분과 상태만 있으면 저장되고, 비운 학교 이름은 null 로 읽는다 — 처음 입력 창이 학교를 받지 않는다")
-    void savesEducationWithoutSchoolName() throws Exception {
-
-        save(myUserId, education("\"level\":\"BACHELOR\",\"school\":\"\\u00a0 \",\"status\":\"GRADUATED\"") .replace("\"certifications\":[]}", "\"certifications\":[],\"interests\":[\"BACKEND\"]}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.educations[0].level").value("BACHELOR"))
-                .andExpect(jsonPath("$.data.educations[0].school").value(nullValue()));
-
-    }
-
-    @Test
-    @DisplayName("관심 분야는 보낸 순서대로 남고, 다시 보내면 통째로 바뀐다")
-    void savesInterestsAsSentAndReplacesThemWhole() throws Exception {
-
-        save(myUserId, interests("[\"BACKEND\",\"DEVOPS\"]"))
-                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.interests").value(contains("BACKEND", "DEVOPS")));
 
         save(myUserId, interests("[\"DATA\"]")).andExpect(status().isOk());
@@ -196,16 +127,54 @@ class ProfileApiTest {
     }
 
     @Test
-    @DisplayName("interests 를 보내지 않으면 저장된 관심 분야를 그대로 두고 네 목록만 바꾼다")
+    @DisplayName("빈 관심 분야로 저장하면 비지만 savedAt 은 남아 처음 입력을 다시 띄우지 않는다")
+    void keepsSavedAtWhenSavedWithoutInterests() throws Exception {
+
+        save(myUserId, FULL).andExpect(status().isOk());
+        save(myUserId, EMPTY).andExpect(status().isOk());
+
+        profile(myUserId)
+                .andExpect(jsonPath("$.data.interests", hasSize(0)))
+                .andExpect(jsonPath("$.data.savedAt").isString());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM user_profile WHERE user_id = ?", Integer.class, myUserId))
+                .isEqualTo(1);
+
+    }
+
+    @Test
+    @DisplayName("남의 프로필은 보이지 않고 바뀌지도 않는다")
+    void profilesAreSeparatedByUser() throws Exception {
+
+        save(othersUserId, FULL).andExpect(status().isOk());
+
+        profile(myUserId).andExpect(jsonPath("$.data.savedAt").value(nullValue()));
+        save(myUserId, EMPTY).andExpect(status().isOk());
+        profile(othersUserId).andExpect(jsonPath("$.data.interests", hasSize(2)));
+
+    }
+
+    @Test
+    @DisplayName("interests 를 보내지 않으면 저장된 관심 분야를 그대로 둔다")
     void keepsStoredInterestsWhenOmitted() throws Exception {
 
         save(myUserId, interests("[\"BACKEND\"]")).andExpect(status().isOk());
 
-        save(myUserId, FULL).andExpect(status().isOk());
+        save(myUserId, """
+                {"email":"me@example.com"}""").andExpect(status().isOk());
 
-        profile(myUserId)
-                .andExpect(jsonPath("$.data.educations", hasSize(1)))
-                .andExpect(jsonPath("$.data.interests").value(contains("BACKEND")));
+        profile(myUserId).andExpect(jsonPath("$.data.interests").value(contains("BACKEND")));
+
+    }
+
+    @Test
+    @DisplayName("요청에 학력 같은 옛 항목이 와도 400 이 아니라 무시하고 응답에도 싣지 않는다")
+    void ignoresRemovedSections() throws Exception {
+
+        save(myUserId, """
+                {"educations":[{"level":"BACHELOR"}],"careers":[],"languages":[],"certifications":[],"interests":["DATA"]}""")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.interests").value(contains("DATA")))
+                .andExpect(jsonPath("$.data.educations").doesNotExist());
 
     }
 
@@ -225,42 +194,6 @@ class ProfileApiTest {
     static Stream<Arguments> invalidBodies() {
 
         return Stream.of(
-                invalid("목록이 빠짐", """
-                        {"educations":[],"careers":[],"languages":[]}""", "자격증 목록을 보내 주세요"),
-                invalid("모르는 학력 구분", education("\"level\":\"PHD\",\"school\":\"경북대\",\"status\":\"GRADUATED\""),
-                        "학력 1번째 학력 구분"),
-                invalid("학점만 있고 만점 없음",
-                        education("\"level\":\"BACHELOR\",\"school\":\"경북대\",\"status\":\"GRADUATED\",\"gpa\":3.5"),
-                        "학점과 만점은 함께"),
-                invalid("모르는 만점",
-                        education("\"level\":\"BACHELOR\",\"school\":\"경북대\",\"status\":\"GRADUATED\",\"gpa\":3.5,\"gpaMax\":5.0"),
-                        "학점 만점은"),
-                invalid("만점 넘는 학점",
-                        education("\"level\":\"BACHELOR\",\"school\":\"경북대\",\"status\":\"GRADUATED\",\"gpa\":4.6,\"gpaMax\":4.5"),
-                        "0 부터 만점까지"),
-                invalid("졸업이 입학보다 앞섬", education("\"level\":\"BACHELOR\",\"school\":\"경북대\",\"status\":\"GRADUATED\","
-                        + "\"startMonth\":\"2021-03\",\"endMonth\":\"2020-02\""), "끝난 달이 시작한 달보다"),
-                invalid("입사 달 없음", """
-                        {"educations":[],"careers":[{"company":"카카오","type":"INTERN"}],"languages":[],"certifications":[]}""",
-                        "경력 1번째 입사 달"),
-                invalid("달 모양 틀림", """
-                        {"educations":[],"careers":[{"company":"카카오","type":"INTERN","startMonth":"2025-7"}],"languages":[],"certifications":[]}""",
-                        "YYYY-MM"),
-                invalid("기타 시험 이름 없음", """
-                        {"educations":[],"careers":[],"languages":[{"test":"OTHER","score":"6급"}],"certifications":[]}""",
-                        "어학 1번째 시험 이름"),
-                invalid("빈 항목", """
-                        {"educations":[],"careers":[],"languages":[],"certifications":[null]}""", "자격증 1번째 항목이 비었습니다"),
-                invalid("50자 넘는 자격증 이름", """
-                        {"educations":[],"careers":[],"languages":[],"certifications":[{"name":"%s"}]}""".formatted("가".repeat(51)),
-                        "50자를 넘을 수 없습니다"),
-                invalid("U+0000", """
-                        {"educations":[],"careers":[],"languages":[],"certifications":[{"name":"정보\\u0000처리"}]}""",
-                        "U+0000"),
-                invalid("자격증 21개", """
-                        {"educations":[],"careers":[],"languages":[],"certifications":[%s]}""".formatted(
-                                String.join(",", Collections.nCopies(21, "{\"name\":\"자격증\"}"))),
-                        "20개까지"),
                 invalid("관심 분야 4개", interests("[\"BACKEND\",\"FRONTEND\",\"MOBILE\",\"DEVOPS\"]"), "3개까지"),
                 invalid("모르는 관심 분야", interests("[\"GAME\"]"), "관심 분야 1번째"),
                 invalid("관심 분야 겹침", interests("[\"BACKEND\",\"BACKEND\"]"), "관심 분야 2번째가 앞의 것과 겹칩니다"));
@@ -269,12 +202,12 @@ class ProfileApiTest {
 
     private static String interests(String interests) {
 
-        return "{\"educations\":[],\"careers\":[],\"languages\":[],\"certifications\":[],\"interests\":" + interests + "}";
+        return "{\"interests\":" + interests + "}";
 
     }
 
     @Test
-    @DisplayName("처음 저장이 동시에 두 번 와도 둘 다 성공하고 인적사항은 한 줄이다")
+    @DisplayName("처음 저장이 동시에 두 번 와도 둘 다 성공하고 프로필은 한 줄이다")
     void concurrentFirstSavesKeepOneRow() throws Exception {
 
         CountDownLatch gate = new CountDownLatch(1);
@@ -297,7 +230,7 @@ class ProfileApiTest {
     }
 
     @Test
-    @DisplayName("사용자를 지우면 인적사항도 함께 지워진다")
+    @DisplayName("사용자를 지우면 프로필도 함께 지워진다")
     void deletingUserDropsProfile() throws Exception {
 
         save(myUserId, FULL).andExpect(status().isOk());
@@ -322,12 +255,6 @@ class ProfileApiTest {
     private static Arguments invalid(String name, String body, String message) {
 
         return Arguments.of(Named.of(name, body), message);
-
-    }
-
-    private static String education(String fields) {
-
-        return "{\"educations\":[{" + fields + "}],\"careers\":[],\"languages\":[],\"certifications\":[]}";
 
     }
 

@@ -49,7 +49,7 @@ describe('personal data stays out of analytics, logs, URLs and storage', () => {
       expect(name).toMatch(/^profile_/);
       for (const value of Object.values(props)) expect(['number', 'boolean']).toContain(typeof value); // 문자열 · null 도 허용하지 않는다
     }
-    expect(vi.mocked(track)).toHaveBeenCalledWith('profile_saved', { educationCount: 0, careerCount: 0, languageCount: 0, certificateCount: 0, interestCount: 1 });
+    expect(vi.mocked(track)).toHaveBeenCalledWith('profile_saved', { interestCount: 1 });
     for (const secret of SECRETS) expect(serialized(calls)).not.toContain(secret);
 
     // 요청 주소·쿼리스트링에 값이 없다 — 값은 PUT 본문에만 있다
@@ -115,7 +115,7 @@ describe('source guard: profile code cannot call track() with anything but count
     const calls = files.flatMap((file) => trackCalls(readFileSync(file, 'utf8')).map((args) => ({ file, args })));
     expect(calls.length).toBeGreaterThan(0);
     for (const { file, args } of calls) {
-      const ok = /^'profile_saved', \{ educationCount: saved\.educations\.length, careerCount: saved\.careers\.length, languageCount: saved\.languages\.length, certificateCount: saved\.certifications\.length, interestCount: saved\.interests\.length \}$/.test(args)
+      const ok = /^'profile_saved', \{ interestCount: saved\.interests\.length \}$/.test(args)
         || /^'profile_setup_completed', \{ interestCount: saved\.interests\.length \}$/.test(args);
       expect(ok, `${file}: track(${args})`).toBe(true);
     }

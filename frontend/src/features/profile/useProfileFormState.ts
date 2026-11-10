@@ -88,7 +88,7 @@ export function useProfileFormState(initial: Profile, options: { guard?: boolean
       setAttempted(new Set());
       setSavedOnce(true);
       setFocusRequest(SAVE_ID); // 저장 중에 버튼이 잠겨 초점이 사라지므로 되돌려 놓는다
-      track('profile_saved', { educationCount: saved.educations.length, careerCount: saved.careers.length, languageCount: saved.languages.length, certificateCount: saved.certifications.length, interestCount: saved.interests.length });
+      track('profile_saved', { interestCount: saved.interests.length });
       return saved;
     } catch (error) {
       // 서버가 칸별 오류(path·code)를 주면 그 칸에 붙인다. 문장 하나뿐이면 일반 안내만 보인다 — 서버 문구는 쓰지 않는다

@@ -10,14 +10,11 @@ import com.gitory.backend.ingest.domain.RepositoryReferenceService;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import com.gitory.backend.matching.infra.MatchableCondition;
 import com.gitory.backend.matching.infra.PostingCondition;
-import com.gitory.backend.profile.domain.ProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.time.YearMonth;
-import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -34,9 +31,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MatchDetailService {
 
-    // 인적사항의 달은 한국 달력 기준이다
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
-
     // 같은 종류 안에서는 원문 순서(seq)이고, 종류는 enum 선언 순서(필수 → 우대 → 담당 업무)다
     private static final Comparator<JobPostingCriterion> CONDITION_ORDER = Comparator
             .comparing(JobPostingCriterion::getType).thenComparing(JobPostingCriterion::getSeq);
@@ -44,7 +38,6 @@ public class MatchDetailService {
     private final JobPostingRepository postings;
     private final MatchingCardReader cards;
     private final MatchJudgementService judgements;
-    private final ProfileService profiles;
     private final RepositoryReferenceService repositories;
     private final CompanyDirectory companies;
     private final UserRateLimiter rateLimiter;
@@ -53,7 +46,7 @@ public class MatchDetailService {
     public MatchDetail detail(UUID postingId, Long userId) {
 
         List<PostingCondition> rows = rowsOf(postingId);
-        return detail(rows, cards.confirmedOf(userId), userId);
+        return detail(rows, cards.confirmedOf(userId));
 
     }
 
@@ -73,7 +66,7 @@ public class MatchDetailService {
                 throw new MatchingAiUnavailableException("공고 조건 판단을 AI 에게서 받지 못했다");
             }
         }
-        return detail(rows, mine, userId);
+        return detail(rows, mine);
 
     }
 
@@ -87,7 +80,7 @@ public class MatchDetailService {
 
     }
 
-    private MatchDetail detail(List<PostingCondition> rows, List<MatchingCard> mine, Long userId) {
+    private MatchDetail detail(List<PostingCondition> rows, List<MatchingCard> mine) {
 
         JobPosting posting = rows.getFirst().posting();
         List<JobPostingCriterion> criteria = rows.stream()
@@ -95,8 +88,7 @@ public class MatchDetailService {
                 .sorted(CONDITION_ORDER)
                 .toList();
         Map<Long, StoredJudgement> judged = judgements.stored(skillConditions(rows), mine);
-        Applicant applicant = Applicant.of(profiles.of(userId), Set.of(),
-                YearMonth.from(Instant.now(clock).atZone(SEOUL)));
+        Applicant applicant = Applicant.of(Set.of());
         Map<Long, MatchingCardLabel> labels = cards.labelsOf(judged.values().stream()
                 .flatMap(stored -> stored.metBy().stream())
                 .map(JudgedSupport::cardId)
@@ -147,7 +139,7 @@ public class MatchDetailService {
 
     }
 
-    // 담당 업무는 판단하지 않고, 학력만 인적사항과 견주며, 병역·어학·자격증·지역 같은 일반 조건은 사용자가 직접 확인한다
+    // 담당 업무는 판단하지 않고, 학력은 프로필에 없어 늘 확인 필요로 두며, 병역·어학·자격증·지역 같은 일반 조건은 사용자가 직접 확인한다
     private static MatchConditionStatus statusOf(JobPostingCriterion criterion, StoredJudgement judged,
                                                  Applicant applicant) {
 

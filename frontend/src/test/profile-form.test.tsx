@@ -70,7 +70,7 @@ describe('profile form — saving', () => {
     expect(status()).toContain('저장하지 않은 변경이 있어요');
     await save();
     await waitFor(() => expect(status()).toContain('저장했어요'));
-    expect(puts(server)[0].body).toEqual({ educations: [], careers: [], languages: [], certifications: [], interests: ['BACKEND', 'DEVOPS'], email: '', mailOptIn: false });
+    expect(puts(server)[0].body).toEqual({ interests: ['BACKEND', 'DEVOPS'], email: '', mailOptIn: false });
     expect(screen.getByRole('button', { name: '저장' })).toHaveAttribute('aria-disabled', 'true');
     await waitFor(() => expect(screen.getByRole('button', { name: '저장' })).toHaveFocus());
     click('저장'); // 다시 눌러도 요청을 더 보내지 않는다
@@ -86,7 +86,7 @@ describe('profile form — saving', () => {
     pick('데이터');
     await save();
     await waitFor(() => expect(status()).toContain('저장했어요'));
-    expect(puts(server)[0].body).toEqual({ educations: [], careers: [], languages: [], certifications: [], interests: ['BACKEND', 'DEVOPS', 'DATA'], email: '', mailOptIn: false });
+    expect(puts(server)[0].body).toEqual({ interests: ['BACKEND', 'DEVOPS', 'DATA'], email: '', mailOptIn: false });
   });
 
   it('opens an empty, never-saved profile with nothing ticked', async () => {

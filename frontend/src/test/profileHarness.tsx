@@ -1,4 +1,4 @@
-/** 인적사항 테스트 공용 도구 — 화면 → api() → fetch → 목 라우터까지 실제 경로로 돌린다. */
+/** 프로필 테스트 공용 도구 — 화면 → api() → fetch → 목 라우터까지 실제 경로로 돌린다. */
 import type { ReactNode } from 'react';
 import { render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -39,13 +39,7 @@ export function mountApp(routes: RouteObject[], initialPath: string, client = ne
 
 export const page = (element: ReactNode, path: string): RouteObject => ({ path, element });
 
-/** 필요한 만큼만 채운 저장 본문(BE #552 계약 모양) */
-export const sampleInput = (): ProfileInput => ({
-  educations: [{ level: 'BACHELOR', school: '샘플대학교', major: '컴퓨터공학', status: 'GRADUATED', startMonth: '2018-03', endMonth: '2022-02', gpa: 3.8, gpaMax: 4.5 }],
-  careers: [{ company: '샘플컴퍼니', role: '백엔드 개발', type: 'FULL_TIME', startMonth: '2022-03', endMonth: null }],
-  languages: [{ test: 'TOEIC', testName: null, score: '900', acquiredMonth: '2021-08' }],
-  certifications: [{ name: '정보처리기사', issuer: null, acquiredMonth: '2021-11' }],
-  interests: ['BACKEND', 'DEVOPS'],
-});
-/** 저장이 되는 가장 작은 본문 — 관심 분야 하나, 목록은 모두 비움 */
-export const minimalInput = (): ProfileInput => ({ educations: [], careers: [], languages: [], certifications: [], interests: ['BACKEND'] });
+/** 필요한 만큼만 채운 저장 본문 */
+export const sampleInput = (): ProfileInput => ({ interests: ['BACKEND', 'DEVOPS'] });
+/** 저장이 되는 가장 작은 본문 — 관심 분야 하나 */
+export const minimalInput = (): ProfileInput => ({ interests: ['BACKEND'] });

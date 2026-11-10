@@ -50,7 +50,7 @@ describe('first-entry dialog (shown while no interest is saved)', () => {
     click('저장하고 시작하기');
     await waitFor(() => expect(dialog()).not.toBeInTheDocument());
     expect(puts(server)).toHaveLength(1);
-    expect(puts(server)[0].body).toEqual({ educations: [], careers: [], languages: [], certifications: [], interests: ['BACKEND', 'DEVOPS'], email: '', mailOptIn: false });
+    expect(puts(server)[0].body).toEqual({ interests: ['BACKEND', 'DEVOPS'], email: '', mailOptIn: false });
     expect(db.profile.interests).toEqual(['BACKEND', 'DEVOPS']);
     expect(vi.mocked(track)).toHaveBeenCalledWith('profile_setup_completed', { interestCount: 2 });
   });
@@ -63,7 +63,7 @@ describe('first-entry dialog (shown while no interest is saved)', () => {
     pick('백엔드');
     click('저장하고 시작하기');
     await waitFor(() => expect(dialog()).not.toBeInTheDocument());
-    expect(puts(server)[0].body).toMatchObject({ educations: [], careers: [], languages: [], certifications: [], interests: ['BACKEND'] });
+    expect(puts(server)[0].body).toMatchObject({ interests: ['BACKEND'] });
   });
 
   it('stays closed once an interest is saved, and sends no PUT by itself', async () => {

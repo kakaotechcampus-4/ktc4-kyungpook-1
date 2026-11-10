@@ -23,7 +23,6 @@ import { CompanyMark } from "./CompanyMark";
 import { ConditionGapFill, Dots } from "./GapFillParts";
 import { canProceed, clearProceeded, gapKey, gapKeys, proposalCount, readProceeded, rememberProceeded, revealIntervalMs, useProceed, useRevealed, useUsedCandidates } from "./gapFill";
 import { DeadlineMark, PostingFacts, TechChips } from "./PostingParts";
-import { CalendarToggle } from "./CalendarToggle";
 import { MatchBack, MatchFailure, MatchUnavailable } from "./shared";
 import {
   categoryLabel,
@@ -478,7 +477,6 @@ export function MatchDetailPage() {
                   공고 원문 보기
                   <ExternalLink size={14} aria-hidden />
                 </a>
-                <CalendarToggle posting={{ id: detail.id, company: companyLabel(detail.company), role: detail.role, expiresAt: detail.source.expiresAt }} />
               </div>
               {judge.isError && <p role="alert" className="posting-summary__error">맞춰 보지 못했어요. 잠시 뒤 다시 눌러 주세요.</p>}
               {proceed.isError && <p role="alert" className="posting-summary__error">제안을 넘기지 못했어요. 다시 눌러 주세요.</p>}

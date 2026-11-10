@@ -11,4 +11,6 @@ public interface CardVersionRepository extends JpaRepository<CardVersion, Long> 
     Optional<CardVersion> findByCardIdAndVersionNo(Long cardId, short versionNo);
 
     List<CardVersion> findByCardIdOrderByVersionNoDesc(Long cardId);
+
+    int countByCardIdAndVersionNoGreaterThanAndConfirmedFalse(Long cardId, short versionNo);
 }

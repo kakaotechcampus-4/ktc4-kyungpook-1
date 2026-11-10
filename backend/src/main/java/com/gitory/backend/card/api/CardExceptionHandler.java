@@ -6,6 +6,7 @@ import com.gitory.backend.card.domain.CardGeneratingException;
 import com.gitory.backend.card.domain.CardNotConfirmableException;
 import com.gitory.backend.card.domain.CardNotFoundException;
 import com.gitory.backend.card.domain.CardVersionNotFoundException;
+import com.gitory.backend.card.domain.InterviewReplyStaleException;
 import com.gitory.backend.card.domain.InvalidCardInputException;
 import com.gitory.backend.card.domain.interview.InterviewAiUnavailableException;
 import com.gitory.backend.card.domain.interview.InterviewCapReachedException;
@@ -120,6 +121,14 @@ public class CardExceptionHandler {
     public ApiResponse<Void> handleInterviewTurnAnswered() {
 
         return ApiResponse.fail(ErrorCode.INVALID_STATE, "이미 다른 답을 한 질문입니다.");
+
+    }
+
+    @ExceptionHandler(InterviewReplyStaleException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiResponse<Void> handleInterviewReplyStale() {
+
+        return ApiResponse.fail(ErrorCode.INVALID_STATE, "답을 확인하는 사이 카드가 바뀌었습니다. 카드를 다시 불러온 뒤 답해 주세요.");
 
     }
 

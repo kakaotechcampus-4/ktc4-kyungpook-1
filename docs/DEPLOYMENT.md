@@ -11,9 +11,10 @@
 |---|---|
 | 서버 | 카테캠이 팀당 EC2 1대 제공 (2026-08-31 ~ 2026-11-20). t3.medium 4GB · Ubuntu 24.04 · 50GB · 서울 리전 고정 |
 | 접속 | Session Manager (22 포트를 열지 않음) |
-| 주소 | `https://<EIP 대시 표기>.sslip.io` (예: EIP `1.2.3.4` → `1-2-3-4.sslip.io`). 실제 주소는 팀 채널 공지 |
+| 주소 | `https://gitory.duckdns.org` (옛 주소 `https://<EIP 대시 표기>.sslip.io` 로 들어오면 새 주소의 같은 경로로 넘긴다) |
 | 구성 | 단일 VM + docker compose. Caddy 가 `/`→프론트, `/api`→Spring 으로 경로 분기 (같은 오리진) |
-| 배포 | `develop` 머지 → GitHub Actions(self-hosted runner) 가 서버에서 다시 빌드·기동 |
+| 배포 | `develop` 머지 → CI 와 전체 서비스 E2E 시험 통과 → GitHub Actions(self-hosted runner) 가 서버에서 다시 빌드·기동 → 실제 주소로 확인, 안 열리면 직전 커밋으로 되돌림 |
+| 상태 확인 | GitHub Actions 가 10분마다 서버 밖에서 공개 주소로 들어가 보고, 멈추거나 다시 열리면 팀 Discord 로 알림 |
 | 담당 | 곽태훈 (스펙 담당표에서는 BE 리드의 몫이었으나 9월 말부터 곽태훈이 진행) |
 
 ### 하려는 일 → 읽을 곳
@@ -229,7 +230,7 @@ fork PR 이 워크플로를 바꿔 `runs-on: self-hosted` 로 실행하면 그 �
    - E2E 시험이 흔들려 실패하면 배포가 나가지 않는다. Actions 의 그 `e2e` 실행에서 Re-run failed jobs 를 누르고, 성공으로 끝나면 배포가 이어진다. 수동 실행도 develop 의 가장 최근 `e2e` 가 성공이어야 한다.
    - 서비스 코드 커밋이 몇 분 안에 연달아 들어오면 앞 커밋의 `e2e` 는 취소되고 그 커밋은 건너뛴다. 뒤 커밋이 앞 코드를 포함하므로 뒤 커밋이 배포되면 된다.
 1. 서버의 `~/gitory` 를 그 커밋으로 맞춘다 (`git checkout --force --detach <sha>` — `deploy/.env` 는 gitignore 라 남는다). 바꾸기 전에 지금 돌던 커밋을 적어 둔다. 서버에 이미 같거나 더 새 커밋이 있으면 되돌리지 않고 넘긴다
-2. `docker compose up -d --build --wait` — 모든 서비스가 healthy 가 될 때까지 기다린다. 5분 안에 안 되면 실패
+2. `docker compose up -d --build --wait` — 모든 서비스가 healthy 가 될 때까지 기다린다. 5분 안에 안 되면 실패. healthy 가 되면 `deploy/post-deploy-check.sh` 가 실제 주소로 홈, 화면 파일, 서버 응답, GitHub 로그인 주소를 확인한다
 3. 2 가 실패하면 1 에서 적어 둔 직전 커밋으로 되돌려 같은 방식으로 다시 올린다 ([롤백](#5-롤백))
 4. 컨테이너 상태를 출력하고, 성공하면 오래된 이미지·빌드 캐시를 정리한다
 
@@ -289,6 +290,14 @@ healthy 라서 자동으로 되돌리지 않은 경우다.
    ```
 
 ## 6. 장애 확인
+
+### 사이트가 멈췄는지 — 자동
+
+`.github/workflows/uptime.yml` 이 10분마다 GitHub 쪽에서 공개 주소로 들어가 본다. 배포 뒤 확인과 같은 스크립트(`deploy/post-deploy-check.sh`)로 홈, 화면 파일, 서버 응답, GitHub 로그인 주소를 본다.
+
+- 30초 간격으로 세 번 모두 실패하면 팀 Discord 로 알리고, 다시 열리면 한 번 더 알린다. 멈춰 있는 동안에는 같은 알림을 되풀이하지 않는다.
+- 서버 안의 healthcheck 와 CloudWatch 경보는 서버가 통째로 멈추면 같이 멈춘다. 그래서 서버 밖에서 따로 본다.
+- 알림을 받으면 Actions 의 그 실행에서 어느 확인이 실패했는지 보고, 아래 순서로 서버를 본다.
 
 ### 서버에서
 

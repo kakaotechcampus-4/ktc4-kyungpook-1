@@ -5,7 +5,6 @@
 :root[data-theme="dark"] .brand-logo > .brand-logo__light { display: none; }
 :root[data-theme="dark"] .brand-logo > .brand-logo__dark { display: block; }
 .chip:disabled { opacity: .5; cursor: wait; }
-.scope-code { display: inline-block; padding: 5px 8px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--bg-paper); color: var(--text-secondary); font-size: 11px; line-height: 16px; }
 .repo-row__status { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .landing-notice { margin-top: -10px; color: var(--text-secondary); font-size: 12px; line-height: 20px; }
 .landing-notice--error { color: var(--state-failed-text); }

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -111,21 +112,29 @@ public class InterviewAnswerService {
 
     }
 
-    // 답한 칸은 옛 글의 근거를 옮기지 않고 답으로 바꾸므로 나머지 세 칸만 복사한다
     private void replaceSlot(Card card, InterviewTurn turn, String text, AnswerSource answerSource) {
 
-        StarField slot = turn.getStarSlot();
+        writeSlots(card, turn, Map.of(turn.getStarSlot(), text), answerSource);
+
+    }
+
+    /**
+     * 글이 온 칸은 옛 글의 근거를 옮기지 않고 그 글로 바꾸고 나머지 칸만 복사한 INTERVIEW 새 버전을 만든다
+     * 카드 행을 잠근 트랜잭션 안에서만 부를 수 있다
+     */
+    public void writeSlots(Card card, InterviewTurn turn, Map<StarField, String> texts, AnswerSource answerSource) {
+
         short previous = card.getCurrentVersion();
         CardVersion next = writer.startNext(card, VersionSource.INTERVIEW);
 
         for (StarField other : StarField.values()) {
-            if (other != slot) {
+            if (!texts.containsKey(other)) {
                 writer.copySlot(card.getId(), previous, other, next.getVersionNo());
             }
         }
 
-        statements.save(CardStatement.answered(card.getId(), next.getVersionNo(), slot, text,
-                answerSource.evidenceType(), turn.getId()));
+        texts.forEach((slot, text) -> statements.save(CardStatement.answered(card.getId(), next.getVersionNo(), slot,
+                text, answerSource.evidenceType(), turn.getId())));
 
     }
 
@@ -205,7 +214,7 @@ public class InterviewAnswerService {
 
     }
 
-    private static AnswerSource checkedAnswer(String text, String source) {
+    static AnswerSource checkedAnswer(String text, String source) {
 
         AnswerSource answerSource = Arrays.stream(AnswerSource.values())
                 .filter(known -> known.evidenceType().name().equals(source))

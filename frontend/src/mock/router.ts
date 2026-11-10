@@ -10,7 +10,7 @@ import { applyPolish, chooseCards, confirmInference, createCoverLetter, deleteCo
  *
  * "에러가 아닌 것"은 200 으로 내려보낸다 — 후보 0개(verdict) · 부분 결과(partial) · 작업 실패(state).
  */
-import { db, viewJob, boardFor, activityView, removeActivity, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, skipTurn, nextId, recallFor, resetDb, repoUpdateList, markRepoUpdateSeen, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata, settleCard } from './store';
+import { db, viewJob, boardFor, activityView, removeActivity, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, replyTurn, skipTurn, nextId, recallFor, resetDb, repoUpdateList, markRepoUpdateSeen, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata, settleCard } from './store';
 import { now } from './fixtures';
 import { chooseThemes, queueAiThemes } from './store'; // 문항 유형(#564)
 import { CONFIG } from '@/lib/config';
@@ -394,7 +394,7 @@ on('POST', '/cards/:id/confirm', ({ params }) => {
   if (v.situation == null || isCardBlank(v.situation) || v.action == null || isCardBlank(v.action)) return fail(422, 'NOT_CONFIRMABLE', '확정하려면 최소 S · A 가 필요합니다');
   c.status = 'CONFIRMED'; c.confirmedAt = now(); c.updatedAt = c.confirmedAt;
   queueAiThemes(c); // 유형이 빈 경험 카드는 확정을 저장한 뒤 몇 초 안에 AI 가 붙인다(#564)
-  v._confirmed = true; // 현재 버전을 고정한다 — 같은 내용의 가짜 이력을 추가하지 않는다
+  pushVersion(c, v.source, {})._confirmed = true; // 실서버처럼 같은 글의 확정본을 새 버전으로 남긴다 — 바뀐 횟수(changeCount)에는 세지 않는다
   const used = c.candidate ? [c.candidate.id] : [];
   used.forEach((id) => { const cand = db.candidates.find((x) => x.id === id); if (cand) { cand.status = 'USED'; cand.usedByCardId = c.id; } });
   const remaining = c.repo ? db.candidates.filter((x) => x.repoId === c.repo.id && x.status === 'NEW').length : 0;
@@ -464,6 +464,18 @@ on('POST', '/cards/:id/interview/:turn/answer', ({ params, body }) => {
   const updated = body.kind === 'SKIP' ? skipTurn(c, Number(params[1]))
     : answerTurn(c, Number(params[1]), String(body.text ?? ''), body.source ?? 'USER_STATED');
   return updated ? ok(cardView(updated)) : fail(404, 'TURN_NOT_FOUND', '질문을 찾을 수 없습니다');
+});
+
+// 답을 AI 가 먼저 읽는다 — 카드에 넣었는지 여부는 응답의 outcome 이 말한다
+on('POST', '/cards/:id/interview/:turn/reply', ({ params, body }) => {
+  const c = findCard(params[0]);
+  if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
+  const turn = db.interview[c.id]?.find((t: Any) => t.turnNo === Number(params[1]));
+  if (!turn) return fail(404, 'TURN_NOT_FOUND', '질문을 찾을 수 없습니다');
+  const text = String(body.text ?? '').trim();
+  if (!text) return fail(400, 'INVALID_REQUEST', '답을 적어 주세요');
+  if (turn.answer || (turn.outcome && turn.outcome !== 'LATER')) return fail(409, 'INVALID_STATE', '이미 끝난 질문입니다');
+  return ok(replyTurn(c, turn, text, body.source ?? 'USER_STATED'));
 });
 
 /** 한 요청 처리. path 는 /api 접두사를 뗀 것. */

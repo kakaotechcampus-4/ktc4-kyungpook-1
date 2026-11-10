@@ -655,3 +655,41 @@ class CardThemesResult(BaseModel):
 
     card_id: int
     themes: list[CardTheme] = Field(default_factory=list, description="잘 맞는 순, 최대 2개. 맞는 것이 없으면 빈 배열")
+
+
+#: 되묻기 답을 AI 가 읽고 내린 판단. 계약 `contracts/interview/reply.json` 과 같은 값이다.
+ReplyVerdict = Literal["APPLY", "ASK_MORE", "OFF_TOPIC", "DONT_KNOW"]
+
+
+class InterviewReplyRequest(StrictRequestModel):
+    """`POST /internal/interview-replies` 요청 모델."""
+
+    card_id: PositiveId = Field(..., description="대상 경험 카드 ID")
+    card_title: NonBlankText = Field(..., max_length=256, description="카드 제목")
+    star_slot: StarSlot = Field(..., description="답이 들어갈 칸")
+    question_text: NonBlankText = Field(..., max_length=1_000, description="그 답을 받은 질문")
+    answer_text: NonBlankText = Field(..., max_length=1_000, description="사용자가 쓴 답")
+    held_answers: list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1_000)]] = Field(
+        default_factory=list, max_length=2,
+        description="같은 칸에 앞서 한 답 중 모자라서 카드에 넣지 않은 것(오래된 순)",
+    )
+    slots: list[CardSlotText] = Field(..., min_length=1, max_length=4, description="지금 카드의 네 칸")
+    follow_up_allowed: bool = Field(..., description="이 칸을 한 번 더 물어도 되는지")
+
+
+class ReplyExtra(BaseModel):
+    """답이 다른 빈 칸의 내용까지 말했을 때 그 칸에 넣을 문장."""
+
+    star_slot: StarSlot
+    sentence: str
+
+
+class InterviewReplyResult(BaseModel):
+    """`POST /internal/interview-replies` 응답 `data` 모델."""
+
+    card_id: int
+    verdict: ReplyVerdict
+    sentence: Optional[str] = Field(None, description="APPLY 일 때 그 칸의 새 문장. 그 밖에는 null")
+    extra: list[ReplyExtra] = Field(default_factory=list, description="APPLY 일 때 다른 빈 칸에 넣을 문장")
+    follow_up: Optional[str] = Field(None, description="ASK_MORE 일 때 한 번 더 묻는 질문. 그 밖에는 null")
+    reason: Optional[str] = Field(None, description="ASK_MORE·OFF_TOPIC 일 때 사용자에게 보일 한 문장")

@@ -317,3 +317,7 @@ export const pickLocation = (conditions: MatchDetail["conditions"]) => {
   const places = conditions.filter((c) => c.generalType === "LOCATION");
   return places.find((c) => c.quote.includes("근무") || c.text.includes("근무")) ?? places[0] ?? null;
 };
+
+/** 공고 원문이 줄머리에 둔 □ ■ • 같은 기호 — 조건 줄로 보일 때는 떼고, 기호뿐인 줄은 그대로 둔다 */
+const LINE_MARK = /^[\s□■◻◼▪▫○●◦•·‣▶►\-–—*]+/;
+export const stripLineMark = (text: string) => text.replace(LINE_MARK, "").trim() || text.trim();

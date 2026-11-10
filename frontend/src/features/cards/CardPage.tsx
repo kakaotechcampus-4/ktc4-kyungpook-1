@@ -33,7 +33,7 @@ import { StarRow } from '@/components/ui/StarRow';
 import { canConfirmCard, emptyStarFields, starFieldsToReview } from '@/lib/cardRules';
 import { isDraftMetadataPending } from '@/lib/cacheSavedDraft';
 import { DraftProcess } from './DraftSteps';
-import { cardFolderPath, folderPath } from '@/lib/cardFolders';
+import { cardFolderPath, folderPath, returnToOf } from '@/lib/cardFolders';
 
 /**
  * /cards/:id — 상태로 화면이 갈린다.
@@ -123,6 +123,7 @@ export function CardPage() {
   const ask = (f: StarField) => nav(`/cards/${cardId}/interview?field=${f}`, { state: location.state });
   const openTurn = turns.data?.find(isOpenTurn);
   const close = () => setSp({});
+  const returnTo = returnToOf(location.state);
   const masked = (t: string) => applyMask(t, card.maskRules);
   // 제목·기간 수정은 제목 바로 옆 연필 하나로 — 무엇을 고치는지 위치가 말해 준다. 서버가 확정 카드도 다시 열지 않고 받으므로 확정 카드에도 둔다
   const metadataAction = cardMetadataSupported() ? <button type="button" className="title-edit" aria-label="기본 정보 수정" title="제목과 기간 수정" onClick={() => setMetadataOpen(true)}><Pencil size={18} aria-hidden /></button> : null;
@@ -169,7 +170,7 @@ export function CardPage() {
               <span className="w-bold" style={{ fontSize: 16 }}>카드를 확정했어요</span>
               <span className="t-13 c-2">상황과 행동이 있어서 바로 쓸 수 있어요.</span>
             </div>
-            <ButtonLink to={cardFolderPath(card)} state={{ confirmed: card.id }} variant="primary">폴더로 돌아가기</ButtonLink>
+            <ButtonLink to={returnTo ?? cardFolderPath(card)} state={returnTo ? undefined : { confirmed: card.id }} variant="primary">{returnTo ? '공고로 돌아가기' : '폴더로 돌아가기'}</ButtonLink>
           </div>
         )}
         <CardHeader card={card} titleAction={metadataAction} right={<Button variant="secondary" size="sm" onClick={exportMd} title="가린 정보를 적용한 내용을 복사해요">복사</Button>} />
@@ -306,8 +307,7 @@ export function CardPage() {
       </StickyFooter>
 
       {sp.get('confirm') === '1' && <ConfirmDialog card={card} onClose={close} onConfirmed={() => {
-        const returnTo = (location.state as { returnTo?: unknown } | null)?.returnTo;
-        if (typeof returnTo === 'string') nav(returnTo, { replace: true });
+        if (returnTo) nav(returnTo, { replace: true });
         else nav(cardFolderPath(card), { replace: true, state: { confirmed: card.id } });
       }} />}
       {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}

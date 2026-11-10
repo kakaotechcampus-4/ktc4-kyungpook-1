@@ -151,11 +151,11 @@ export type ProceedResult = {
   failed: number;
 };
 /** 넘긴 뒤 갈 곳 — 하나면 그 화면(카드 초안 · 되묻기 · 레포 분석)으로, 여럿이면 카드 목록에서 진행을 본다 */
-export function proceedDestinations(result: ProceedResult): { path: string; state?: unknown }[] {
+export function proceedDestinations(result: ProceedResult, matchId?: string): { path: string; state?: unknown }[] {
   return [
     ...result.created.map((g) =>
       g.cardIds.length
-        ? { path: `/cards/${encodeURIComponent(g.cardIds[0])}`, state: { cardOrder: g.cardIds } }
+        ? { path: `/cards/${encodeURIComponent(g.cardIds[0])}`, state: { cardOrder: g.cardIds, ...(matchId ? { returnTo: `/match/${encodeURIComponent(matchId)}` } : {}) } }
         : { path: `/cards/repo/${encodeURIComponent(g.repoId)}` },
     ),
     ...result.continueCards.map((id) => ({ path: `/cards/${encodeURIComponent(id)}/interview` })),
@@ -171,7 +171,7 @@ const fulfilled = <T>(results: PromiseSettledResult<T>[]) =>
  * 일부만 실패해도 성공한 것(만들어진 카드, 시작한 분석)은 그 화면으로 보낸다 — 쓴 후보는 USED 라 다시 눌러도 같은 카드를 만들 수 없다
  * 넘긴 것이 하나도 없을 때만 실패로 끝난다
  */
-export function useProceed() {
+export function useProceed(matchId?: string) {
   const qc = useQueryClient();
   const nav = useNavigate();
   const analysis = useStartAnalysis();
@@ -193,7 +193,7 @@ export function useProceed() {
       void qc.invalidateQueries({ queryKey: keys.activeJobs });
       result.created.forEach((g) => void qc.invalidateQueries({ queryKey: keys.candidates(g.repoId) }));
       if (result.failed > 0) toast(`${result.failed}개는 넘기지 못했어요. 공고로 돌아와 다시 골라 주세요.`, { tone: "danger" });
-      const to = proceedDestinations(result);
+      const to = proceedDestinations(result, matchId);
       if (to.length === 1) nav(to[0].path, { state: to[0].state });
       else nav("/cards");
     },

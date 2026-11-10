@@ -131,16 +131,10 @@
 .turn__q { font-size: 13px; line-height: 20px; font-weight: var(--weight-bold); color: var(--text-secondary); }
 .turn__a { font-size: 14px; line-height: 22px; }
 .turn__big { font-size: 20px; line-height: 27px; font-weight: var(--weight-bold); }
-.found { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.found__box { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--bg-subtle); font-size: 12px; line-height: 19px; color: var(--text-secondary); }
-.found__box--miss { background: var(--bg-paper); border: 1px solid var(--border-default); color: var(--text-tertiary); }
-.found__box h4 { font-size: 11px; line-height: 16px; font-weight: var(--weight-bold); color: var(--text-strong); }
-.found__box--miss h4 { color: var(--text-tertiary); }
 .preview-row { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border-default); font-size: 12px; line-height: 18px; color: var(--text-secondary); }
 .preview-row:first-of-type { border-top: 0; }
 .preview-row b { width: 16px; flex: 0 0 auto; font-weight: var(--weight-bold); color: var(--text-strong); }
 .preview-row--pending, .preview-row--pending b { color: var(--text-tertiary); }
-@media (max-width: 640px) { .found { grid-template-columns: 1fr; } }
 
 /* ───────── 회상 (C4) · 설정 (F) ───────── */
 .dir-card { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; }

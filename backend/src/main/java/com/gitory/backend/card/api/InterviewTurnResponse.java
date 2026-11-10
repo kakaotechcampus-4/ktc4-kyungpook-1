@@ -11,15 +11,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
-@Schema(description = "되묻기 질문 하나와 그 답으로, 질문 근거(found·missing)는 아직 만들지 않아 늘 빈 배열이다")
+@Schema(description = "되묻기 질문 하나와 그 답")
 public record InterviewTurnResponse(
         @Schema(description = "카드 안의 질문 번호") int turnNo,
         @Schema(description = "질문이 묻는 칸") StarField field,
         AskedBy askedBy,
         InterviewSourceType sourceType,
         QuestionType questionType,
-        List<String> found,
-        List<String> missing,
         String question,
         @Schema(description = "AI 가 이 칸을 묻기로 한 이유 한 줄(60자 이내)로, 사용자가 칸을 골랐거나 AI 가 틀 질문을 썼으면 null",
                 nullable = true) String reason,
@@ -35,7 +33,7 @@ public record InterviewTurnResponse(
         InterviewAnswerResponse answer = turn.answer() == null ? null : InterviewAnswerResponse.from(turn.answer());
 
         return new InterviewTurnResponse(turn.turnNo(), turn.field(), askedByOf(turn.triggerSource()),
-                turn.sourceType(), turn.questionType(), List.of(), List.of(), turn.question(), turn.reason(),
+                turn.sourceType(), turn.questionType(), turn.question(), turn.reason(),
                 turn.options(),
                 turn.answerMode(), turn.outcome(), answer, turn.remaining(), turn.maxTurns());
 

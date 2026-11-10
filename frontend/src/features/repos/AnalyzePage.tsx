@@ -243,7 +243,6 @@ export function AnalyzePage() {
           </>
         ) : (
           <>
-            <span>끝나면 알려 드릴게요</span>
             <div className="run-foot__right">
               {/* 기다리는 동안 보통 누를 것은 다른 일 하러 가기(주 버튼). 되돌릴 수 없는 취소는 위험 버튼으로 낮춰 왼쪽에 둔다 */}
               <Button variant="danger" loading={cancel.isPending} onClick={() => jobId && cancel.mutate(jobId)}>정리 취소</Button>

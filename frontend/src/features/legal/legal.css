@@ -56,3 +56,11 @@
 .sidebar__legal .legal-links__report { color: var(--sidebar-text); opacity: .72; }
 .sidebar__legal .legal-links__report:hover { opacity: 1; }
 .feedback-count { align-self: flex-end; font-size: 12px; color: var(--text-tertiary); }
+
+/* 폰에서 정책 링크와 목차 링크가 손가락으로 누르기에 낮다(28px 미만) — 글 크기는 두고 눌리는 높이만 32px 로(#920) */
+@media (max-width: 767px) {
+  .legal-links { gap: 0 14px; }
+  .legal-links a, .legal-links__report { display: inline-flex; align-items: center; min-height: 32px; }
+  .legal__toc { grid-template-columns: 1fr; gap: 0; }
+  .legal__body .legal__toc a { display: inline-flex; align-items: center; min-height: 32px; }
+}

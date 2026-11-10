@@ -264,6 +264,9 @@ body { overflow-x: hidden; }
   .sticky-footer { bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom)); flex-wrap: wrap; padding: 10px var(--main-px); gap: 8px; min-height: 0; }
   .sticky-footer__text { flex-basis: 100%; }
   .sticky-footer__actions { width: 100%; }
+  /* 카드 상세는 설명 줄과 버튼 줄이 하단 메뉴 위에 쌓여 화면의 30% 가까이를 덮었다 — 버튼이 할 일을 말하므로 버튼 한 줄만 남기고 설명은 화면 읽기에만 준다(#920) */
+  .sticky-footer--compact .sticky-footer__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .sticky-footer--compact .sticky-footer__actions { flex-wrap: nowrap; }
   .sticky-footer .btn { flex: 1 1 auto; }
   .dim { align-items: flex-end; padding: 12px; }
   .modal { max-height: calc(100svh - 24px); max-height: calc(100dvh - 24px); border-radius: 16px; overflow: hidden; }
@@ -299,6 +302,11 @@ body { overflow-x: hidden; }
   .landing { padding-inline: 14px; }
   .btn { white-space: normal; text-align: center; }
   .note { flex-direction: column; }
+  /* 320px 탭바 여섯 칸에서 다섯 글자 '마이페이지'만 칸 끝에 붙는다 — 마지막 칸을 조금 넓히고(나머지는 세 글자 이하) 바깥 여백을 줄인다(#920).
+     칸 수는 AppShell 이 인라인 grid 로 정해, 여기서는 flex 로 바꿔 칸 수와 상관없이 마지막 칸만 넓힌다 */
+  .mobile-nav { display: flex; padding-inline: 4px; }
+  .mobile-nav a { flex: 1 1 0; }
+  .mobile-nav a:last-child { flex-grow: 1.35; }
 }
 
 @media print {

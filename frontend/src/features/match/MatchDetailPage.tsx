@@ -360,7 +360,8 @@ export function MatchDetailPage() {
         </Button>
       )
     ) : !settled ? null : gapActive ? (
-      <Button loading={proceed.isPending} disabled={chosen.length === 0} onClick={onProceed}>
+      // 고르기 전에는 꺼진 검정 버튼이 고장 난 것처럼 보여 보조 버튼으로 둔다(#920)
+      <Button variant={chosen.length > 0 ? "primary" : "secondary"} loading={proceed.isPending} disabled={chosen.length === 0} onClick={onProceed}>
         {chosen.length > 0 ? `고른 ${chosen.length}개 진행하기` : "제안을 골라 진행하기"}
       </Button>
     ) : (

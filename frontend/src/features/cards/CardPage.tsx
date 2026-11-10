@@ -146,7 +146,6 @@ export function CardPage() {
         <DraftProgress job={j} checkedAt={job.dataUpdatedAt} />
         <LiveCardDraft view={live.view} instant={{ on: live.manualInstant, toggle: live.reducedMotion ? null : () => live.setManualInstant((on) => !on) }} />
         <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
-          <span className="c-2 t-14">끝나면 알려 드릴게요</span>
           <div className="right row" style={{ gap: 8 }}>
             {card.repo && <ButtonLink to={`/repos/${card.repo.id}/candidates`} variant="secondary">후보 보드로</ButtonLink>}
             <ButtonLink to="/" variant="text">홈으로</ButtonLink>
@@ -297,7 +296,7 @@ export function CardPage() {
       </div>
 
       <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
-      <StickyFooter strong={openTurn ? openTurn.question : reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 칸에 답변해 주세요` : canConfirm ? '내용을 확인한 뒤 확정해 주세요' : '상황과 행동을 작성해 주세요'} sub={!reviewFields.length && canConfirm ? '확정한 카드는 공고 매칭에 쓰여요. 나중에 다시 열어 고칠 수 있어요.' : undefined}>
+      <StickyFooter compact strong={openTurn ? openTurn.question : reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 칸에 답변해 주세요` : canConfirm ? '내용을 확인한 뒤 확정해 주세요' : '상황과 행동을 작성해 주세요'} sub={!reviewFields.length && canConfirm ? '확정한 카드는 공고 매칭에 쓰여요. 나중에 다시 열어 고칠 수 있어요.' : undefined}>
         {reviewFields.length === 0 && <ButtonLink to={cardFolderPath(card)} variant="text">나중에</ButtonLink>}
         <Button variant={reviewFields.length ? 'secondary' : 'primary'} size="lg" disabled={!canConfirm} onClick={() => setSp({ confirm: '1' })} title={canConfirm ? undefined : '상황과 행동을 작성해 주세요'}>확정</Button>
         {openTurn

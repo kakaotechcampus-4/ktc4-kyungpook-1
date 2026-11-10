@@ -19,7 +19,7 @@ export function agoLabel(iso: string, now: Date = new Date()): string {
 }
 
 export const letterTitle = (letter: Pick<CoverLetterSummary, 'jobRole' | 'posting'>) =>
-  [letter.posting?.company, letter.jobRole].filter(Boolean).join(' · ');
+  [letter.posting?.company, letter.jobRole].filter(Boolean).join(', ');
 
 // ───────── 새로 써 둔 카드 ─────────
 export const repoUpdateText = (update: Pick<RepoUpdate, 'repoName' | 'cardCount'>) =>

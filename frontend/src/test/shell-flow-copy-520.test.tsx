@@ -190,7 +190,7 @@ describe('레포 화면 (#520 G-03 · 용어집)', () => {
 
   it('고르기 전 안내는 명령형이 아니고, 정리한 레포의 카드 수는 장으로 센다', () => {
     repos();
-    expect(screen.getByText('레포를 하나 골라 주세요')).toBeInTheDocument();
+    expect(screen.getByText('정리할 레포를 고르면 다음으로 넘어가요')).toBeInTheDocument();
     expect(screen.queryByText(/고르세요/)).not.toBeInTheDocument();
     expect(screen.getAllByText(/^카드 \d+장$/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/^카드 \d+건$/)).not.toBeInTheDocument();

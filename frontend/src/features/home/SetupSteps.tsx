@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
-import { ArrowRight, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import type { SetupView } from './homeApply';
 import { ButtonLink, buttonClass } from '@/components/ui';
 
 type Step = { title: string; text: string; action: ReactNode };
 
 const go = (to: string, label: string, primary = true) => (
-  <ButtonLink to={to} variant={primary ? 'primary' : 'secondary'} className={primary ? 'home3-btn home3-btn--sm' : 'home3-obtn'}>{label}{primary && <ArrowRight size={18} aria-hidden />}</ButtonLink>
+  <ButtonLink to={to} variant={primary ? 'primary' : 'secondary'} className={primary ? 'home3-btn home3-btn--sm' : 'home3-obtn'}>{label}</ButtonLink>
 );
 
 /** 맞는 공고가 아직 없을 때 지원할 곳 자리에 보이는 준비 단계 — 매칭이 꺼진 배포는 앞의 두 단계만 보인다 */
@@ -29,7 +29,7 @@ export function SetupSteps({ view, matching, onRetry, retrying = false }: { view
     : go('/cards', '카드 보기');
   const steps: Step[] = [
     { title: '레포 정리하기', text: '내 커밋과 PR에서 경험을 찾아 카드 초안을 써요. 레포 하나에 1~2분이에요.', action: go('/repos', '레포 고르기') },
-    { title: '카드 확정하기', text: '상황과 행동이 찬 카드는 저절로 확정돼요. 확인이 필요한 카드만 봐 주세요.', action: cardStep },
+    { title: '카드 확정하기', text: '상황과 행동이 찬 카드는 저절로 확정돼요. 확인이 필요한 카드만 보면 돼요.', action: cardStep },
   ];
   if (matching) {
     steps.push({

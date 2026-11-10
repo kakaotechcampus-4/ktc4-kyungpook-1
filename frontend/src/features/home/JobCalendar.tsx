@@ -68,8 +68,8 @@ export function JobCalendar({ userId, postings = [], postingsLoading = false, po
   };
   return <section className="job-calendar" aria-labelledby={`${formId}-heading`}>
     <div className="job-calendar__head">
-      <div><h2 id={`${formId}-heading`}>캘린더</h2><p>관심 있는 공고부터 면접까지, 다음 일정을 한눈에 확인하세요.</p></div>
-      <Button onClick={add} disabled={Boolean(initial.error)}><Plus size={16} /> 일정 등록</Button>
+      <div><h2 id={`${formId}-heading`}>캘린더</h2></div>
+      <Button variant="secondary" onClick={add} disabled={Boolean(initial.error)}><Plus size={16} /> 일정 등록</Button>
     </div>
     {error && !editing && <p className="calendar-error" role="alert">{error}</p>}
     {postingsLoading && <p className="calendar-storage-note" role="status">공고 마감일을 불러오고 있어요.</p>}

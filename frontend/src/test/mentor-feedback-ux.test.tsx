@@ -152,11 +152,11 @@ describe('후보 보드 — 카드로 만든 후보 (멘토 피드백: "사용�
     }
   });
 
-  it('첫 묶음 머리의 수는 고를 수 있는 후보만 센다 — 카드로 만든 후보와 제외한 후보는 빼고 "5개 · 전체 N개"', () => {
+  it('첫 묶음 머리의 수는 고를 수 있는 후보만 센다 — 카드로 만든 후보와 제외한 후보는 빼고 "5개, 전체 N개"', () => {
     const board = mountBoard((b) => ({ ...b, candidates: b.candidates.map((c, i) => i === 0 && c.status === 'NEW' ? { ...c, status: 'EXCLUDED' as const } : c) }));
     const open = board.candidates.filter((c) => c.status === 'NEW').length - 1;
     const group = screen.getByRole('region', { name: /먼저 카드로 만들어 볼 경험/ });
-    expect(within(group).getByText(`5개 · 전체 ${open}개`)).toBeInTheDocument();
+    expect(within(group).getByText(`5개, 전체 ${open}개`)).toBeInTheDocument();
   });
 
   it('추천도 낮은 후보는 나머지 쪽에 있고, 타일 안에 "추천도 낮음"이 글자로만 붙는다', () => {

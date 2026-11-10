@@ -1,4 +1,4 @@
-import { ArrowRight, Check, ClipboardCheck } from 'lucide-react';
+import { Check, ClipboardCheck } from 'lucide-react';
 import type { FolderNext } from '@/lib/folderNext';
 import { ButtonLink } from '@/components/ui';
 
@@ -14,7 +14,7 @@ export function NextStep({ next, state, announce }: { next: FolderNext; state?: 
       <p className="next-step__text"><strong>{next.title}</strong><span>{next.sub}</span></p>
       <div className="next-step__actions">
         {next.more && <ButtonLink to={next.more.to} variant="text">{next.more.label}</ButtonLink>}
-        <ButtonLink to={next.action.to} state={state} variant="primary" className="next-step__go">{next.action.label}<ArrowRight size={16} aria-hidden /></ButtonLink>
+        <ButtonLink to={next.action.to} state={state} variant="primary" className="next-step__go">{next.action.label}</ButtonLink>
       </div>
     </section>
   );

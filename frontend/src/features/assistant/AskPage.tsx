@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowRight, BriefcaseBusiness, Check, ChevronRight, FileText, FolderGit2 } from 'lucide-react';
+import { BriefcaseBusiness, Check, ChevronRight, FileText, FolderGit2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   ASSISTANT_TEXT_MAX, useAssistantRun, useSayToAssistant, useStartAssistantRun,
@@ -152,7 +152,7 @@ function AskChat() {
           <section className="ask-guide" aria-labelledby="ask-guide-title">
             <h2 id="ask-guide-title">문항이 아직 없나요?</h2>
             <p>{questionsGuideText(guide.posting)}</p>
-            <ButtonLink to={guide.to} variant="primary" className="ask-go">자소서 화면에서 문항 고르기<ArrowRight size={16} aria-hidden /></ButtonLink>
+            <ButtonLink to={guide.to} variant="primary" className="ask-go">자소서 화면에서 문항 고르기</ButtonLink>
           </section>
         )}
         {choices.length > 0 && (
@@ -211,15 +211,15 @@ function Outcome({ items }: { items: AssistantItem[] }) {
     <>
       {matched && (
         <section className="ask-guide" aria-labelledby={titleId}>
-          <h2 id={titleId}>{matched.posting.company} · {matched.posting.title}</h2>
+          <h2 id={titleId}>{matched.posting.company}, {matched.posting.title}</h2>
           {matched.fit && <p>{matched.fit}</p>}
           <div className="ask-result__actions">
-            <ButtonLink to={matched.detailTo} variant="primary" className="ask-go">공고 보기<ArrowRight size={16} aria-hidden /></ButtonLink>
+            <ButtonLink to={matched.detailTo} variant="primary" className="ask-go">공고 보기</ButtonLink>
             <Link to={matched.letterTo} className="ask-result__letter">이 공고로 자소서 쓰기</Link>
           </div>
         </section>
       )}
-      {link && <ButtonLink to={link.to} variant="primary" className="ask-go">{link.label}<ArrowRight size={16} aria-hidden /></ButtonLink>}
+      {link && <ButtonLink to={link.to} variant="primary" className="ask-go">{link.label}</ButtonLink>}
     </>
   );
 }
@@ -259,7 +259,7 @@ function Steps({ items }: { items: AssistantItem[] }) {
 }
 
 function Posting({ posting }: { posting: AssistantPosting }) {
-  const meta = [posting.company, postingMeta(posting)].filter(Boolean).join(' · ');
+  const meta = [posting.company, postingMeta(posting)].filter(Boolean).join(', ');
   return (
     <Link to={`/match/${encodeURIComponent(posting.postingId)}`} className="ask-posting">
       <span className="ask-posting__av" aria-hidden>{posting.company.slice(0, 1)}</span>

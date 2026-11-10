@@ -319,7 +319,7 @@ describe('문항 안내 카드', () => {
 
   it('Q3 안내 글은 쓸 공고의 회사와 제목을 말하고, 공고가 없으면 문항 고르기만 말한다', async () => {
     await open('WAITING_USER', [user, found, matched, ask('QUESTIONS')]);
-    expect(screen.getByText('다른곳 · 서버 공고로, 자소서 화면에서 자주 나오는 문항을 골라 바로 시작할 수 있어요.')).toBeInTheDocument();
+    expect(screen.getByText('다른곳 서버 공고로, 자소서 화면에서 자주 나오는 문항을 골라 바로 시작할 수 있어요.')).toBeInTheDocument();
     cleanup();
     await open('WAITING_USER', [user, ask('QUESTIONS')]);
     expect(screen.getByText('자소서 화면에서 자주 나오는 문항을 골라 바로 시작할 수 있어요.')).toBeInTheDocument();
@@ -340,7 +340,7 @@ describe('맞춰 본 공고 결과', () => {
     mount('/ask/run_m', connectMockServer((call) => (call.path === '/assistant/runs/run_m' ? json(run) : undefined)));
     await screen.findByText('필수 조건 3개가 맞아요', SEEN);
   };
-  const HEADING = '토스 · 백엔드';
+  const HEADING = '토스, 백엔드';
 
   it('M1 끝난 실행의 마지막 걸음이 맞춰 보기면 공고 이름, 맞는 조건 수, 공고 보기와 자소서 쓰기 링크가 있는 카드를 보인다', async () => {
     await open('DONE', [user, found, matched(), answer]);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowRight, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { matchSupported, useRefreshRepoRecommendation, useRepoRecommendation, type RepoRecommendation } from '@/api/matching';
 import { useMarkRepoUpdateSeen } from '@/api/repoUpdates';
 import { useCards, useMe } from '@/api/queries';
@@ -102,7 +102,7 @@ function PickScreen({ repoId, name, back, cardCount, crumbs, rec, who, again }: 
   const lines = live ? logLines(live) : [];
 
   const folderButton = (label: string, primary: boolean) => (
-    <ButtonLink to={back} variant={primary ? 'primary' : 'secondary'}>{label}{primary && <ArrowRight size={16} aria-hidden />}</ButtonLink>
+    <ButtonLink to={back} variant={primary ? 'primary' : 'secondary'}>{label}</ButtonLink>
   );
   const allPostings = <ButtonLink to="/match" variant="secondary">전체 공고 보기</ButtonLink>;
   const actions: Record<PickPhase, ReactNode> = {
@@ -206,7 +206,7 @@ function PickItem({ row, no, final }: { row: PickRow; no: number; final: boolean
       <CompanyMark name={row.name} logoUrl={row.logoUrl} size={48} className="rp-pick__logo" />
       <span className="rp-pick__text">
         <span className="rp-pick__name"><strong>{row.name}</strong>{final && row.fresh && <span className="rp-new">새로 들어옴</span>}</span>
-        <span>{row.role} · {dueLabel(row)}</span>
+        <span>{row.role}, {dueLabel(row)}</span>
         {final && <span className="rp-pick__why">{pickReason(row)}</span>}
       </span>
       {final

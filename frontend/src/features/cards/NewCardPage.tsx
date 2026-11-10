@@ -215,7 +215,7 @@ export function NewCardPage() {
         </StickyFooter>
       ) : (
       <StickyFooter
-        strong={saving ? '저장 중' : autosave.failed ? '저장 상태를 확인해 주세요' : cardId ? '본문은 자동으로 저장돼요' : '제목을 적고 작성을 시작해 주세요'}>
+        strong={saving ? '저장 중' : autosave.failed ? '저장 상태를 확인해 주세요' : cardId ? '본문은 자동으로 저장돼요' : '제목을 적으면 작성을 시작해요'}>
         <ButtonLink to="/" variant="text">나가기</ButtonLink>
         {!cardId ? <Button size="lg" disabled={isBlankCardText(title)} loading={saving} onClick={() => void flush()}>작성 시작</Button> : <>
           <Button variant="secondary" disabled={!!blockedCard || isBlankCardText(title)} loading={saving} onClick={() => void leave()}>저장 후 종료</Button>

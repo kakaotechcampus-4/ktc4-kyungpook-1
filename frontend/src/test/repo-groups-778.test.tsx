@@ -88,7 +88,7 @@ describe('레포 목록 세 묶음 (#778)', () => {
     fireEvent.click(within(screen.getByRole('dialog', { name: '읽는 범위 확인' })).getByRole('button', { name: '취소' }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByText('레포를 하나 골라 주세요')).toBeInTheDocument();
+    expect(screen.getByText('정리할 레포를 고르면 다음으로 넘어가요')).toBeInTheDocument();
   });
 
   it('고르는 줄의 레포는 읽는 범위 창을 취소해도 고른 상태가 남는다', () => {

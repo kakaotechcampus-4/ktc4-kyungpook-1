@@ -75,26 +75,50 @@ public class InterviewAskService {
      */
     public InterviewTurnView ask(UUID publicId, Long userId, String field) {
 
-        Prepared prepared = snapshot().execute(status -> prepare(publicId, userId, field));
+        return ask(publicId, userId, field, false);
+
+    }
+
+    /**
+     * 초안이 만들어진 카드의 첫 질문을 서버가 먼저 만든다
+     * 카드 초안 Job 이 아직 RUNNING 이어도 이 카드는 끝났으므로 생성 중 확인을 건너뛰고, 사용자 호출 제한을 쓰지 않는다
+     * AI 가 질문을 못 만들거나 끝내자고 해도 아무것도 저장하지 않고 null 을 돌려준다
+     */
+    public InterviewTurnView askFirst(UUID publicId, Long userId) {
+
+        return ask(publicId, userId, null, true);
+
+    }
+
+    private InterviewTurnView ask(UUID publicId, Long userId, String field, boolean serverInitiated) {
+
+        Prepared prepared = snapshot().execute(status -> prepare(publicId, userId, field, serverInitiated));
 
         if (prepared.openTurn() != null) {
             return prepared.openTurn();
         }
         if (prepared.request() == null) {
-            settleAtEnd(publicId, userId);
+            if (!serverInitiated) {
+                settleAtEnd(publicId, userId);
+            }
             return null;
         }
 
         // 남아 있던 질문을 돌려줄 때는 AI 를 부르지 않으므로, 새 질문을 만들 때만 센다
-        rateLimiter.acquire(RateLimitedAction.INTERVIEW_ASK, userId, 1);
+        if (!serverInitiated) {
+            rateLimiter.acquire(RateLimitedAction.INTERVIEW_ASK, userId, 1);
+        }
         InterviewQuestionResult question = fetchQuestion(prepared.request(), prepared.target(), prepared.allowed());
         if (question.nextAction() != InterviewNextAction.ASK_AGAIN) {
+            if (serverInitiated) {
+                return null;
+            }
             new TransactionTemplate(transactionManager)
                     .executeWithoutResult(status -> recordEnd(publicId, userId, question));
             return null;
         }
 
-        return save(prepared, publicId, userId, question);
+        return save(prepared, publicId, userId, question, serverInitiated);
 
     }
 
@@ -119,12 +143,12 @@ public class InterviewAskService {
 
     }
 
-    private Prepared prepare(UUID publicId, Long userId, String field) {
+    private Prepared prepare(UUID publicId, Long userId, String field, boolean serverInitiated) {
 
         Card card = ownership.findOwned(publicId, userId, AuditAction.EDIT_CARD);
         List<InterviewTurn> asked = turns.findByCardIdOrderBySeqAsc(card.getId());
 
-        Optional<InterviewTurn> open = openTurnOrRefuse(card, asked);
+        Optional<InterviewTurn> open = openTurnOrRefuse(card, asked, serverInitiated);
         if (open.isPresent()) {
             return Prepared.open(viewOf(open.get(), sourceTypeOf(card)));
         }
@@ -183,12 +207,14 @@ public class InterviewAskService {
 
     }
 
-    private InterviewTurnView save(Prepared prepared, UUID publicId, Long userId, InterviewQuestionResult question) {
+    private InterviewTurnView save(Prepared prepared, UUID publicId, Long userId, InterviewQuestionResult question,
+                                   boolean serverInitiated) {
 
         try {
             // 기본 격리(READ COMMITTED)로 열어야 잠금을 기다린 뒤의 확인이 먼저 커밋된 질문을 본다
             return new TransactionTemplate(transactionManager)
-                    .execute(status -> saveQuestion(publicId, userId, prepared.target(), prepared.sourceType(), question));
+                    .execute(status -> saveQuestion(publicId, userId, prepared.target(), prepared.sourceType(), question,
+                            serverInitiated));
         } catch (DataIntegrityViolationException raced) {
             // 카드 행 잠금 때문에 API 로는 닿지 않는 갈래이고, UNIQUE(card_id, seq) 가 마지막 방어선이다
             return openTurnOf(turns.findByCardIdOrderBySeqAsc(prepared.card().getId()))
@@ -199,12 +225,12 @@ public class InterviewAskService {
     }
 
     private InterviewTurnView saveQuestion(UUID publicId, Long userId, StarField target, InterviewSourceType sourceType,
-                                           InterviewQuestionResult question) {
+                                           InterviewQuestionResult question, boolean serverInitiated) {
 
         Card card = ownership.lockOwned(publicId, userId, AuditAction.EDIT_CARD);
         List<InterviewTurn> asked = turns.findByCardIdOrderBySeqAsc(card.getId());
 
-        Optional<InterviewTurn> open = openTurnOrRefuse(card, asked);
+        Optional<InterviewTurn> open = openTurnOrRefuse(card, asked, serverInitiated);
         if (open.isPresent()) {
             return viewOf(open.get(), sourceType);
         }
@@ -238,9 +264,11 @@ public class InterviewAskService {
     }
 
     // 읽기와 저장 두 단계가 같은 순서로 확인하도록 한곳에 둔다
-    private Optional<InterviewTurn> openTurnOrRefuse(Card card, List<InterviewTurn> asked) {
+    private Optional<InterviewTurn> openTurnOrRefuse(Card card, List<InterviewTurn> asked, boolean serverInitiated) {
 
-        generation.requireNotGenerating(card);
+        if (!serverInitiated) {
+            generation.requireNotGenerating(card);
+        }
 
         Optional<InterviewTurn> open = openTurnOf(asked);
         if (open.isEmpty() && asked.size() >= limits.maxTurns()) {

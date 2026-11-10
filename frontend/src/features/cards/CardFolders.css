@@ -21,8 +21,11 @@
 /* 뒤로 겹친 카드는 손에 쥔 패처럼 3°·6° 돌아가 모서리가 오른쪽 위로 삐져나온다 — 아래로만 삐져나오면 그림자로 읽히고 다크에선 안 보인다 */
 .folder__back { position: absolute; z-index: -1; inset: 10px 10px 8px 0; pointer-events: none; }
 .folder__back::before, .folder__back::after { content: ''; position: absolute; display: none; inset: 0; background: var(--bg-subtle); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); transform-origin: 85% 100%; transition: transform .15s ease; }
-/* 겹친 종이 장식은 뺐다(#920) — 폴더 수와 상태는 글이 말한다. 아래 규칙은 장식이 다시 켜질 때를 위해 남긴다.
-   ::before 가 먼 카드, ::after 가 가까운 카드다(나중에 그려지는 쪽이 위). 아래쪽 오른편을 축으로 돌려 위와 오른쪽으로 펼쳐진다(시안 A 와 같은 각) */
+/* ::before 가 먼 카드, ::after 가 가까운 카드다(나중에 그려지는 쪽이 위). 아래쪽 오른편을 축으로 돌려 위와 오른쪽으로 펼쳐진다(시안 A 와 같은 각).
+   겹친 종이가 폴더와 카드 한 장을 가르는 단서라 앞판이 카드 타일과 같은 모양이어도 폴더로 읽힌다 */
+.folder[data-deck="1"] .folder__back::after { display: block; transform: rotate(3deg); }
+.folder[data-deck="2"] .folder__back::after { display: block; transform: rotate(3deg); }
+.folder[data-deck="2"] .folder__back::before { display: block; transform: rotate(6deg); }
 .folder:hover .folder__back::after, .folder:focus-visible .folder__back::after { transform: rotate(4deg); }
 .folder:hover .folder__back::before, .folder:focus-visible .folder__back::before { transform: rotate(7deg); }
 @media (prefers-reduced-motion: reduce) { .folder__back::before, .folder__back::after { transition: none; } }

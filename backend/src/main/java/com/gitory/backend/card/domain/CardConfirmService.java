@@ -8,6 +8,7 @@ import com.gitory.backend.ingest.domain.RepositoryReferenceService;
 import com.gitory.backend.recommend.domain.CandidateReference;
 import com.gitory.backend.recommend.domain.CandidateReferenceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,7 @@ public class CardConfirmService {
     private final AuditLog auditLog;
     private final CardThemeSuggester themeSuggester;
     private final ConfirmedCardChanges changes;
+    private final ApplicationEventPublisher events;
 
     @Transactional
     public ConfirmResult confirm(UUID publicId, Long userId) {
@@ -55,6 +57,9 @@ public class CardConfirmService {
         card.confirm();
         themeSuggester.askAfterCommit(card);
         changes.announce(card);
+        if (!card.themeTags().isEmpty()) {
+            events.publishEvent(new CardThemesReady(card.getId(), card.getUserId()));
+        }
         auditLog.ok(userId, AuditAction.CONFIRM_CARD, card.getId());
 
         return resultOf(card);

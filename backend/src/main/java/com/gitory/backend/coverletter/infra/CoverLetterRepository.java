@@ -23,6 +23,10 @@ public interface CoverLetterRepository extends JpaRepository<CoverLetter, Long> 
 
     List<CoverLetter> findByUserIdOrderByCreatedAtDescIdDesc(Long userId);
 
+    List<CoverLetter> findTop3ByUserIdAndStageAndUpdatedAtAfterOrderByUpdatedAtDescIdDesc(Long userId,
+                                                                                         CoverLetterStage stage,
+                                                                                         Instant after);
+
     Optional<CoverLetter> findByUserIdAndIdempotencyKey(Long userId, String idempotencyKey);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

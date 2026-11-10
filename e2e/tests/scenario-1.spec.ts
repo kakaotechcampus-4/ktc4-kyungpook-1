@@ -30,7 +30,7 @@ test.describe('시나리오 1: 로그인부터 카드 자동 확정과 되묻기
     await test.step('1. 로그인', async () => {
       await page.goto('/');
       await expect(page).toHaveURL(/\/login/);
-      await page.locator('.landing__actions').getByRole('button', { name: 'GitHub로 시작' }).click();
+      await page.locator('.landing__hero .landing__actions').getByRole('button', { name: 'GitHub로 시작' }).click();
       await page.getByRole('dialog').getByRole('button', { name: 'GitHub으로 이동' }).click();
       await expect(page).toHaveURL('/', { timeout: 15_000 });
 

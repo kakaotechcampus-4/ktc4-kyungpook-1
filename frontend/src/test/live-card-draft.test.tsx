@@ -223,6 +223,7 @@ describe('#617 다 쓴 카드와 조작', () => {
     const pb = new DraftPlayback();
     pb.receive([card('a', 'READING'), card('b', 'WAITING')], { ended: false, now: T0 });
     pb.receive([card('a', 'FAILED', [slot('S', '가')]), card('b', 'WRITING', [slot('S', '나', { done: false })])], { ended: false, now: T0 + 100 });
+    pb.advance(T0 + 2000); // 쓰다 만 한 글자를 펼치고 쉰 뒤 b 로 넘어가면 a 는 목록으로 간다 (#980)
     render(<LiveCardDraft view={pb.view()} instant={noInstant} />);
     expect(screen.getByText('완성하지 못했어요', { selector: '.live-finished__state' })).toBeInTheDocument();
   });

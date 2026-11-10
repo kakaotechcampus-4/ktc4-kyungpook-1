@@ -45,3 +45,15 @@ for (const theme of ['light', 'dark'] as const) {
     expect(versionDateContrast).toBeGreaterThanOrEqual(4.5);
   });
 }
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`${theme} login example card keeps the S·T·A letters readable on their boxes`, async ({ page }) => {
+    await page.addInitScript((value) => localStorage.setItem('gitory.theme', value), theme);
+    await page.goto('/login?intro=1');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'done');
+    const keys = ['S', 'T', 'A'].map((slot) => `.landing-card__field[data-slot='${slot}'] .star-key`);
+    const contrasts = await page.evaluate(readContrasts, keys.map((key) => ({ text: key, surface: key })));
+    for (const value of contrasts) expect(value).toBeGreaterThanOrEqual(4.5);
+  });
+}

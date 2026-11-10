@@ -16,10 +16,13 @@ from schemas.assistant import AssistantStepRequest
 from services.assistant_step import (
     ASSISTANT_PROMPT,
     BROKEN_ASK_SAY,
+    MATCH_FIRST_SAY,
     NEED_QUESTIONS_SAY,
     OFF_TOPIC_SAY,
     OUT_OF_STEPS_SAY,
     REPEATED_SAY,
+    WHICH_CARD_SAY,
+    WHICH_LETTER_SAY,
     WHICH_POSTING_SAY,
     WHICH_REPO_SAY,
     AssistantLimits,
@@ -48,6 +51,14 @@ REPOS = [
     {"ref": "r1", "name": "grow22/gitory", "analyzed": False, "analyzing": False},
     {"ref": "r2", "name": "grow22/side", "analyzed": True, "analyzing": False},
 ]
+CARDS = [
+    {"ref": "c1", "title": "검색 속도 개선", "missing": ["결과"]},
+    {"ref": "c2", "title": "결제 장애 대응", "missing": ["상황", "과제"]},
+]
+LETTERS = [
+    {"ref": "l1", "job_role": "서버 개발자", "company": "토스", "question_count": 3},
+    {"ref": "l2", "job_role": "플랫폼 개발자", "company": None, "question_count": 2},
+]
 
 
 class QueuedClient:
@@ -69,7 +80,8 @@ class QueuedClient:
 
 def choice(action: str = "CALL_TOOL", **fields: Any) -> StepChoice:
     base: dict[str, Any] = {"action": action, "tool": None, "find": None, "posting_ref": None, "repo_ref": None,
-                            "job_role": None, "questions": [], "say": None, "ask_kind": None, "options": []}
+                            "card_ref": None, "letter_ref": None, "job_role": None, "questions": [], "say": None,
+                            "ask_kind": None, "options": []}
     return StepChoice.model_validate(base | fields)
 
 
@@ -83,6 +95,18 @@ def match_call(ref: str = "p1") -> StepChoice:
 
 def repo_call(ref: str = "r1") -> StepChoice:
     return choice(tool="START_REPO_ANALYSIS", repo_ref=ref)
+
+
+def fill_call(ref: str = "p1") -> StepChoice:
+    return choice(tool="FILL_POSTING_GAPS", posting_ref=ref)
+
+
+def card_call(ref: str = "c1") -> StepChoice:
+    return choice(tool="ASK_CARD_GAP", card_ref=ref)
+
+
+def polish_call(ref: str = "l1") -> StepChoice:
+    return choice(tool="POLISH_COVER_LETTER", letter_ref=ref)
 
 
 def cover_call(*questions: str, posting_ref: Optional[str] = "p1", job_role: Optional[str] = None,
@@ -106,18 +130,30 @@ def done(seq: int, tool: str, ok: bool = True, **fields: Any) -> dict[str, Any]:
 FOUND = done(1, "FIND_POSTINGS", find={"company": "토스", "keywords": ["백엔드"]}, postings=POSTINGS, total_found=2)
 
 
+def matched(seq: int, ref: str, missing: Optional[list[str]] = None, ok: bool = True) -> dict[str, Any]:
+    """공고를 맞춰 본 단계로, missing 을 주지 않으면 모자란 조건이 둘 있었던 것이다."""
+    missing = ["Kafka 운영 경험", "Redis 운영 경험"] if missing is None else missing
+    return done(seq, "MATCH_POSTING", ok=ok, posting_ref=ref,
+                match={"required_met": 3, "required_total": 3 + len(missing), "met": ["Java 개발 경험"], "missing": missing})
+
+
+MATCHED_P1 = matched(2, "p1")
+
+
 def body(*texts: str, steps: Optional[list[dict]] = None, steps_left: int = 4, **context: Any) -> dict[str, Any]:
     return {
         "messages": [{"seq": index, "text": text} for index, text in enumerate(texts or (GOAL,), start=1)],
         "steps": [FOUND] if steps is None else steps,
-        "context": {"confirmed_cards": 3, "repos": REPOS, "interests": [], **context},
+        "context": {"confirmed_cards": 3, "repos": REPOS, "cards": CARDS, "letters": LETTERS, "interests": [],
+                    **context},
         "steps_left": steps_left,
     }
 
 
 def step(**fields: Any) -> dict[str, Any]:
     base: dict[str, Any] = {"action": "FINISH", "tool": None, "find": None, "posting_ref": None, "repo_ref": None,
-                            "job_role": None, "questions": [], "say": None, "ask_kind": None, "options": []}
+                            "card_ref": None, "letter_ref": None, "job_role": None, "questions": [], "say": None,
+                            "ask_kind": None, "options": []}
     return base | fields
 
 
@@ -138,16 +174,20 @@ def post(monkeypatch: pytest.MonkeyPatch, client: QueuedClient, payload: dict) -
      step(action="CALL_TOOL", tool="START_COVER_LETTER", job_role="백엔드 개발자",
           questions=[{"text": QUESTION_2, "char_limit": None}])),
     (repo_call("r1"), step(action="CALL_TOOL", tool="START_REPO_ANALYSIS", repo_ref="r1")),
+    (fill_call("p1"), step(action="CALL_TOOL", tool="FILL_POSTING_GAPS", posting_ref="p1")),
+    (card_call("c2"), step(action="CALL_TOOL", tool="ASK_CARD_GAP", card_ref="c2")),
+    (polish_call("l1"), step(action="CALL_TOOL", tool="POLISH_COVER_LETTER", letter_ref="l1")),
     (ask("어느 레포를 정리할까요?", "CHOICE", ("gitory", "side")),
      step(action="ASK_USER", say="어느 레포를 정리할까요?", ask_kind="CHOICE", options=["gitory", "side"])),
     (finish("토스 서버 개발자 공고는 필수 조건 4개 중 3개를 채워요."),
      step(action="FINISH", say="토스 서버 개발자 공고는 필수 조건 4개 중 3개를 채워요.")),
-], ids=["공고 찾기", "공고 맞춰 보기", "공고로 자소서 시작", "공고 없이 자소서 시작", "레포 정리", "고르게 묻기", "끝내기"])
+], ids=["공고 찾기", "공고 맞춰 보기", "공고로 자소서 시작", "공고 없이 자소서 시작", "레포 정리", "모자란 조건 채우기",
+        "카드 빈 칸 질문", "자소서 첨삭", "고르게 묻기", "끝내기"])
 def test_valid_answers_pass_through_once(monkeypatch: pytest.MonkeyPatch, answer: StepChoice, expected: dict) -> None:
     """규칙에 맞는 답은 한 번만 묻고 그대로 돌려주며, 그 행동이 쓰지 않는 칸은 비워 둔다."""
     client = QueuedClient(answer)
 
-    result = post(monkeypatch, client, body())
+    result = post(monkeypatch, client, body(steps=[FOUND, MATCHED_P1]))
 
     assert result["status"] == 200
     assert result["data"] == expected
@@ -172,8 +212,14 @@ def test_say_on_a_tool_call_is_dropped(monkeypatch: pytest.MonkeyPatch) -> None:
     choice(tool="MATCH_POSTING", posting_ref="p1", repo_ref="r1"),
     choice(tool="START_REPO_ANALYSIS", repo_ref="r1", job_role="백엔드 개발자"),
     choice(tool="FIND_POSTINGS", find={"company": "토스", "keywords": ["a", "b", "c", "d"]}),
+    choice(tool="FILL_POSTING_GAPS"),
+    choice(tool="ASK_CARD_GAP"),
+    choice(tool="POLISH_COVER_LETTER"),
+    choice(tool="ASK_CARD_GAP", card_ref="c1", letter_ref="l1"),
+    choice(tool="POLISH_COVER_LETTER", letter_ref="l1", posting_ref="p1"),
 ], ids=["tool 없음", "공고 ref 없음", "빈 검색", "찾기에 공고 ref 가 남음", "맞추기에 레포 ref 가 남음", "레포 정리에 직무가 남음",
-        "검색어 4개"])
+        "검색어 4개", "채우기에 공고 ref 없음", "카드 질문에 카드 ref 없음", "첨삭에 자소서 ref 없음", "카드 질문에 자소서 ref 가 남음",
+        "첨삭에 공고 ref 가 남음"])
 def test_tool_call_with_a_missing_or_extra_argument_is_asked_again_once(
         monkeypatch: pytest.MonkeyPatch, bad: StepChoice) -> None:
     """도구에 꼭 필요한 인자가 없거나 쓰지 않는 인자가 있거나 계약의 개수를 넘으면 틀린 답으로 보고 한 번 더 물어 맞는 답을 쓴다."""
@@ -208,6 +254,75 @@ def test_ref_that_stays_unknown_becomes_a_free_question(
 
     assert result["data"] == step(action="ASK_USER", say=sentence, ask_kind="FREE")
     assert result["meta"]["ended_by"] == "FALLBACK"
+    assert len(client.calls) == 2
+
+
+@pytest.mark.parametrize("bad, good, field, value", [
+    (card_call("c9"), card_call("c2"), "card_ref", "c2"),
+    (polish_call("l9"), polish_call("l2"), "letter_ref", "l2"),
+], ids=["카드 ref", "자소서 ref"])
+def test_unknown_card_or_letter_ref_is_asked_again_once(
+        monkeypatch: pytest.MonkeyPatch, bad: StepChoice, good: StepChoice, field: str, value: str) -> None:
+    """context.cards 나 context.letters 에 없던 ref 는 틀린 답으로 보고 한 번 더 물어 맞는 답을 쓴다."""
+    client = QueuedClient(bad, good)
+
+    result = post(monkeypatch, client, body())
+
+    assert result["data"][field] == value
+    assert len(client.calls) == 2
+
+
+@pytest.mark.parametrize("bad, sentence", [(card_call("c9"), WHICH_CARD_SAY), (polish_call("l9"), WHICH_LETTER_SAY)],
+                         ids=["카드 ref", "자소서 ref"])
+def test_card_or_letter_ref_that_stays_unknown_becomes_a_free_question(
+        monkeypatch: pytest.MonkeyPatch, bad: StepChoice, sentence: str) -> None:
+    """다시 물어도 없는 카드·자소서 ref 를 고르면 어느 것인지 직접 적게 하는 정해 둔 질문(FREE)으로 바꾼다."""
+    client = QueuedClient(bad, bad)
+
+    result = post(monkeypatch, client, body())
+
+    assert result["data"] == step(action="ASK_USER", say=sentence, ask_kind="FREE")
+    assert result["meta"]["ended_by"] == "FALLBACK"
+    assert len(client.calls) == 2
+
+
+def test_card_and_letter_refs_are_unknown_when_the_context_has_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    """context 에 카드·자소서가 하나도 없으면 어떤 ref 를 골라도 직접 적게 하는 질문으로 바꾼다."""
+    client = QueuedClient(card_call("c1"), card_call("c1"))
+
+    result = post(monkeypatch, client, body(cards=[], letters=[]))
+
+    assert result["data"] == step(action="ASK_USER", say=WHICH_CARD_SAY, ask_kind="FREE")
+
+
+@pytest.mark.parametrize("steps", [
+    [FOUND],
+    [FOUND, matched(2, "p2")],
+    [FOUND, matched(2, "p1", ok=False)],
+    [FOUND, matched(2, "p1", missing=[])],
+    [FOUND, done(2, "MATCH_POSTING", posting_ref="p1")],
+], ids=["맞춰 보지 않음", "다른 공고만 맞춰 봄", "맞춰 보기가 실패함", "모자란 조건이 없음", "맞춘 결과가 없음"])
+def test_filling_gaps_of_a_posting_not_matched_with_missing_conditions_is_asked_again_then_finishes(
+        monkeypatch: pytest.MonkeyPatch, steps: list[dict]) -> None:
+    """이번 실행에서 맞춰 보지 않았거나 모자란 조건이 없는 공고의 조건 채우기는 한 번 더 묻고, 그래도 고르면 먼저 맞춰 보라는 정해 둔 말로 끝낸다."""
+    client = QueuedClient(fill_call("p1"), fill_call("p1"))
+
+    result = post(monkeypatch, client, body(steps=steps))
+
+    assert result["data"] == step(action="FINISH", say=MATCH_FIRST_SAY)
+    assert result["meta"]["ended_by"] == "FALLBACK"
+    assert len(client.calls) == 2
+
+
+def test_filling_gaps_not_matched_first_uses_the_second_answer_when_it_is_valid(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """맞춰 보지 않은 공고의 조건 채우기를 골랐다가 다시 물어 공고 맞춰 보기로 바꾸면 그 답을 쓴다."""
+    client = QueuedClient(fill_call("p1"), match_call("p1"))
+
+    result = post(monkeypatch, client, body(steps=[FOUND]))
+
+    assert result["data"] == step(action="CALL_TOOL", tool="MATCH_POSTING", posting_ref="p1")
+    assert result["meta"]["ended_by"] == "COMPLETED"
     assert len(client.calls) == 2
 
 
@@ -270,8 +385,10 @@ def test_char_limit_outside_the_contract_range_is_dropped(monkeypatch: pytest.Mo
     assert len(client.calls) == 1
 
 
-@pytest.mark.parametrize("answer", [find_call("카카오"), match_call("p1"), cover_call(QUESTION_1), ask(), finish()],
-                         ids=["공고 찾기", "공고 맞춰 보기", "자소서 시작", "묻기", "끝내기"])
+@pytest.mark.parametrize("answer", [find_call("카카오"), match_call("p1"), cover_call(QUESTION_1), fill_call("p1"),
+                                    card_call("c1"), polish_call("l1"), ask(), finish()],
+                         ids=["공고 찾기", "공고 맞춰 보기", "자소서 시작", "모자란 조건 채우기", "카드 빈 칸 질문", "자소서 첨삭", "묻기",
+                              "끝내기"])
 def test_no_steps_left_turns_a_tool_call_into_finish(monkeypatch: pytest.MonkeyPatch, answer: StepChoice) -> None:
     """더 부를 횟수가 0 인데 도구를 고르면 도구를 실행하지 않고 끝내는 정해 둔 말로 바꾸며, 묻기·끝내기는 그대로 둔다."""
     client = QueuedClient(answer)
@@ -294,7 +411,13 @@ def test_no_steps_left_turns_a_tool_call_into_finish(monkeypatch: pytest.MonkeyP
     ([FOUND, done(2, "START_COVER_LETTER", posting_ref="p1", question_count=1)], cover_call(QUESTION_1),
      cover_call(QUESTION_1, posting_ref="p2"), "posting_ref", "p2"),
     ([FOUND, done(2, "START_REPO_ANALYSIS", repo_ref="r1")], repo_call("r1"), repo_call("r2"), "repo_ref", "r2"),
-], ids=["공고 찾기", "맞춰 보기", "자소서 시작", "레포 정리"])
+    ([FOUND, MATCHED_P1, matched(3, "p2"), done(4, "FILL_POSTING_GAPS", posting_ref="p1", gaps_filled=1)],
+     fill_call("p1"), fill_call("p2"), "posting_ref", "p2"),
+    ([done(1, "ASK_CARD_GAP", card_ref="c1", question={"field": "R", "text": "결과는 어땠나요?"})],
+     card_call("c1"), card_call("c2"), "card_ref", "c2"),
+    ([done(1, "POLISH_COVER_LETTER", letter_ref="l1", polished=[{"seq": 1, "points": 3}], remaining_questions=0)],
+     polish_call("l1"), polish_call("l2"), "letter_ref", "l2"),
+], ids=["공고 찾기", "맞춰 보기", "자소서 시작", "레포 정리", "모자란 조건 채우기", "카드 빈 칸 질문", "자소서 첨삭"])
 def test_repeating_a_successful_step_is_asked_again_once(
         monkeypatch: pytest.MonkeyPatch, steps: list[dict], repeated: StepChoice, other: StepChoice, field: str,
         value: Any) -> None:
@@ -365,10 +488,40 @@ def test_say_that_stays_wrong_becomes_a_fixed_sentence(
 
 def test_fixed_sentences_obey_the_say_rules() -> None:
     """정해 둔 문장은 모두 say 규칙(200자 안, 주소·이메일 없음)을 지킨다."""
-    sentences = [OFF_TOPIC_SAY, OUT_OF_STEPS_SAY, NEED_QUESTIONS_SAY, WHICH_POSTING_SAY, WHICH_REPO_SAY, REPEATED_SAY,
-                 BROKEN_ASK_SAY]
+    sentences = [OFF_TOPIC_SAY, OUT_OF_STEPS_SAY, NEED_QUESTIONS_SAY, WHICH_POSTING_SAY, WHICH_REPO_SAY, WHICH_CARD_SAY,
+                 WHICH_LETTER_SAY, MATCH_FIRST_SAY, REPEATED_SAY, BROKEN_ASK_SAY]
 
     assert all(_say_ok(sentence) for sentence in sentences)
+
+
+def test_prompt_and_off_topic_sentence_list_all_seven_tools() -> None:
+    """프롬프트는 도구 일곱 개를 모두 알리고, 할 수 없는 부탁에 답하는 말은 일곱 가지 일을 쉬운 말로 꼽는다."""
+    tools = ["FIND_POSTINGS", "MATCH_POSTING", "START_COVER_LETTER", "START_REPO_ANALYSIS", "FILL_POSTING_GAPS",
+             "ASK_CARD_GAP", "POLISH_COVER_LETTER"]
+    abilities = ["공고 찾기", "맞추기", "모자란 조건 채우기", "카드 빈 칸 질문", "자소서 쓰기", "자소서 첨삭", "레포 정리"]
+
+    assert all(f"- {tool}:" in ASSISTANT_PROMPT for tool in tools)
+    assert all(ability in OFF_TOPIC_SAY for ability in abilities)
+
+
+def test_new_context_and_step_fields_reach_the_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """빈 칸이 있는 카드와 초안이 끝난 자소서, 새 도구가 남긴 결과는 입력 JSON 에 담겨 모델에 간다."""
+    client = QueuedClient(finish("첨삭까지 마쳤어요."))
+    steps = [done(1, "ASK_CARD_GAP", card_ref="c1", question={"field": "R", "text": "결과는 어땠나요?"}),
+             done(2, "POLISH_COVER_LETTER", letter_ref="l1", polished=[{"seq": 1, "points": 3}, {"seq": 2, "points": 2}],
+                  remaining_questions=1),
+             done(3, "FILL_POSTING_GAPS", posting_ref="p1", gaps_filled=2)]
+
+    result = post(monkeypatch, client, body(steps=steps))
+
+    payload = client.calls[0]["payload"]
+    assert result["status"] == 200
+    assert payload["context"]["cards"] == CARDS
+    assert payload["context"]["letters"] == [LETTERS[0], LETTERS[1]]
+    assert payload["steps"][0]["question"] == {"field": "R", "text": "결과는 어땠나요?"}
+    assert payload["steps"][1]["polished"] == [{"seq": 1, "points": 3}, {"seq": 2, "points": 2}]
+    assert payload["steps"][1]["remaining_questions"] == 1
+    assert payload["steps"][2]["gaps_filled"] == 2
 
 
 @pytest.mark.parametrize("texts", [
@@ -504,8 +657,17 @@ def test_choice_options_are_kept_only_when_two_or_three_usable_ones_are_given(
     body() | {"unknown": "x"},
     {key: value for key, value in body().items() if key != "context"},
     body(repos=[{**REPOS[0], "ref": "repo-1"}]),
+    body(cards=[{**CARDS[0], "ref": "c0x"}]),
+    body(letters=[{**LETTERS[0], "ref": "l1234"}]),
+    body(cards=[{**CARDS[0], "ref": f"c{index}"} for index in range(1, 12)]),
+    body(letters=[{**LETTERS[0], "ref": f"l{index}"} for index in range(1, 12)]),
+    body(cards=[{**CARDS[0], "missing": ["증거"]}]),
+    body(steps=[done(1, "ASK_CARD_GAP", card_ref="card-1")]),
+    body(steps=[done(1, "ASK_CARD_GAP", card_ref="c1", question={"field": "X", "text": "?"})]),
+    body(steps=[done(1, "POLISH_COVER_LETTER", letter_ref="l1", polished=[{"seq": 0, "points": 1}])]),
 ], ids=["말 없음", "말 11개", "501자 말", "단계 13개", "횟수 11", "횟수 음수", "공고 ref 모양", "공고 6개", "모르는 도구",
-        "모르는 칸", "context 없음", "레포 ref 모양"])
+        "모르는 칸", "context 없음", "레포 ref 모양", "카드 ref 모양", "자소서 ref 모양", "카드 11개", "자소서 11개",
+        "카드 빈 칸 이름", "단계의 카드 ref 모양", "질문 칸 이름", "첨삭 문항 번호"])
 def test_rejects_requests_outside_the_contract(monkeypatch: pytest.MonkeyPatch, payload: dict) -> None:
     """계약 밖 요청은 LLM 을 부르지 않고 400 INVALID_PAYLOAD 다."""
     client = QueuedClient()

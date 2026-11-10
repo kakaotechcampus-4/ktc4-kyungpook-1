@@ -39,3 +39,13 @@
 | `criteria_judge.py` · `criteria_compare.py` | 평가 기준 K1~K7 채점기와 사람 판정 견주기 | 없음 |
 
 첨삭·채팅 측정의 11-03 숫자는 실제 카드 세트(저장소에 없음)로 냈다. 저장소의 `users.json` 으로도 돌아가지만 숫자는 달라진다.
+
+## 채팅 뒤 글 측정 (#905, `chat_measure.py`)
+- 무엇을: 초안만 재던 `measure.py` 와 달리, 운영 순서를 끝까지 따라 사용자가 마지막에 받는 글을 잰다. 순서는 카드 고르기 → 질문만 만들고 답을 기다리지 않고 바로 초안 → 빈칸이 있는 문항마다 채팅(OPEN → USER_REPLY 또는 SKIP) → 답이 충분하면 그 문항만 다시 쓰기(fill). 채팅 전 글과 뒤 글을 따로 남겨 `measure.py` 의 judge·score·report 가 그대로 읽는다.
+- 사용자 파일 두 개: `users.json` 은 답이 항목마다 글 하나뿐이라 같은 항목을 다시 물으면 넘긴다. `users_rich.json` 은 같은 사용자·카드·문항에 채팅이 물을 만한 항목마다 답 두 개(첫 답, 다시 물을 때의 덧붙임)를 더한 것이고 측정용으로 쓴 글이다. 답이 글 하나면 한 번만, 목록이면 물을 때마다 다음 글로 답하고 다 쓰면 넘긴다.
+- 돌리는 법(`ai/` 에서):
+  - `python evals/cover_letter/chat_measure.py run --tag T [--users evals/cover_letter/users_rich.json] [--model M] [--fake]` → `T-first.json` · `T-final.json` · `T-chat.json`(턴 기록)
+  - `python evals/cover_letter/chat_measure.py baseline --tag T --from T` → `T-base-answers.json`(호출 1번, 채팅에서 받은 답을 같이 줌)
+  - `python evals/cover_letter/chat_measure.py report T [--users …]` (사용자 파일을 바꿔 돌렸으면 같은 `--users` 를 준다)
+  - 견주기·채점: `measure.py judge T-final b1109`, `measure.py score T-first T-final T-base-answers` (`GITORY_EVAL_USERS` 를 같은 파일로)
+- 결과 원본(모델이 쓴 글·턴 기록)은 `ai/evals/results/cover_letter/runs/`(`--fake` 는 `fake/`)에만 남고 git 이 무시한다. 숫자는 이 문서에 두지 않는다.

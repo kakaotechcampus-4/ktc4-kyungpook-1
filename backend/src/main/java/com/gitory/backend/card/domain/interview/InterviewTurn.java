@@ -144,6 +144,13 @@ public class InterviewTurn {
 
     }
 
+    /** AI 가 모자란 답이라 보아 카드에 넣지 않은 질문으로 닫고, 사용자가 친 답과 출처는 그대로 남긴다 */
+    public void insufficient(String text, AnswerSource source) {
+
+        close(TurnOutcome.INSUFFICIENT, text, source);
+
+    }
+
     /** R 수치 질문에 '재 봤어요' 로 확정한 문장을 담는다 */
     public void measure(String text, AnswerSource source) {
 
@@ -191,11 +198,12 @@ public class InterviewTurn {
 
     }
 
-    /** 답했거나 넘겼거나 측정 결과를 정한 질문이면 true 이고, 결과가 없거나 LATER·INSUFFICIENT 인 질문은 아직 답을 기다린다 */
+    /** 답했거나 넘겼거나 측정 결과를 정했거나 모자란 답으로 닫은 질문이면 true 이고, 결과가 없거나 LATER 인 질문은 아직 답을 기다린다 */
     public boolean isClosed() {
 
         return outcome == TurnOutcome.ANSWERED || outcome == TurnOutcome.MEASURED
-                || outcome == TurnOutcome.NOT_MEASURED || outcome == TurnOutcome.SKIPPED;
+                || outcome == TurnOutcome.NOT_MEASURED || outcome == TurnOutcome.SKIPPED
+                || outcome == TurnOutcome.INSUFFICIENT;
 
     }
 

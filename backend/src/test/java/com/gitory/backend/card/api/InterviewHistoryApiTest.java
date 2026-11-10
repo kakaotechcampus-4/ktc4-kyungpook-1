@@ -288,6 +288,24 @@ class InterviewHistoryApiTest {
     }
 
     @Test
+    @DisplayName("모자란 답(INSUFFICIENT)으로 닫힌 질문도 사용자가 친 답과 출처를 answer 로 돌려주고 original 은 null 이다")
+    void exposesAnswerOfInsufficientTurn() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        interviews.insertTurn(cardId, 1, "T", "EVIDENCE_GAP", "USER", "질문", "INSUFFICIENT", "짧은 답", "TYPED");
+
+        String body = history(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        Map<String, Object> turn = JsonPath.read(body, "$.data[0]");
+        assertThat(turn).containsEntry("outcome", "INSUFFICIENT");
+        assertThat(JsonPath.<Map<String, Object>>read(body, "$.data[0].answer"))
+                .containsEntry("text", "짧은 답").containsEntry("source", "USER_STATED").containsEntry("original", null);
+
+    }
+
+    @Test
     @DisplayName("답하지 않은 질문의 answer 는 null 이고 키는 빠지지 않는다")
     void keepsAnswerKeyForOpenTurn() throws Exception {
 
@@ -305,7 +323,7 @@ class InterviewHistoryApiTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"LATER", "SKIPPED", "INSUFFICIENT"})
+    @ValueSource(strings = {"LATER", "SKIPPED"})
     @DisplayName("답 글이 남아 있어도 결과가 ANSWERED 가 아니거나 비어 있으면 answer 는 null 이고 키는 빠지지 않는다")
     void hidesAnswerWhenOutcomeIsNotAnswered(String outcome) throws Exception {
 

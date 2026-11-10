@@ -304,7 +304,7 @@ class AssistantStepper:
         return self._check_tool(choice, run)
 
     def _check_say(self, choice: StepChoice, run: _Run) -> _Verdict:
-        if choice.action == "ASK_USER" and choice.ask_kind == "QUESTIONS" and not _chose(run, OPTION_PASTE_QUESTIONS):
+        if choice.action == "ASK_USER" and choice.ask_kind == "QUESTIONS" and not _chose_before(run, OPTION_PASTE_QUESTIONS):
             return _Verdict(_ask_default_or_paste_step(run), "문항 방식을 고르기 전에 문항을 붙여 넣으라고 물었다")
         say = _text(choice.say)
         if not _say_ok(say):
@@ -453,6 +453,11 @@ def _choose_step(choice: StepChoice, say: str) -> AssistantStep:
 def _chose(run: _Run, option: str) -> bool:
     """선택지는 버튼을 누르면 그 문장이 사용자의 마지막 말로 들어오므로 마지막 말이 그 문장일 때만 골랐다고 본다."""
     return bool(run.user_texts) and run.user_texts[-1].strip() == option
+
+
+def _chose_before(run: _Run, option: str) -> bool:
+    """붙여 넣기를 고른 뒤 문항을 붙여 넣으면 마지막 말은 문항이라, 그 뒤에 다시 묻는 QUESTIONS 는 앞선 말까지 보고 그대로 둔다."""
+    return any(text.strip() == option for text in run.user_texts)
 
 
 def _ask_default_or_paste_step(run: _Run, posting_ref: Optional[str] = None) -> AssistantStep:

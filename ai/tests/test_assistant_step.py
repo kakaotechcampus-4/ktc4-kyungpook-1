@@ -430,6 +430,15 @@ def test_a_questions_ask_after_choosing_to_paste_is_kept(monkeypatch: pytest.Mon
     assert result["data"] == step(action="ASK_USER", say="문항을 붙여 넣어 주세요.", ask_kind="QUESTIONS")
 
 
+def test_a_questions_ask_after_pasting_once_is_still_kept(monkeypatch: pytest.MonkeyPatch) -> None:
+    """붙여 넣기를 고르고 문항을 붙여 넣은 뒤라 마지막 말이 문항이어도, 모델이 다시 QUESTIONS 로 물으면 선택지로 되돌리지 않는다."""
+    client = QueuedClient(ask("문항을 한 줄에 하나씩 다시 붙여 넣어 주세요.", "QUESTIONS"))
+
+    result = post(monkeypatch, client, body("토스 자소서 써 줘", OPTION_PASTE_QUESTIONS, "지원 동기"))
+
+    assert result["data"]["ask_kind"] == "QUESTIONS"
+
+
 def test_invented_questions_after_choosing_default_questions_become_the_default_step(
         monkeypatch: pytest.MonkeyPatch) -> None:
     """자주 나오는 문항을 골랐는데 모델이 문항을 지어내면 그 문항을 버리고 default_questions 단계로 바꾼다."""

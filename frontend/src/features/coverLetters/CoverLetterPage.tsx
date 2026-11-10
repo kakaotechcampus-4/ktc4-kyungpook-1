@@ -101,7 +101,9 @@ export function CoverLetterPage() {
       </div>
       <Stepper current={flowStep(l.stage, l.failedStep)} />
       {l.posting && <PostingLine posting={l.posting} />}
-      {l.defaultQuestions && l.stage !== 'FAILED' && <p className="cl-wait-note">자주 나오는 문항으로 썼어요 · 실제 문항이 있으면 문항 고치기로 바꿔 주세요</p>}
+      {/* 쓰는 동안에는 '문항 고치기' 버튼이 숨어 있어서(#961) 다 쓴 뒤에 바꿀 수 있다고 말한다 */}
+      {l.defaultQuestions && l.stage === 'DRAFTED' && <p className="cl-wait-note">자주 나오는 문항으로 썼어요 · 실제 문항이 있으면 문항 고치기로 바꿔 주세요</p>}
+      {l.defaultQuestions && l.stage !== 'DRAFTED' && l.stage !== 'FAILED' && <p className="cl-wait-note">자주 나오는 문항으로 쓰는 중이에요 · 다 쓴 뒤 문항 고치기로 실제 문항으로 바꿀 수 있어요</p>}
       {l.stage === 'ASSIGNING' && <AssignWait letter={l} />}
       {l.stage === 'FAILED' && <Failed letter={l} />}
       {(l.stage === 'ASSIGNED' || l.stage === 'ASKING') && <AskWait letter={l} failure={failure} />}

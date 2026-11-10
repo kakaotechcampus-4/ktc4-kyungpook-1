@@ -14,6 +14,7 @@
     <a href="./CONTRIBUTING.md">기여 가이드</a>
   </p>
   <p>
+    <a href="#시연-영상">시연 영상</a> ·
     <a href="#한눈에-보기">한눈에 보기</a> ·
     <a href="#주요-기능과-화면">기능과 화면</a> ·
     <a href="#ai는-어디까지-맡기나">AI는 어디까지 맡기나</a> ·
@@ -25,6 +26,12 @@
 </div>
 
 ---
+
+## 시연 영상
+
+https://github.com/user-attachments/assets/7c769b51-049e-4cbc-aecd-0da89dfcb1f6
+
+저장소를 고르고 경험 카드가 써지는 것부터 맞는 공고와 자소서 초안까지, 실제 서비스 화면으로 담았습니다.
 
 ## 한눈에 보기
 
@@ -47,25 +54,8 @@ Gitory는 **개발자 취업 준비생이 GitHub 기록에서 자신의 기여�
 | 자소서 첨삭 서비스 | 내 경험을 다시 설명해야 함 | 확정 카드가 그대로 재료가 되고, 빈칸은 대화로 채움 |
 
 <p align="center">
-  <img src="./docs/images/readme/flow.png" width="100%" alt="세 단계 흐름. 1 경험 카드: 커밋과 PR을 STAR로, 2 공고 매칭: 조건마다 근거 카드로, 3 자소서: 문항마다 카드로 초안" />
+  <img src="./docs/images/readme/flow.png" width="100%" alt="GitHub 기록이 지원서가 되기까지 네 걸음. 1 저장소 고르기, 2 경험 카드(조건이 맞으면 스스로 확정, 확인할 칸이 남으면 AI가 먼저 묻기), 3 공고 매칭(부족한 조건은 저장소에서 더 찾기), 4 자소서(확정 카드가 그대로 재료). AI는 고르고, 코드가 검사하고, 사용자는 확인할 칸만 봅니다" />
 </p>
-
-```mermaid
-flowchart LR
-    A["GitHub 로그인"] --> B["저장소 고르기"]
-    B --> C["기록 읽고<br/>경험 묶기"]
-    C --> D["STAR 초안"]
-    D --> E{"상황·행동이 차고<br/>확인할 칸이 없나"}
-    E -->|"예"| F["카드 확정"]
-    E -->|"아니오"| G["AI가 먼저 묻기"]
-    G --> D
-    F --> H["공고 조건과 비교"]
-    F --> I["자소서 초안·첨삭"]
-    H --> I
-```
-
-정리가 끝나면 추천 후보로 카드 초안까지 이어서 쓰고, 조건이 맞는 카드는 서버가 확정합니다.
-확인할 칸이 남은 카드만 사용자가 보고, 빈칸은 AI가 먼저 질문해 채웁니다.
 
 ## 주요 기능과 화면
 
@@ -181,24 +171,9 @@ Gitory의 AI는 **고르기만 합니다.** 근거와 수치는 코드가 검사
 | 자소서 | 문항마다 쓸 카드, 걸린 문장을 고칠지 둘지, 새 카드를 어느 자리에 끼울지 | 다시 쓰기 2번, 끼우는 문장은 2곳·2문장까지 |
 | 홈 한 줄 명령 | 도구 7개 중 무엇을 부를지, 사용자에게 물을지, 끝낼지 | 도구 호출 6번, 같은 일을 되풀이하면 멈춤 |
 
-```mermaid
-flowchart TD
-    A["커밋 · PR 읽기"] --> B{{"한 경험으로 묶기"}}
-    B --> C{{"STAR 초안 쓰기"}}
-    C --> D["근거 · 수치 검사 (코드)"]
-    D -->|"걸린 칸이 있다"| E{{"자료를 더 읽을지<br/>다시 쓸지 고르기"}}
-    E -->|"5번까지"| D
-    D -->|"걸린 칸이 없다"| F{"상황 · 행동이 차고<br/>확인할 칸이 없나"}
-    F -->|"예"| G["카드 확정 (서버)"]
-    F -->|"아니오"| H{{"무엇을 물을지 고르기"}}
-    H --> I["사용자 답"]
-    I --> J{{"넣기 · 한 번 더 묻기<br/>넣지 않기 · 넘기기"}}
-    J -.-> H
-    classDef ai stroke:#e8590c,stroke-width:2px
-    class B,C,E,H,J ai
-```
-
-주황 육각형이 AI가 판단하는 곳입니다. 네모는 코드와 서버가 정해진 대로 하는 곳입니다.
+<p align="center">
+  <img src="./docs/images/readme/ai-loop.png" width="100%" alt="경험 카드 한 장이 만들어지는 길. 한 경험으로 묶기와 STAR 초안 쓰기는 AI가, 근거·수치 검사는 코드가 하고, 걸린 칸은 AI가 자료를 더 읽을지 다시 쓸지 정합니다(다시 쓰기 5번, 자료 3개). 확인할 칸이 없으면 서버가 카드를 확정하고, 남으면 AI가 무엇을 물을지 골라 묻고 사용자 답을 넣을지 한 번 더 물을지 정합니다(카드마다 8번, 칸마다 2번)" />
+</p>
 
 **다 맡겨 봤더니** — AI에게 더 맡겼다가 숫자로 확인하고 코드로 옮긴 일들입니다.
 
@@ -273,16 +248,9 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
 | develop 머지 | 위 네 CI 가 모두 초록일 때만 `deploy` 가 서버에 배포하고, 올라간 뒤 확인에 실패하면 직전 커밋으로 자동 롤백 |
 | 매일 | DB 백업(7일 보관), 사이트 상태 확인, PR 요약 알림 |
 
-```mermaid
-flowchart LR
-    A["PR"] --> B["CI 4개"]
-    B --> C["develop 머지"]
-    C --> D{"그 커밋의 CI 가<br/>모두 초록인가"}
-    D -->|"예"| E["EC2 배포"]
-    E --> F{"배포 뒤 확인"}
-    F -->|"실패"| G["직전 커밋으로 롤백"]
-    D -->|"아니오"| H["배포하지 않음"]
-```
+<p align="center">
+  <img src="./docs/images/readme/deploy.png" width="100%" alt="PR에서 서버까지. 1 PR, 2 CI 4개, 3 develop 머지, 4 배포 게이트(그 커밋의 CI 4개가 모두 초록인지 확인), 5 EC2 배포. 확인에 실패하면 직전 커밋으로 자동 롤백" />
+</p>
 
 ## 로컬에서 시작하기
 
@@ -315,14 +283,34 @@ npm run dev
 
 **카카오테크 캠퍼스 4기 경북대 1팀**이 기획부터 개발·배포까지 함께 만드는 프로젝트입니다.
 
-| 이름 | 팀 역할 | 프로젝트 역할 | GitHub |
-| --- | --- | --- | --- |
-| 곽태훈 | 팀장 | Backend | [@taehun0208](https://github.com/taehun0208) |
-| 권혁진 | AI 리드 | AI | [@hyukjin0324](https://github.com/hyukjin0324) |
-| 김경무 | 플래너 | Frontend | [@ganggang-0605](https://github.com/ganggang-0605) |
-| 김태희 | FE 리드 | Frontend | [@TaeHuiKKIM](https://github.com/TaeHuiKKIM) |
-| 장성준 | BE 리드 | Backend | [@Grow22](https://github.com/Grow22) |
-| 최민서 | 메이커 | AI | [@chxisoei](https://github.com/chxisoei) |
+<table align="center">
+  <tr>
+    <td align="center" width="16%">
+      <a href="https://github.com/taehun0208"><img src="https://github.com/taehun0208.png?size=120" width="96" alt="곽태훈" /><br /><strong>곽태훈</strong></a><br />
+      <sub>팀장 · Backend</sub><br /><sub><a href="https://github.com/taehun0208">@taehun0208</a></sub>
+    </td>
+    <td align="center" width="16%">
+      <a href="https://github.com/hyukjin0324"><img src="https://github.com/hyukjin0324.png?size=120" width="96" alt="권혁진" /><br /><strong>권혁진</strong></a><br />
+      <sub>AI 리드 · AI</sub><br /><sub><a href="https://github.com/hyukjin0324">@hyukjin0324</a></sub>
+    </td>
+    <td align="center" width="16%">
+      <a href="https://github.com/ganggang-0605"><img src="https://github.com/ganggang-0605.png?size=120" width="96" alt="김경무" /><br /><strong>김경무</strong></a><br />
+      <sub>플래너 · Frontend</sub><br /><sub><a href="https://github.com/ganggang-0605">@ganggang-0605</a></sub>
+    </td>
+    <td align="center" width="16%">
+      <a href="https://github.com/TaeHuiKKIM"><img src="https://github.com/TaeHuiKKIM.png?size=120" width="96" alt="김태희" /><br /><strong>김태희</strong></a><br />
+      <sub>FE 리드 · Frontend</sub><br /><sub><a href="https://github.com/TaeHuiKKIM">@TaeHuiKKIM</a></sub>
+    </td>
+    <td align="center" width="16%">
+      <a href="https://github.com/Grow22"><img src="https://github.com/Grow22.png?size=120" width="96" alt="장성준" /><br /><strong>장성준</strong></a><br />
+      <sub>BE 리드 · Backend · AI · 인프라</sub><br /><sub><a href="https://github.com/Grow22">@Grow22</a></sub>
+    </td>
+    <td align="center" width="16%">
+      <a href="https://github.com/chxisoei"><img src="https://github.com/chxisoei.png?size=120" width="96" alt="최민서" /><br /><strong>최민서</strong></a><br />
+      <sub>메이커 · AI</sub><br /><sub><a href="https://github.com/chxisoei">@chxisoei</a></sub>
+    </td>
+  </tr>
+</table>
 
 [프로젝트 기여 내역 보기](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/graphs/contributors)
 

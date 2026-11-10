@@ -1,11 +1,12 @@
 import { useLayoutEffect, useRef, type KeyboardEvent, type ReactNode, type Ref } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { BrandLogo } from '@/components/ui/BrandLogo';
+import { CHAT_START } from './chatScroll';
 import './chat.css';
 
 /** Gitory 가 말하기 시작하는 자리에 한 번 붙는 이름표 */
 export function ChatFrom() {
-  return <span className="chat-from"><BrandLogo height={20} mark />Gitory</span>;
+  return <span className="chat-from" {...{ [CHAT_START]: '' }}><BrandLogo height={20} mark />Gitory</span>;
 }
 
 /** 말풍선 — it 은 Gitory 의 말(왼쪽), me 는 내 말(오른쪽) */

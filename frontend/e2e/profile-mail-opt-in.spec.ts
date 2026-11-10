@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { loginAsDemo } from './helpers';
 
-/** 인적사항의 메일 알림 칸 — 마이페이지에서 저장·새로고침, 처음 입력 창 마지막 단계, 밝은·어두운·폰 화면 기록. */
+/** 인적사항의 메일 알림 칸 — 마이페이지에서 저장·새로고침, 처음 입력 창, 밝은·어두운·폰 화면 기록. */
 
 const SHOTS = 'docs/screenshots/2026-11-07-mail-opt-in';
 const OPT_IN = '내 경험에 맞는 공고를 메일로 받을게요';
@@ -41,15 +41,9 @@ for (const theme of THEMES) {
       await page.addInitScript((value) => localStorage.setItem('gitory.theme', value), theme);
       await page.setViewportSize({ width, height: width === 390 ? 844 : 1024 });
 
-      // 처음 입력 창 마지막 단계
+      // 처음 입력 창
       await page.goto('/?demoScenario=no-profile');
       await page.getByRole('checkbox', { name: '백엔드', exact: true }).check();
-      await page.getByRole('button', { name: '다음', exact: true }).click();
-      await page.getByRole('button', { name: '경력 없음', exact: true }).click();
-      await page.getByRole('radio', { name: '대학교', exact: true }).check();
-      await page.getByRole('radio', { name: '졸업', exact: true }).check();
-      await page.getByRole('button', { name: '다음', exact: true }).click();
-      await page.getByRole('button', { name: '어학 없음', exact: true }).click();
       await expect(mail(page)).toBeVisible();
       await mail(page).getByRole('checkbox', { name: OPT_IN, exact: true }).evaluate((el) => el.scrollIntoView({ block: 'center' }));
       await mail(page).getByLabel('메일 주소', { exact: true }).fill('me@example.com');
@@ -58,7 +52,7 @@ for (const theme of THEMES) {
       await page.screenshot({ path: `${SHOTS}/dialog-${width}-${theme}.png`, animations: 'disabled' });
 
       // 마이페이지 — 주소 모양이 틀린 상태
-      await page.getByRole('button', { name: '자격증 없음', exact: true }).click();
+      await page.getByRole('button', { name: '저장하고 시작하기', exact: true }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
       await page.goto('/settings/profile');
       await expect(mail(page)).toBeVisible();

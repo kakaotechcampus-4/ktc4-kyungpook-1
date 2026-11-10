@@ -35,14 +35,7 @@ export async function loginAndSetUp(page: Page, login: string) {
   const setup = page.getByRole('dialog');
   await expect(setup).toHaveAccessibleName('관심 분야');
   await setup.getByRole('checkbox', { name: '백엔드', exact: true }).check();
-  await setup.getByRole('button', { name: '다음', exact: true }).click();
-  await setup.getByRole('button', { name: '경력 없음', exact: true }).click();
-  await setup.getByRole('radio', { name: '대학교', exact: true }).check();
-  await setup.getByRole('button', { name: '다음', exact: true }).click();
-  await setup.getByRole('radio', { name: '졸업', exact: true }).check();
-  await setup.getByRole('button', { name: '다음', exact: true }).click();
-  await setup.getByRole('button', { name: '어학 없음', exact: true }).click();
-  await setup.getByRole('button', { name: '자격증 없음', exact: true }).click();
+  await setup.getByRole('button', { name: '저장하고 시작하기', exact: true }).click();
   await expect(setup).toHaveCount(0);
 }
 

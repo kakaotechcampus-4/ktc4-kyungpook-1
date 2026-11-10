@@ -184,12 +184,12 @@ it("words an education mismatch as a profile check, not as a missing card", asyn
   mount(`/match/${detail.id}`);
   expect(await screen.findByText("인적사항과 맞지 않아요 — 지원 자격을 확인해 보세요.")).toBeInTheDocument();
   expect(screen.getByText("인적사항의 학력과 맞아요.")).toBeInTheDocument();
-  expect(screen.getByText("인적사항에 학력을 적으면 비교할 수 있어요.")).toBeInTheDocument();
-  expect(screen.getByText("인적사항 필요")).toBeInTheDocument();
+  expect(screen.getByText("학력 조건은 공고에서 직접 확인해 주세요.")).toBeInTheDocument();
   expect(screen.getByText("학력 조건은 직접 확인해 주세요.")).toBeInTheDocument();
   // 병역 같은 일반 조건은 '직접 확인' 표시만 붙고 문장은 없다. 기술 조건의 모자람도 표시만 둔다
   expect(screen.queryByText(/병역 조건/)).not.toBeInTheDocument();
-  expect(screen.getAllByText("직접 확인")).toHaveLength(2);
+  // 인적사항을 받지 않으니 학력을 모르는 조건(UNKNOWN)도 직접 확인 표시다 — 병역 · 모름 학력 · 셋째 조건
+  expect(screen.getAllByText("직접 확인")).toHaveLength(3);
   expect(document.querySelectorAll(".posting-conditions .cond-tile--not_met")).toHaveLength(2);
 });
 it("404 detail offers list return without an invalid retry", async () => {

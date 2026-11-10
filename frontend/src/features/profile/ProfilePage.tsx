@@ -11,13 +11,13 @@ export function ProfileUnavailable() {
   return (
     <main className="main">
       <PageTitle>인적사항 입력을 준비 중이에요</PageTitle>
-      <p className="c-2">서버 준비가 끝나면 학력, 경력, 어학, 자격증을 입력해 공고 매칭에 쓸 수 있어요.</p>
+      <p className="c-2">서버 준비가 끝나면 관심 분야를 입력해 공고 매칭에 쓸 수 있어요.</p>
       <ButtonLink to="/settings" variant="secondary">마이페이지로</ButtonLink>
     </main>
   );
 }
 
-/** F4 인적사항 — 관심 분야·학력·경력·어학·자격증을 마이페이지에서 고친다. 처음 입력 창(ProfileSetupModal)과 같은 칸을 쓴다. */
+/** F4 인적사항 — 관심 분야를 마이페이지에서 고친다. 처음 입력 창(ProfileSetupModal)과 같은 칸을 쓴다. */
 export function ProfilePage() {
   useDocumentTitle('인적사항');
   const profile = useProfile();
@@ -25,7 +25,7 @@ export function ProfilePage() {
   return (
     <main className="main main--footer main--tight profile-page">
       <Breadcrumb items={[{ label: '마이페이지', to: '/settings' }, { label: '인적사항' }]} />
-      <PageTitle lead="관심 분야만 꼭 고르고, 나머지는 없으면 비워 둬도 돼요.">인적사항</PageTitle>
+      <PageTitle lead="관심 분야를 골라 주세요.">인적사항</PageTitle>
       {profile.isPending && <div className="stack" style={{ gap: 12 }} aria-busy="true">{[0, 1, 2].map((i) => <Skeleton key={i} h={120} />)}</div>}
       {profile.isError && <QueryFailure error={profile.error} retry={() => profile.refetch()} pending={profile.isFetching} />}
       {profile.isSuccess && <ProfileForm initial={profile.data} />}

@@ -240,9 +240,9 @@ describe('홈 — 지원할 곳', () => {
 });
 
 describe('공고 매칭 화면으로 옮긴 달력', () => {
-  it('맞는 공고를 읽는 동안 달력은 빈 채로 두지 않고 마감일을 불러오고 있다고 알린다', async () => {
+  it('공고 목록을 읽는 동안 달력은 빈 채로 두지 않고 마감일을 불러오고 있다고 알린다', async () => {
     serve({});
-    vi.spyOn(matchingApi, 'recommendations').mockReturnValue(new Promise(() => {}));
+    vi.spyOn(matchingApi, 'list').mockReturnValue(new Promise(() => {}));
     mountApp([page(<MatchListPage />, '/match')], '/match');
 
     expect(await screen.findByText('공고 마감일을 불러오고 있어요.')).toBeInTheDocument();

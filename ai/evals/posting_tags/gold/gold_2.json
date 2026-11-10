@@ -1,0 +1,2270 @@
+[
+ {
+  "key": "bluehole/8478565002",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [
+     "UNREAL",
+     "CPP"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [
+     "UNREAL"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [
+     "UNREAL"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "deepx/114805",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 1,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 2,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 3,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 4,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [
+     "PYTHON",
+     "C",
+     "CPP"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": null,
+    "techs": [
+     "LINUX"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "finda/173229",
+  "team_techs": [
+   "JAVA",
+   "KOTLIN",
+   "SPRING",
+   "JPA",
+   "ELASTICSEARCH",
+   "KAFKA",
+   "REDIS",
+   "MYSQL",
+   "MONGODB",
+   "CI_CD",
+   "AWS",
+   "TERRAFORM",
+   "DOCKER",
+   "PROMETHEUS",
+   "GRAFANA",
+   "KUBERNETES"
+  ],
+  "criteria": [
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [
+     "SPRING"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "interxlab/158142",
+  "team_techs": [
+   "JAVA",
+   "REACT",
+   "PYTHON"
+  ],
+  "criteria": [
+   {
+    "i": 4,
+    "general_type": null,
+    "techs": [
+     "REACT"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [
+     "JAVASCRIPT"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [
+     "PYTHON"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [
+     "SQL"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [
+     "MONGODB",
+     "ELASTICSEARCH"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [
+     "DOCKER"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 18,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 19,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "kurly/168026",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 3,
+    "general_type": null,
+    "techs": [
+     "JAVA",
+     "KOTLIN",
+     "MYSQL",
+     "SPRING"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 4,
+    "general_type": null,
+    "techs": [
+     "KAFKA"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [
+     "AWS",
+     "MSA"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [
+     "ELASTICSEARCH",
+     "REDIS"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [
+     "AWS"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [
+     "MSA"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "general_type": "MILITARY",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "mangoboost/199904",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 4,
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "BACHELOR",
+    "education_exempt": true
+   },
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [
+     "PYTHON",
+     "LINUX"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [
+     "KUBERNETES",
+     "DOCKER"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "moreh/158834",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 5,
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "BACHELOR",
+    "education_exempt": true
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [
+     "C",
+     "CPP",
+     "PYTHON"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "MASTER",
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": null,
+    "techs": [
+     "CPP"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": null,
+    "techs": [
+     "PYTORCH",
+     "TENSORFLOW"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "pfct/198964",
+  "team_techs": [
+   "PYTHON",
+   "KOTLIN",
+   "DJANGO",
+   "SPRING",
+   "MYSQL",
+   "REDIS",
+   "KAFKA"
+  ],
+  "criteria": [
+   {
+    "i": 3,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 4,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [
+     "PYTHON",
+     "DJANGO",
+     "KOTLIN",
+     "SPRING"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "seoulrobotics/5409079008",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [
+     "CPP"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "general_type": null,
+    "techs": [
+     "LINUX",
+     "CI_CD"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "stradvision/112968",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 4,
+    "general_type": null,
+    "techs": [
+     "C",
+     "CPP"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [
+     "LINUX"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "general_type": "MILITARY",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "xcena/110619",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 5,
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "BACHELOR",
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [
+     "RUST",
+     "C",
+     "CPP"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [
+     "RUST"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "daangn/5781885003",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": null,
+    "techs": [
+     "NODEJS",
+     "GO"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": null,
+    "techs": [
+     "GRAPHQL"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "general_type": null,
+    "techs": [
+     "REACT"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "featuring/147112",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [
+     "PYTHON",
+     "DJANGO",
+     "FASTAPI"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "ineeji/219896",
+  "team_techs": [
+   "PYTHON",
+   "JAVA",
+   "REACT",
+   "MYSQL",
+   "MONGODB",
+   "GCP",
+   "AWS",
+   "DOCKER"
+  ],
+  "criteria": [
+   {
+    "i": 4,
+    "general_type": null,
+    "techs": [
+     "PYTHON",
+     "FASTAPI",
+     "DJANGO",
+     "NODEJS"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [
+     "SQL"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [
+     "GRPC"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [
+     "CI_CD"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [
+     "CI_CD"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "krafton/8417764002",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 4,
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "MASTER",
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "makinarocks/196551",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [
+     "PYTHON",
+     "PYTORCH",
+     "TENSORFLOW"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "mobilint/212524",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [
+     "ANDROID"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [
+     "C",
+     "CPP",
+     "JAVA",
+     "KOTLIN"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [
+     "LINUX"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [
+     "LINUX"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [
+     "ANDROID",
+     "LINUX"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "nuua/172222",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 2,
+    "general_type": null,
+    "techs": [
+     "SPRING"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 3,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 4,
+    "general_type": null,
+    "techs": [
+     "DOCKER",
+     "KUBERNETES"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [
+     "AWS"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "riibotics/220810",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 6,
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "BACHELOR",
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [
+     "CPP",
+     "PYTHON"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [
+     "CPP",
+     "PYTHON"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [
+     "PYTORCH",
+     "TENSORFLOW"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "MASTER",
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "stradvision/190521",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 10,
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "MASTER",
+    "education_exempt": true
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [
+     "PYTHON",
+     "CPP"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": null,
+    "techs": [
+     "PYTORCH"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 18,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 19,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 20,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 21,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 22,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "xcena/110623",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 5,
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "BACHELOR",
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [
+     "C",
+     "CPP"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": "LOCATION",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "daangn/6652141003",
+  "team_techs": [
+   "GO",
+   "GRPC",
+   "REDIS",
+   "AWS",
+   "KAFKA",
+   "GCP",
+   "KOTLIN",
+   "PYTHON"
+  ],
+  "criteria": [
+   {
+    "i": 4,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [
+     "GCP"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "ex-em/232070",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [
+     "PYTHON"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [
+     "LLM"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "general_type": "EDUCATION",
+    "techs": [],
+    "education_level": "MASTER",
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 18,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 19,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 20,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 21,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 22,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 23,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 24,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "healingpaper/241755",
+  "team_techs": [
+   "GO",
+   "PYTHON",
+   "KOTLIN",
+   "SPRING",
+   "MYSQL",
+   "POSTGRESQL",
+   "ELASTICSEARCH",
+   "KUBERNETES",
+   "AWS"
+  ],
+  "criteria": [
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [
+     "GO",
+     "PYTHON",
+     "KOTLIN",
+     "JAVA"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [
+     "CI_CD"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 15,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 16,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 17,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ },
+ {
+  "key": "kakaopay/233787",
+  "team_techs": [],
+  "criteria": [
+   {
+    "i": 3,
+    "general_type": null,
+    "techs": [
+     "REACT"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 4,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 5,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 6,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 7,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 8,
+    "general_type": null,
+    "techs": [
+     "NEXTJS"
+    ],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 9,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 10,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 11,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 12,
+    "general_type": null,
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 13,
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   },
+   {
+    "i": 14,
+    "general_type": "OTHER",
+    "techs": [],
+    "education_level": null,
+    "education_exempt": false
+   }
+  ]
+ }
+]

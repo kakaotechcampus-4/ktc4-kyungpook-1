@@ -1,0 +1,244 @@
+{
+  "note": "w-luna 초안(Luna 가 쓰고 Luna 감독이 한 번 본 최종본)에 문항마다 한 문장을 심는다. anchor 가 든 문장 바로 뒤에 넣는다. 빈칸뿐인 u7 세 문항과 u8 3번은 심지 않는다. code 는 심은 쪽이 의도한 이유이고, 감독이 어떤 code 로든 그 문장을 걸면 찾은 것으로 센다.",
+  "plants": [
+    {
+      "user": "u1",
+      "question_id": 1,
+      "code": "UNSUPPORTED_CLAIM",
+      "anchor": "하루 배포 횟수는 다섯 번으로 늘었습니다.",
+      "sentence": "이 개선으로 팀의 월간 장애 건수도 30% 줄었고, 저는 이 공로로 팀 리더로 선정되었습니다."
+    },
+    {
+      "user": "u1",
+      "question_id": 2,
+      "code": "OFF_TOPIC",
+      "anchor": "이후 같은 논쟁이 다시 나오지 않았습니다.",
+      "sentence": "취미로 사진을 찍으며 사물을 오래 관찰하는 습관을 길렀습니다."
+    },
+    {
+      "user": "u1",
+      "question_id": 3,
+      "code": "UNSUPPORTED_CLAIM",
+      "anchor": "그 결과 같은 주문이 두 번 승인되는 일이 더 나오지 않았습니다.",
+      "sentence": "이 방식은 이후 회사 전체 결제 모듈의 표준으로 채택되어 다른 세 팀도 함께 쓰게 되었습니다."
+    },
+    {
+      "user": "u2",
+      "question_id": 1,
+      "code": "UNSUPPORTED_CLAIM",
+      "anchor": "프론트엔드 개발을 하고 싶기 때문입니다.",
+      "sentence": "실제로 지난 인턴십에서 상품 목록 화면의 로딩 시간을 2초 줄여 구매 전환율을 15% 높인 경험이 있습니다."
+    },
+    {
+      "user": "u2",
+      "question_id": 2,
+      "code": "UNSUPPORTED_CLAIM",
+      "anchor": "목록을 만들어 두고 매번 따르게 됐습니다.",
+      "sentence": "이 목록 덕분에 이후 6개월 동안 배포 사고가 한 번도 일어나지 않았습니다."
+    },
+    {
+      "user": "u2",
+      "question_id": 3,
+      "code": "REPEATED",
+      "anchor": "디자인 확인이 금방 끝났습니다.",
+      "sentence": "또한 첫 배포에서 결제 페이지가 흰 화면으로 떴을 때 이전 버전으로 되돌리고 같은 날 다시 배포했습니다."
+    },
+    {
+      "user": "u3",
+      "question_id": 1,
+      "code": "UNSUPPORTED_CLAIM",
+      "anchor": "배치가 새벽 세 시 전에 끝나게 했습니다.",
+      "sentence": "이 과정에서 Spark 클러스터를 직접 구성해 처리량을 네 배로 늘렸습니다."
+    },
+    {
+      "user": "u3",
+      "question_id": 2,
+      "code": "UNSUPPORTED_CLAIM",
+      "anchor": "SQLD(2025)를 취득했습니다.",
+      "sentence": "학창 시절에는 축구부 주장으로 지역 대회에서 준우승을 이끌기도 했습니다."
+    },
+    {
+      "user": "u3",
+      "question_id": 3,
+      "code": "REPEATED",
+      "anchor": "집계 숫자를 믿고 쓸 수 있게 됐다는 말을 들었습니다.",
+      "sentence": "또한 배송 집계 배치가 아침까지 끝나지 않던 문제를 쿼리를 파티션 기준으로 바꿔 새벽 세 시 전에 끝나게 했습니다."
+    },
+    {
+      "user": "u4",
+      "question_id": 1,
+      "code": "UNSUPPORTED_CLAIM",
+      "anchor": "DevOps 엔지니어로 지원했습니다.",
+      "sentence": "귀사가 지난해 무중단 배포 체계를 도입해 장애 시간을 절반으로 줄였다는 기사를 보고 깊은 인상을 받았습니다."
+    },
+    {
+      "user": "u4",
+      "question_id": 2,
+      "code": "UNSUPPORTED_CLAIM",
+      "anchor": "서비스마다 배포 설정을 작성해 하나씩 옮겼습니다.",
+      "sentence": "이 작업을 위해 동아리원 열 명으로 인프라 팀을 꾸리고 팀장을 맡았습니다."
+    },
+    {
+      "user": "u4",
+      "question_id": 3,
+      "code": "OFF_TOPIC",
+      "anchor": "팀이 장애 회고를 스스로 열게 됐습니다.",
+      "sentence": "개인적으로는 리눅스 커널 소스를 읽으며 운영체제의 동작 원리를 공부하고 있습니다."
+    },
+    {
+      "user": "u5",
+      "question_id": 1,
+      "code": "UNSUPPORTED_CLAIM",
+      "anchor": "첫 화면이 바로 뜨게 했습니다.",
+      "sentence": "그 결과 앱 평점이 3.2점에서 4.5점으로 올랐습니다."
+    },
+    {
+      "user": "u5",
+      "question_id": 2,
+      "code": "UNSUPPORTED_CLAIM",
+      "anchor": "공모전에서 우수상을 받았습니다.",
+      "sentence": "특히 제가 직접 개발한 결제 화면이 심사위원들에게 가장 높은 점수를 받았습니다."
+    },
+    {
+      "user": "u5",
+      "question_id": 3,
+      "code": "REPEATED",
+      "anchor": "플레이 콘솔의 시작 시간 경고도 사라졌습니다.",
+      "sentence": "또한 카페 아르바이트에서 주문표를 음료 종류별로 다른 색으로 쓰자고 제안해 음료가 섞이는 일을 줄였습니다."
+    },
+    {
+      "user": "u6",
+      "question_id": 1,
+      "code": "UNSUPPORTED_CLAIM",
+      "anchor": "PostgreSQL에 세션을 두도록 바꿨습니다.",
+      "sentence": "이 변경으로 서버 비용을 매달 20만 원 줄였습니다."
+    },
+    {
+      "user": "u6",
+      "question_id": 2,
+      "code": "UNSUPPORTED_CLAIM",
+      "anchor": "부트캠프에 지원했습니다.",
+      "sentence": "부트캠프에서는 수료생 120명 중 1등으로 수료했습니다."
+    },
+    {
+      "user": "u6",
+      "question_id": 3,
+      "code": "OFF_TOPIC",
+      "anchor": "머지가 며칠씩 밀리는 상황도 줄어들었습니다.",
+      "sentence": "요즘은 테니스를 배우며 꾸준함을 기르고 있습니다."
+    },
+    {
+      "user": "u8",
+      "question_id": 1,
+      "code": "UNSUPPORTED_CLAIM",
+      "anchor": "시각적 경험에 관심을 두고 공부했습니다.",
+      "sentence": "재학 중에는 React로 디자인 시스템 라이브러리를 직접 만들어 오픈소스로 공개했습니다."
+    },
+    {
+      "user": "u8",
+      "question_id": 2,
+      "code": "UNSUPPORTED_CLAIM",
+      "anchor": "투표로 정하자고 제안했습니다.",
+      "sentence": "팀장으로서 최종 결정권을 갖고 팀원들의 의견을 하나로 모았습니다."
+    }
+  ],
+  "subtle_note": "원래 문장의 일부만 바꿔 근거와 어긋나게 한다(숫자·기술·역할). 바뀐 문장을 UNSUPPORTED_CLAIM 으로 걸어야 찾은 것으로 센다.",
+  "subtle": [
+    {
+      "user": "u1",
+      "question_id": 1,
+      "find": "배포 시간은 12분으로 줄어",
+      "replace": "배포 시간은 10분으로 줄어"
+    },
+    {
+      "user": "u1",
+      "question_id": 2,
+      "find": "그래서 두 안으로 실제 목록 화면 코드를 각자 작성해 보는 회의를 열었습니다.",
+      "replace": "그래서 프론트엔드 팀장과 함께 두 안으로 실제 목록 화면 코드를 각자 작성해 보는 회의를 열었습니다."
+    },
+    {
+      "user": "u1",
+      "question_id": 3,
+      "find": "주문마다 멱등 키를 두고 서버에서",
+      "replace": "주문마다 Redis에 멱등 키를 두고 서버에서"
+    },
+    {
+      "user": "u2",
+      "question_id": 2,
+      "find": "누락된 환경 변수를 고친 뒤 같은 날 다시 배포했습니다.",
+      "replace": "누락된 환경 변수를 고친 뒤 두 시간 만에 다시 배포했습니다."
+    },
+    {
+      "user": "u2",
+      "question_id": 3,
+      "find": "디자인 확인이 금방 끝났습니다.",
+      "replace": "디자인 확인 시간이 절반으로 줄었습니다."
+    },
+    {
+      "user": "u3",
+      "question_id": 1,
+      "find": "배치가 새벽 세 시 전에 끝나게 했습니다.",
+      "replace": "배치가 새벽 한 시 전에 끝나게 했습니다."
+    },
+    {
+      "user": "u3",
+      "question_id": 3,
+      "find": "주소가 빈 배송 건이 집계에 섞여 들어온 상황을 확인했습니다.",
+      "replace": "주소가 빈 배송 건이 하루 3천 건씩 집계에 섞여 들어온 상황을 확인했습니다."
+    },
+    {
+      "user": "u4",
+      "question_id": 2,
+      "find": "옮긴 뒤 넉 달 동안",
+      "replace": "옮긴 뒤 1년 동안"
+    },
+    {
+      "user": "u4",
+      "question_id": 3,
+      "find": "첫 몇 번은 제가 진행을 맡아",
+      "replace": "팀장으로서 매번 제가 진행을 맡아"
+    },
+    {
+      "user": "u5",
+      "question_id": 1,
+      "find": "점장님께 제안했습니다.",
+      "replace": "점장님께 제안해 전 지점의 규칙이 되었습니다."
+    },
+    {
+      "user": "u5",
+      "question_id": 2,
+      "find": "공모전에서 우수상을 받았습니다.",
+      "replace": "공모전에서 대상을 받았습니다."
+    },
+    {
+      "user": "u5",
+      "question_id": 3,
+      "find": "그 결과 첫 화면이 바로 뜨게 됐고",
+      "replace": "그 결과 첫 화면이 0.5초 안에 뜨게 됐고"
+    },
+    {
+      "user": "u6",
+      "question_id": 1,
+      "find": "이미 사용하고 있던 PostgreSQL에 세션을 두도록 바꿨습니다.",
+      "replace": "이미 사용하고 있던 MySQL에 세션을 두도록 바꿨습니다."
+    },
+    {
+      "user": "u6",
+      "question_id": 2,
+      "find": "퇴근 뒤 무료 강의로 프로그래밍을 시작했고",
+      "replace": "퇴근 뒤 매일 세 시간씩 무료 강의로 프로그래밍을 시작했고"
+    },
+    {
+      "user": "u6",
+      "question_id": 3,
+      "find": "팀원들에게 직접 물었습니다.",
+      "replace": "팀원 열두 명에게 설문을 돌려 물었습니다."
+    },
+    {
+      "user": "u8",
+      "question_id": 2,
+      "find": "팀원 다섯 명이 하나의 작품을",
+      "replace": "팀원 일곱 명이 하나의 작품을"
+    }
+  ]
+}

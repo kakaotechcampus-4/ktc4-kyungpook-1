@@ -43,7 +43,7 @@ export function stepLine(item: AssistantItem): string {
 export function postingMeta(posting: AssistantPosting): string {
   const fit = posting.requiredTotal != null && posting.requiredMet != null ? `필수 ${posting.requiredTotal}개 중 ${posting.requiredMet}개` : null;
   const due = posting.daysLeft == null ? null : posting.daysLeft <= 0 ? '오늘 마감' : posting.daysLeft === 1 ? '내일 마감' : `${posting.daysLeft}일 남음`;
-  return [fit, due].filter(Boolean).join(' · ');
+  return [fit, due].filter(Boolean).join(', ');
 }
 
 /** 끝난 실행에서 결과로 가는 버튼 — 자소서를 시작했으면 자소서, 정리를 시작했으면 그 정리 화면 */
@@ -78,7 +78,7 @@ export function questionsGuide(items: readonly AssistantItem[]): { to: string; p
 }
 
 export const questionsGuideText = (posting: AssistantPosting | null) =>
-  `${posting ? `${posting.company} · ${posting.title} 공고로, ` : ''}자소서 화면에서 자주 나오는 문항을 골라 바로 시작할 수 있어요.`;
+  `${posting ? `${posting.company} ${posting.title} 공고로, ` : ''}자소서 화면에서 자주 나오는 문항을 골라 바로 시작할 수 있어요.`;
 
 /** 입력 칸의 안내 — 물음의 종류에 따라 무엇을 적으면 되는지 말한다 */
 export function composerHint(state: string, askKind: string | null): string {

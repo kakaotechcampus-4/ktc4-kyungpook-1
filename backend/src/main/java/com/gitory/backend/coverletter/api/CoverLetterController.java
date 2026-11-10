@@ -6,6 +6,7 @@ import com.gitory.backend.coverletter.domain.CoverLetterNotFoundException;
 import com.gitory.backend.coverletter.domain.CoverLetterPolishService;
 import com.gitory.backend.coverletter.domain.CoverLetterPostingNotFoundException;
 import com.gitory.backend.coverletter.domain.CoverLetterQueryService;
+import com.gitory.backend.coverletter.domain.CoverLetterRewriteService;
 import com.gitory.backend.coverletter.domain.CoverLetterService;
 import com.gitory.backend.coverletter.domain.CoverLetterTurnService;
 import com.gitory.backend.coverletter.domain.InvalidCoverLetterInputException;
@@ -40,6 +41,7 @@ public class CoverLetterController {
     private final CoverLetterService coverLetters;
     private final CoverLetterPolishService polishes;
     private final CoverLetterTurnService turns;
+    private final CoverLetterRewriteService rewrites;
     private final CoverLetterQueryService coverLetterQuery;
 
     @PostMapping("/api/cover-letters")
@@ -322,6 +324,7 @@ public class CoverLetterController {
     @Operation(summary = "문항 이야기 시작", description = """
             초안을 받은 뒤(DRAFTED)에 그 문항의 빈 재료를 묻는 AI 의 첫 말을 받아 대화에 더합니다.
             AI 를 기다렸다가 답하므로 수십 초 걸릴 수 있습니다.
+            중심 카드가 없고 제안을 아직 받지 않은 문항이면 먼저 쓸 만한 카드·레포 기록을 AI 에게 받아 문항의 suggestions 에 저장합니다(맞는 것이 없으면 빈 배열, 받지 못하면 null 로 두고 다음에 다시 받음).
             """)
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없는 자소서·문항, 남의 자소서",
@@ -338,7 +341,7 @@ public class CoverLetterController {
             @Parameter(description = "자소서 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String id,
             @Parameter(description = "문항 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String questionId) {
 
-        return ApiResponse.ok(CoverLetterTurnResponse.from(turns.open(toUuid(id), toUuid(questionId), loginUser.id())));
+        return ApiResponse.ok(CoverLetterTurnResponse.from(turns.open(toUuid(id), toUuid(questionId), loginUser.id(), loginUser.login())));
 
     }
 
@@ -392,6 +395,34 @@ public class CoverLetterController {
             @Parameter(description = "문항 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String questionId) {
 
         return ApiResponse.ok(CoverLetterTurnResponse.from(turns.skip(toUuid(id), toUuid(questionId), loginUser.id())));
+
+    }
+
+    @PostMapping("/api/cover-letters/{id}/questions/{questionId}/rewrite")
+    @Operation(summary = "고른 카드로 문항 다시 쓰기", description = """
+            초안을 받은 뒤(DRAFTED)에 내 확정 카드를 그 문항의 중심 카드로 두고(assignedBy 는 USER, 보조 카드와 고른 이유는 지움), 그 카드로 문항 하나만 처음부터 다시 씁니다.
+            받은 답은 그대로 쓰고, 지금 글·AI 원본·문장·표시·빈칸·글자 수를 새 초안으로 바꾸며 첨삭 결과는 비웁니다.
+            대화에 "Q1 을 '카드 제목' 카드로 다시 썼어요" 라는 AI 말(status DONE)을 더합니다.
+            AI 가 응답하지 못하거나 그사이 사용자가 글을 고쳤으면 카드도 글도 대화도 바꾸지 않고 rewriteFailed 가 true 입니다.
+            """)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "INVALID_REQUEST: 카드 id 가 UUID 가 아님, 내 확정 카드가 아님",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없는 자소서·문항, 남의 자소서",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "INVALID_STATE: DRAFTED 가 아님",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "RATE_LIMITED: 1분 3번, 하루 30번을 넘음",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public ApiResponse<CoverLetterTurnResponse> rewriteQuestion(
+            @Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser,
+            @Parameter(description = "자소서 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String id,
+            @Parameter(description = "문항 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String questionId,
+            @RequestBody RewriteQuestionRequest request) {
+
+        return ApiResponse.ok(CoverLetterTurnResponse.from(rewrites.rewrite(toUuid(id), toUuid(questionId),
+                loginUser.id(), requiredCardIdOf(request.cardId()))));
 
     }
 
@@ -453,6 +484,16 @@ public class CoverLetterController {
         } catch (IllegalArgumentException e) {
             throw new CoverLetterNotFoundException();
         }
+
+    }
+
+    private static UUID requiredCardIdOf(String id) {
+
+        if (id == null) {
+            throw new InvalidCoverLetterInputException("카드 id 가 없습니다.");
+        }
+
+        return cardIdOf(id);
 
     }
 

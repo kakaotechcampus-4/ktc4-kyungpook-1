@@ -90,7 +90,7 @@ describe('정리 화면 (#520 G-13 · A-04 · A-05 · A-08 · A-09 · A-12)', ()
     const rows = Array.from(document.querySelectorAll('.card--paper.row'));
     expect(rows.length).toBeGreaterThanOrEqual(3);
     for (const row of rows) {
-      const title = row.querySelector('.w-600')!.textContent;
+      const title = row.querySelector('.w-bold')!.textContent;
       const action = row.querySelector('.btn')!.textContent;
       expect(action).not.toBe(title); // A-05: 제목과 같은 말을 버튼에 또 쓰지 않는다
       expect(action).not.toBe('이동'); // A-04: 화면 읽기 이름이 같은 버튼 두 개를 만들지 않는다
@@ -190,7 +190,7 @@ describe('레포 화면 (#520 G-03 · 용어집)', () => {
 
   it('고르기 전 안내는 명령형이 아니고, 정리한 레포의 카드 수는 장으로 센다', () => {
     repos();
-    expect(screen.getByText('레포를 하나 골라 주세요')).toBeInTheDocument();
+    expect(screen.getByText('정리할 레포를 고르면 다음으로 넘어가요')).toBeInTheDocument();
     expect(screen.queryByText(/고르세요/)).not.toBeInTheDocument();
     expect(screen.getAllByText(/^카드 \d+장$/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/^카드 \d+건$/)).not.toBeInTheDocument();

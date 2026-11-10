@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { COLLECTED, COVER_LETTER_COLLECTED, LEGAL, PROFILE_COLLECTED } from '@/lib/legal';
 import { LegalLayout } from './LegalLayout';
@@ -99,7 +100,7 @@ export function PrivacyPage() {
         <ul>
           <li>파기 절차: 보관 기간이 끝나거나 처리 목적을 이루었거나 이용자가 삭제를 요청하면 지체 없이 파기합니다.</li>
           <li>파기 방법: 데이터베이스의 정보를 지웁니다. 지운 정보도 DB 백업 파일에는 최대 7일 남았다가, 백업 파일이 지워질 때 함께 사라집니다.</li>
-          <li>화면에서 탈퇴하는 기능은 준비 중입니다. 그전까지는 10장의 연락처로 삭제를 요청하면 지체 없이 처리하고 결과를 메일로 알립니다.</li>
+          <li>탈퇴는 마이페이지의 <Link to="/settings/leave">탈퇴와 데이터 삭제</Link>에서 바로 할 수 있고, 탈퇴하면 정보를 지체 없이 파기합니다. 화면을 쓸 수 없으면 10장의 연락처로 요청해도 됩니다.</li>
         </ul>
       </Sec>
 

@@ -11,8 +11,8 @@
   border-left: 2px solid var(--border-selected);
 }
 /* .note span 같은 바깥 규칙이 글자색을 덮지 않게 한 겹 더 좁힌다 */
-.ai-judgement .ai-judgement__label { font-size: 12px; line-height: 20px; font-weight: 600; color: var(--text-accent); }
-.ai-judgement .ai-judgement__head { font-size: 13px; line-height: 20px; font-weight: 600; color: var(--text-strong); overflow-wrap: anywhere; }
+.ai-judgement .ai-judgement__label { font-size: 12px; line-height: 20px; font-weight: var(--weight-bold); color: var(--text-accent); }
+.ai-judgement .ai-judgement__head { font-size: 13px; line-height: 20px; font-weight: var(--weight-bold); color: var(--text-strong); overflow-wrap: anywhere; }
 .ai-judgement .ai-judgement__text {
   flex: 1 0 100%;
   min-width: 0;
@@ -29,7 +29,7 @@
 
 .interview-complete { padding: 18px 20px; border: 1px solid var(--border-default); border-radius: 14px; background: var(--bg-paper); }
 .interview-complete__summary { display: flex; flex-direction: column; gap: 6px; }
-.interview-complete__summary > strong { font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-primary); }
+.interview-complete__summary > strong { font-size: 16px; line-height: 24px; font-weight: var(--weight-bold); color: var(--text-primary); }
 .interview-complete__summary > p { margin: 0; max-width: 48ch; font-size: 13px; line-height: 1.7; color: var(--text-secondary); word-break: keep-all; overflow-wrap: anywhere; }
 .interview-complete__reason { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-default); }
 .interview-complete__reason > summary { width: fit-content; cursor: pointer; font-size: 12px; line-height: 20px; color: var(--text-secondary); }

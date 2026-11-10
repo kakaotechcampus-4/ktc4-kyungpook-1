@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { FileText } from 'lucide-react';
 import { useCoverLetters, type CoverLetterStage } from '@/api/coverLetters';
-import { Badge, Breadcrumb, EmptyState, PageTitle, Skeleton } from '@/components/ui';
+import { Badge, Breadcrumb, ButtonLink, EmptyState, PageTitle, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { CompanyMark } from '@/features/match/CompanyMark';
 import { postingLine } from '@/lib/coverLetterCopy';
@@ -22,7 +22,7 @@ const STAGE_LABEL: Record<CoverLetterStage, string> = {
 export function CoverLettersPage() {
   useDocumentTitle('자소서');
   const list = useCoverLetters();
-  const add = <Link to="/cover-letters/new" className="btn btn--primary">새 자소서</Link>;
+  const add = <ButtonLink to="/cover-letters/new" variant="primary">새 자소서</ButtonLink>;
   return (
     <main className="main main--tight">
       <Breadcrumb items={[{ label: '홈', to: '/' }, { label: '자소서' }]} />

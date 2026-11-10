@@ -224,7 +224,7 @@ export const resultRows = (companies: readonly PickCompany[], live: Live | null)
 });
 
 export const fitLabel = (required: number, preferred: number) =>
-  [required ? `필수 ${required}개` : '', preferred ? `우대 ${preferred}개` : ''].filter(Boolean).join(' · ');
+  [required ? `필수 ${required}개` : '', preferred ? `우대 ${preferred}개` : ''].filter(Boolean).join(', ');
 
 /** 고른 기업 아래의 이유 한 줄 */
 export function pickReason(row: Pick<PickRow, 'required' | 'preferred' | 'cards' | 'techs'>): string {

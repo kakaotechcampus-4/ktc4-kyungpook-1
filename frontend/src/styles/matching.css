@@ -42,7 +42,7 @@
 }
 .match-card h2 {
   font-size: 20px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   line-height: 1.5;
   margin: 0;
   overflow-wrap: anywhere;
@@ -57,14 +57,14 @@
   padding: 9px 12px 8px;
   border: 1px solid transparent;
   border-radius: 16px;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   font-size: 28px;
   line-height: 1;
 }
 .match-fit > span {
   color: inherit;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: var(--weight-regular);
   line-height: 1.2;
 }
 /* 등급마다 색을 달리한다 — A·B·C 가 같은 초록이면 우선순위가 안 보인다. 색만으로 가르지 않도록 글자(A~D·근거 등급)도 함께 둔다 */
@@ -82,7 +82,7 @@
   font-size: 14px;
 }
 .match-counts strong {
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   margin-left: 5px;
 }
 .match-notice {
@@ -132,7 +132,7 @@
   margin: 0;
   color: var(--text-primary);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   line-height: 24px;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -154,11 +154,6 @@
   font-size: 13px;
   line-height: 20px;
 }
-.posting-facts > span + span::before {
-  content: "\00B7";
-  margin: 0 6px;
-  color: var(--text-tertiary);
-}
 .posting-techs {
   list-style: none;
   display: flex;
@@ -175,7 +170,7 @@
   background: var(--bg-subtle);
   color: var(--text-strong);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--weight-regular);
   line-height: 20px;
   white-space: nowrap;
 }
@@ -190,7 +185,7 @@
   gap: 2px;
   color: var(--text-strong);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--weight-regular);
   white-space: nowrap;
 }
 .deadline {
@@ -211,7 +206,7 @@
   background: var(--bg-subtle);
   color: var(--text-strong);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   line-height: 20px;
   white-space: nowrap;
 }
@@ -247,7 +242,7 @@
   min-width: 0;
   color: var(--text-secondary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--weight-regular);
   line-height: 1.4;
 }
 .posting-company__name {
@@ -288,7 +283,7 @@
   color: var(--text-strong);
   font: inherit;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: var(--weight-regular);
   cursor: pointer;
 }
 .pagination__page:hover,
@@ -442,7 +437,7 @@
 }
 .posting-summary__hint a {
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -466,7 +461,7 @@
   margin-left: 8px;
   color: var(--text-tertiary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--weight-regular);
   white-space: nowrap;
 }
 .cond-suffix::before {
@@ -501,12 +496,12 @@
   margin: 0;
   color: var(--text-primary);
   font-size: 20px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 .posting-section__tally {
   color: var(--text-tertiary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--weight-regular);
   line-height: 20px;
   white-space: nowrap;
 }
@@ -580,8 +575,9 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+/* 쉼표는 앞 카드 이름에 붙이고 뒤만 띄운다 — 양옆을 띄우면 '재발급 , 팀원과'처럼 떨어져 보인다(#920) */
 .posting-condition__sep {
-  margin: 0 8px;
+  margin: 0 8px 0 0;
   color: var(--text-tertiary);
 }
 
@@ -751,7 +747,7 @@
   display: inline-block;
   margin-top: 4px;
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -930,11 +926,7 @@
   margin: 0;
   font-size: 20px;
   line-height: 28px;
-  font-weight: 600;
-}
-.result-box__count {
-  color: var(--text-tertiary);
-  font-weight: 500;
+  font-weight: var(--weight-bold);
 }
 .result-box__meta {
   margin: 4px 0 0;
@@ -944,7 +936,7 @@
 }
 .result-box__meta b {
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 .result-box__progress {
   display: flex;
@@ -969,7 +961,7 @@
 }
 .result-box__line strong {
   color: var(--text-strong);
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 .result-box__line--danger strong {
   color: var(--state-failed-text);
@@ -994,7 +986,7 @@
 }
 .result-strip strong {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 .result-strip__day {
   color: var(--text-secondary);
@@ -1006,7 +998,7 @@
 .result-strip .btn--text,
 .result-box__actions .btn--text {
   color: var(--text-strong);
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -1039,7 +1031,7 @@
   color: var(--text-primary);
   font-size: 14px;
   line-height: 20px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 .result-tile__count svg {
   display: inline-block;
@@ -1048,20 +1040,42 @@
 }
 .result-tile__pref {
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: var(--weight-regular);
 }
+/* 조건 줄 — 이름표 + 칩. 빈 조건은 마감 색, 맞은 조건은 기본 칩(#919) */
 .result-tile__names {
-  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 2px 0 0;
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 20px;
 }
-.result-tile__names b {
-  color: var(--text-primary);
-  font-weight: 600;
+.result-tile__label {
+  margin-right: 2px;
+  color: var(--text-secondary);
 }
-.result-tile__names b.is-lacking {
+.result-tile__chip {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 1px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-weight: var(--weight-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.result-tile__names.is-lacking .result-tile__chip {
+  border-color: transparent;
+  background: var(--state-open-bg);
   color: var(--state-open-text);
+}
+.result-tile__more {
+  color: var(--text-tertiary);
 }
 .result-tile .posting-tile__foot {
   flex-wrap: wrap;
@@ -1078,6 +1092,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+/* 폰에서는 칩이 네 줄로 늘어져 공고를 밀어내지 않게 한 줄로 넘겨 본다. 끝 흐림이 넘길 수 있다고 알려 준다(#919) */
+@media (max-width: 767px) {
+  .match-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .match-chips::-webkit-scrollbar { display: none; }
+  .match-chip { flex: none; white-space: nowrap; }
 }
 .match-chip {
   min-height: var(--control-touch-size);
@@ -1102,7 +1122,7 @@
   border-color: var(--nav-active-bg);
   background: var(--nav-active-bg);
   color: var(--nav-active-text);
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 .match-group {
   display: flex;
@@ -1118,7 +1138,7 @@
   margin: 0;
   font-size: 18px;
   line-height: 26px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 .match-group__meta {
   margin-left: auto;
@@ -1145,7 +1165,7 @@
     width: 100%;
   }
   .result-box__actions .btn--primary,
-  .result-box__actions .btn--outline {
+  .result-box__actions .btn--secondary {
     flex: 1 1 auto;
   }
   .match-tools__search {

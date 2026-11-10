@@ -1,0 +1,33 @@
+{
+  "hex": {
+    "features/match/repoPick.css": 5,
+    "styles/matching.css": 1,
+    "styles/mono-pastel.css": 30,
+    "styles/shell.css": 7
+  },
+  "size": {
+    "components/chat/chat.css": 2,
+    "components/layout/notice-bar.css": 3,
+    "features/assistant/ask.css": 12,
+    "features/candidates/CandidateBoard.css": 1,
+    "features/cards/CardFolders.css": 4,
+    "features/cards/CardReviewFlow.css": 2,
+    "features/cards/DraftSteps.css": 4,
+    "features/cards/InterviewChat.css": 4,
+    "features/coverLetters/coverLetters.css": 2,
+    "features/coverLetters/panel/panel.css": 7,
+    "features/home/home.css": 15,
+    "features/legal/legal.css": 1,
+    "features/match/repoPick.css": 7,
+    "features/repos/AnalyzePage.css": 2,
+    "styles/card-tile.css": 1,
+    "styles/design2.css": 10,
+    "styles/job-calendar.css": 8,
+    "styles/match-company.css": 1,
+    "styles/matching.css": 3,
+    "styles/mono-pastel.css": 4,
+    "styles/pages.css": 1,
+    "styles/profile.css": 4,
+    "styles/responsive.css": 1
+  }
+}

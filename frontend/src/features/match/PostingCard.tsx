@@ -31,9 +31,7 @@ export function PostingCard({ item, search, showCompany = true }: { item: MatchT
       <TechChips techs={item.techs} max={3} />
       <div className="posting-tile__foot">
         <DeadlineMark expiresAt={item.source.expiresAt} />
-        <span className="posting-tile__go" aria-hidden="true">
-          상세 보기
-          <ChevronRight size={14} />
+        <span className="posting-tile__go" aria-hidden="true"><ChevronRight size={14} />
         </span>
       </div>
     </article>

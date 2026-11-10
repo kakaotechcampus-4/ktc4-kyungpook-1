@@ -8,7 +8,7 @@ test('레포 선택 → 카드 확정 1개 경로', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/login/);
   await page.locator('.landing__actions').getByRole('button', { name: '샘플로 체험하기' }).click();
-  await expect(page.getByRole('heading', { name: '지원할 곳', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^지원할 곳/ })).toBeVisible();
 
   await page.getByRole('link', { name: '레포 정리하기', exact: true }).click();
   await page.getByRole('radio', { name: /algorithm-study/ }).click(); // PR 0건 레포 — 커밋 묶음 경로

@@ -56,6 +56,7 @@ public class CoverLetterTurnService {
     private final UserRateLimiter rateLimiter;
     private final AuditLog auditLog;
     private final CoverLetterViewFactory views;
+    private final CoverLetterSuggestionService suggestions;
     private final PlatformTransactionManager transactionManager;
 
     /** 어느 단계에서든 읽으며, 대화가 없으면 빈 목록이다 */
@@ -71,7 +72,10 @@ public class CoverLetterTurnService {
 
     }
 
-    public CoverLetterTalk open(UUID letterId, UUID questionId, Long userId) {
+    /** 중심 카드가 없는 문항을 처음 열면 쓸 만한 카드·레포 기록을 먼저 받아 저장하며, 받지 못해도 대화는 이어진다 */
+    public CoverLetterTalk open(UUID letterId, UUID questionId, Long userId, String login) {
+
+        suggestions.suggestIfNeeded(letterId, questionId, userId, login);
 
         return talk(letterId, questionId, userId, TurnTrigger.OPEN, null);
 
@@ -284,7 +288,16 @@ public class CoverLetterTurnService {
 
     }
 
-    private CoverLetterTalk talkOf(CoverLetter letter, CoverLetterQuestion target, boolean rewriteFailed) {
+    /** 자소서 행을 잠근 채 불러야 마지막 순번을 읽어 같은 순번을 쓰는 요청이 없다 */
+    void appendAi(CoverLetter letter, int questionSeq, String text, TurnStatus status) {
+
+        List<CoverLetterTurn> thread = turns.findByCoverLetterIdOrderBySeq(letter.getId());
+        int seq = thread.isEmpty() ? 0 : thread.getLast().getSeq();
+        turns.save(CoverLetterTurn.ai(letter.getId(), questionSeq, seq + 1, text, null, status));
+
+    }
+
+    CoverLetterTalk talkOf(CoverLetter letter, CoverLetterQuestion target, boolean rewriteFailed) {
 
         CoverLetterView view = views.of(letter);
         Map<Integer, UUID> questionIds = view.questions().stream()

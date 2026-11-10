@@ -12,7 +12,7 @@ import {
   type MatchDetail,
 } from "@/api/matching";
 import { useCards } from "@/api/queries";
-import { Button, PageTitle, Skeleton } from "@/components/ui";
+import { Button, ButtonLink, PageTitle, Skeleton, buttonClass } from "@/components/ui";
 import { isGithubUnauthorized, reconnectGithub } from "@/lib/githubReconnect";
 import { cardKindLabel } from "@/lib/labels";
 import { track } from "@/lib/track";
@@ -32,6 +32,7 @@ import {
   experienceLabel,
   pickLocation,
   sectionTally,
+  stripLineMark,
   techOverlap,
   type SectionTally,
 } from "./model";
@@ -96,7 +97,7 @@ const displayLines = (conditions: Condition[]) => {
     const quote = condition.quote.trim();
     const line = quote && !seen.has(quote) ? quote : condition.text;
     seen.add(quote);
-    return line;
+    return stripLineMark(line);
   });
 };
 
@@ -343,9 +344,9 @@ export function MatchDetailPage() {
   }
 
   const coverLetter = detail && (
-    <Link className="btn btn--primary" to={`/cover-letters/new?postingId=${encodeURIComponent(detail.id)}`}>
+    <ButtonLink variant="primary" to={`/cover-letters/new?postingId=${encodeURIComponent(detail.id)}`}>
       이 공고로 자소서 쓰기
-    </Link>
+    </ButtonLink>
   );
   // 확정 카드가 없어도 맞춰 보기 버튼은 그대로 두어 이 화면에서 매칭을 한다는 것이 보이게 하고, 누르면 서버를 부르지 않고 카드가 없다고 알린다
   const action = detail && (
@@ -360,7 +361,8 @@ export function MatchDetailPage() {
         </Button>
       )
     ) : !settled ? null : gapActive ? (
-      <Button loading={proceed.isPending} disabled={chosen.length === 0} onClick={onProceed}>
+      // 고르기 전에는 꺼진 검정 버튼이 고장 난 것처럼 보여 보조 버튼으로 둔다(#920)
+      <Button variant={chosen.length > 0 ? "primary" : "secondary"} loading={proceed.isPending} disabled={chosen.length === 0} onClick={onProceed}>
         {chosen.length > 0 ? `고른 ${chosen.length}개 진행하기` : "제안을 골라 진행하기"}
       </Button>
     ) : (
@@ -459,7 +461,7 @@ export function MatchDetailPage() {
                   href={detail.source.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn btn--outline"
+                  className={buttonClass('secondary')}
                   onClick={() => track("match_source_opened", { matchId: detail.id })}
                 >
                   공고 원문 보기

@@ -246,6 +246,23 @@ def test_text_outside_its_quote_is_replaced_with_the_quote(caplog) -> None:
     assert "count=1" in caplog.text
 
 
+def test_leading_line_marks_are_removed_from_condition_text() -> None:
+    # 원문이 줄머리에 □ 를 쓰면 모델도 그대로 옮기는데, 조건 문장에는 남기지 않고 인용은 원문 그대로 둔다.
+    marked = JobCriterion(
+        criterion_type="REQUIRED",
+        text="□ Java 개발 경험이 필요합니다.",
+        source_quote="□ Java 개발 경험이 필요합니다.",
+    )
+    extractor = JobPostingDetailExtractor(FakeExtractionModel([marked]))
+
+    result = extractor.extract(JobPostingDetailExtractionRequest.model_validate(
+        request_payload(raw_text=RAW_TEXT.replace("Java 개발", "□ Java 개발"))
+    ))
+
+    assert [c.text for c in result.criteria] == ["Java 개발 경험이 필요합니다."]
+    assert result.criteria[0].source_quote == marked.source_quote
+
+
 def test_short_quote_is_accepted() -> None:
     criterion = JobCriterion(
         criterion_type="REQUIRED", text="Java", source_quote="Java"

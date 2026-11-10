@@ -2665,7 +2665,7 @@
         "type" : "object"
       },
       "InterviewTurnResponse" : {
-        "description" : "되묻기 질문 하나와 그 답으로, 질문 근거(found·missing)는 아직 만들지 않아 늘 빈 배열이다",
+        "description" : "되묻기 질문 하나와 그 답",
         "properties" : {
           "answer" : {
             "$ref" : "#/components/schemas/InterviewAnswerResponse",
@@ -2685,22 +2685,10 @@
             "enum" : [ "S", "T", "A", "R" ],
             "type" : "string"
           },
-          "found" : {
-            "items" : {
-              "type" : "string"
-            },
-            "type" : "array"
-          },
           "maxTurns" : {
             "description" : "카드 하나에 만들 수 있는 질문의 최대 수",
             "format" : "int32",
             "type" : "integer"
-          },
-          "missing" : {
-            "items" : {
-              "type" : "string"
-            },
-            "type" : "array"
           },
           "options" : {
             "description" : "AI 가 쓴 예상 답변으로, 그대로 고르면 USER_SELECTED 다",
@@ -3989,6 +3977,12 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "suggestions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Suggestion"
+            },
+            "type" : "array"
+          },
           "supportingCard" : {
             "$ref" : "#/components/schemas/CardRef"
           },
@@ -4563,6 +4557,17 @@
         },
         "type" : "object"
       },
+      "RewriteQuestionRequest" : {
+        "description" : "문항을 다시 쓸 카드를 고를 때 보내는 값",
+        "properties" : {
+          "cardId" : {
+            "description" : "내 확정 카드의 공개 id",
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "SaveAnswersRequest" : {
         "description" : "문항의 답 전체로, 보내지 않은 항목은 답이 없는 것으로 남는다",
         "properties" : {
@@ -4687,6 +4692,28 @@
               "$ref" : "#/components/schemas/WritingStep"
             },
             "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "Suggestion" : {
+        "properties" : {
+          "angle" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "repoId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "source" : {
+            "enum" : [ "CARD", "CANDIDATE" ],
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -8611,6 +8638,105 @@
         "tags" : [ "Cover letters" ]
       }
     },
+    "/api/cover-letters/{id}/questions/{questionId}/rewrite" : {
+      "post" : {
+        "description" : "초안을 받은 뒤(DRAFTED)에 내 확정 카드를 그 문항의 중심 카드로 두고(assignedBy 는 USER, 보조 카드와 고른 이유는 지움), 그 카드로 문항 하나만 처음부터 다시 씁니다.\n받은 답은 그대로 쓰고, 지금 글·AI 원본·문장·표시·빈칸·글자 수를 새 초안으로 바꾸며 첨삭 결과는 비웁니다.\n대화에 \"Q1 을 '카드 제목' 카드로 다시 썼어요\" 라는 AI 말(status DONE)을 더합니다.\nAI 가 응답하지 못하거나 그사이 사용자가 글을 고쳤으면 카드도 글도 대화도 바꾸지 않고 rewriteFailed 가 true 입니다.\n",
+        "operationId" : "rewriteQuestion",
+        "parameters" : [ {
+          "description" : "자소서 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "문항 id",
+          "in" : "path",
+          "name" : "questionId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RewriteQuestionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: 카드 id 가 UUID 가 아님, 내 확정 카드가 아님"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "없는 자소서·문항, 남의 자소서"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_STATE: DRAFTED 가 아님"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "RATE_LIMITED: 1분 3번, 하루 30번을 넘음"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "summary" : "고른 카드로 문항 다시 쓰기",
+        "tags" : [ "Cover letters" ]
+      }
+    },
     "/api/cover-letters/{id}/questions/{questionId}/turns" : {
       "post" : {
         "description" : "초안을 받은 뒤(DRAFTED)에 사용자의 말과 AI 의 다음 말을 대화에 더합니다.\nAI 가 채울 수 있는 답이라고 하면(status FILLED) 그 답을 문항 답에 저장하고(같은 항목에 앞 답이 있으면 뒤에 덧붙이고 1,000자에서 자름), 상황·행동·결과·배운 점·계기면 중심 카드에도 기억한 뒤,\n그 답으로 문항의 지금 글만 다시 써 text·sentences·marks·blanks·글자 수를 바꿉니다(edited 는 false, aiText 는 그대로, 첨삭 결과는 비움).\n다시 쓰기에 실패했거나 AI 가 다시 쓴 글을 되돌렸거나 그사이 사용자가 글을 고쳤으면 대화와 답은 남기고 글은 그대로 두며 rewriteFailed 가 true 입니다.\n",
@@ -8712,7 +8838,7 @@
     },
     "/api/cover-letters/{id}/questions/{questionId}/turns/open" : {
       "post" : {
-        "description" : "초안을 받은 뒤(DRAFTED)에 그 문항의 빈 재료를 묻는 AI 의 첫 말을 받아 대화에 더합니다.\nAI 를 기다렸다가 답하므로 수십 초 걸릴 수 있습니다.\n",
+        "description" : "초안을 받은 뒤(DRAFTED)에 그 문항의 빈 재료를 묻는 AI 의 첫 말을 받아 대화에 더합니다.\nAI 를 기다렸다가 답하므로 수십 초 걸릴 수 있습니다.\n중심 카드가 없고 제안을 아직 받지 않은 문항이면 먼저 쓸 만한 카드·레포 기록을 AI 에게 받아 문항의 suggestions 에 저장합니다(맞는 것이 없으면 빈 배열, 받지 못하면 null 로 두고 다음에 다시 받음).\n",
         "operationId" : "openTurn",
         "parameters" : [ {
           "description" : "자소서 id",

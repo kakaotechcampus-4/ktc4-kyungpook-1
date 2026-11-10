@@ -3,7 +3,7 @@
  * 글자는 15px 아래로 내려가지 않고(이름표와 도움말만 13~14px), 누르는 것은 44px 보다 작지 않다.
  */
 .chat-thread { display: flex; flex-direction: column; gap: 10px; }
-.chat-from { display: inline-flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 14px; line-height: 20px; font-weight: 700; color: var(--text-primary); }
+.chat-from { display: inline-flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 14px; line-height: 20px; font-weight: var(--weight-bold); color: var(--text-primary); }
 .chat-turn { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 
 .chat-bub { max-width: 88%; padding: 12px 16px; border-radius: 18px; font-size: 15px; line-height: 1.6; word-break: keep-all; overflow-wrap: anywhere; white-space: pre-line; }
@@ -16,17 +16,17 @@
 /* 말풍선 안의 예시 문장은 한 단계 옅게 */
 .chat-bub__ex { color: var(--text-secondary); }
 /* 어느 문항·칸 얘기인지 말풍선 위에 붙는 이름표 */
-.chat-tag { display: inline-block; margin-bottom: 6px; padding: 1px 9px; border: 1px solid var(--border-default); border-radius: var(--radius-full); background: var(--bg-surface); font-size: 13px; line-height: 20px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+.chat-tag { display: inline-block; margin-bottom: 6px; padding: 1px 9px; border: 1px solid var(--border-default); border-radius: var(--radius-full); background: var(--bg-surface); font-size: 13px; line-height: 20px; font-weight: var(--weight-bold); color: var(--text-secondary); white-space: nowrap; }
 
 /* 말풍선 사이에 끼는 한 줄 — 가운데는 흐름을 알리는 말, 왼쪽은 Gitory 가 하고 있는 일 */
 .chat-line { align-self: center; margin: 2px 0; font-size: 13px; line-height: 20px; color: var(--text-tertiary); text-align: center; white-space: pre-line; }
 .chat-line--left { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; text-align: left; }
-.chat-done { display: inline-flex; align-items: center; gap: 4px; margin: 0; font-size: 14px; line-height: 22px; font-weight: 600; color: var(--text-strong); }
+.chat-done { display: inline-flex; align-items: center; gap: 4px; margin: 0; font-size: 14px; line-height: 22px; font-weight: var(--weight-bold); color: var(--text-strong); }
 .chat-fail { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin: 0; padding: 2px 0 2px 12px; border-left: 3px solid var(--caution-300); font-size: 14px; line-height: 22px; color: var(--field-low-text); }
 
 /* 한 번 눌러 답하는 버튼들 */
 .chat-quick { display: flex; flex-wrap: wrap; gap: 8px; }
-.chat-quick > button { min-height: var(--control-touch-size); padding: 0 16px; border: 1px solid var(--border-default); border-radius: var(--radius-full); background: var(--bg-surface); font: inherit; font-size: 14px; line-height: 20px; font-weight: 500; color: var(--text-strong); cursor: pointer; transition: border-color var(--motion-fast) var(--ease-standard); }
+.chat-quick > button { min-height: var(--control-touch-size); padding: 0 16px; border: 1px solid var(--border-default); border-radius: var(--radius-full); background: var(--bg-surface); font: inherit; font-size: 14px; line-height: 20px; font-weight: var(--weight-regular); color: var(--text-strong); cursor: pointer; transition: border-color var(--motion-fast) var(--ease-standard); }
 .chat-quick > button:hover:not(:disabled) { border-color: var(--border-strong); }
 .chat-quick > button:disabled { opacity: .55; cursor: default; }
 

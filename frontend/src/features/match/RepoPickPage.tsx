@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowRight, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { matchSupported, useRefreshRepoRecommendation, useRepoRecommendation, type RepoRecommendation } from '@/api/matching';
 import { useMarkRepoUpdateSeen } from '@/api/repoUpdates';
 import { useCards, useMe } from '@/api/queries';
-import { Breadcrumb, PageTitle, Skeleton } from '@/components/ui';
+import { Breadcrumb, ButtonLink, PageTitle, Skeleton, buttonClass } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { buildFolders, folderPath, folderTitle } from '@/lib/cardFolders';
@@ -15,7 +15,7 @@ import {
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { CompanyMark } from './CompanyMark';
 import { RepoPickOrbit } from './RepoPickOrbit';
-import { deadlineOf } from './model';
+import { deadlineOf, stripLineMark } from './model';
 import { useRepoPickReplay } from './useRepoPickReplay';
 import './repoPick.css';
 
@@ -56,14 +56,14 @@ export function RepoPickPage() {
 
   if (!supported) return <Navigate to={back} replace />;
   if (cards.isError && !cards.data) {
-    return <main className="main"><Breadcrumb items={crumbs('맞는 기업')} /><QueryFailure error={cards.error} retry={() => cards.refetch()} pending={cards.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
+    return <main className="main"><Breadcrumb items={crumbs('맞는 기업')} /><QueryFailure error={cards.error} retry={() => cards.refetch()} pending={cards.isFetching} /><ButtonLink to="/cards" variant="secondary">경험 카드 목록</ButtonLink></main>;
   }
   // 막 만든 카드가 아직 목록에 없을 수 있어, 다시 읽는 중에는 카드가 없다고 보지 않는다
   if (cards.isPending || (!folder && cards.isFetching)) return loading;
   if (!folder) return <Navigate to={back} replace />;
   if (waiting) return loading;
   if (rec.isError && !rec.data) {
-    return <main className="main"><Breadcrumb items={crumbs('맞는 기업')} /><QueryFailure error={rec.error} retry={() => rec.refetch()} pending={rec.isFetching} /><Link to={back} className="btn btn--outline">폴더로 가기</Link></main>;
+    return <main className="main"><Breadcrumb items={crumbs('맞는 기업')} /><QueryFailure error={rec.error} retry={() => rec.refetch()} pending={rec.isFetching} /><ButtonLink to={back} variant="secondary">폴더로 가기</ButtonLink></main>;
   }
   if (!rec.data) return loading;
   return <PickScreen repoId={repoId} name={name} back={back} cardCount={folder.cards.length} crumbs={crumbs('맞는 기업')} rec={rec.data} who={who} again={again} />;
@@ -102,19 +102,19 @@ function PickScreen({ repoId, name, back, cardCount, crumbs, rec, who, again }: 
   const lines = live ? logLines(live) : [];
 
   const folderButton = (label: string, primary: boolean) => (
-    <Link to={back} className={cx('btn', primary ? 'btn--primary' : 'btn--outline')}>{label}{primary && <ArrowRight size={16} aria-hidden />}</Link>
+    <ButtonLink to={back} variant={primary ? 'primary' : 'secondary'}>{label}</ButtonLink>
   );
-  const allPostings = <Link to="/match" className="btn btn--outline">전체 공고 보기</Link>;
+  const allPostings = <ButtonLink to="/match" variant="secondary">전체 공고 보기</ButtonLink>;
   const actions: Record<PickPhase, ReactNode> = {
-    queued: <><span className="rp-head__hint">나가도 계속 골라요</span>{folderButton('카드 먼저 보기', false)}</>,
-    running: <><span className="rp-head__hint">나가도 계속 골라요</span>{folderButton('카드 먼저 보기', false)}</>,
+    queued: folderButton('카드 먼저 보기', false),
+    running: folderButton('카드 먼저 보기', false),
     done: <>{allPostings}{folderButton('폴더로 가기', true)}</>,
     none: <>{allPostings}{folderButton('카드 보러 가기', true)}</>,
     failed: folderButton('폴더로 가기', true),
     idle: folderButton('폴더로 가기', true),
   };
 
-  const replayActions = <><button type="button" className="btn btn--outline" onClick={replay.skip}>결과 바로 보기</button>{folderButton('폴더로 가기', true)}</>;
+  const replayActions = <><button type="button" className={buttonClass('secondary')} onClick={replay.skip}>결과 바로 보기</button>{folderButton('폴더로 가기', true)}</>;
 
   return (
     <main className="main rp-page">
@@ -182,7 +182,7 @@ function PicksPanel({ phase, rows, started, replay, onReplay }: { phase: PickPha
       ) : rows.length > 0 ? (
         <>
           <ol className="rp-picks">{rows.map((row, i) => <PickItem key={row.key} row={row} no={i + 1} final />)}</ol>
-          {onReplay && <button type="button" className="btn btn--outline rp-again" onClick={onReplay}>고른 과정 다시 보기</button>}
+          {onReplay && <button type="button" className={buttonClass('secondary', undefined, 'rp-again')} onClick={onReplay}>고른 과정 다시 보기</button>}
           <p className="rp-note">{phase === 'done' ? '확정하지 않은 카드도 함께 봤어요. 카드를 확정하면 공고에서도 같은 조건이 맞는 걸로 보여요.' : '지난번에 고른 기업이에요.'}</p>
         </>
       ) : (
@@ -206,7 +206,7 @@ function PickItem({ row, no, final }: { row: PickRow; no: number; final: boolean
       <CompanyMark name={row.name} logoUrl={row.logoUrl} size={48} className="rp-pick__logo" />
       <span className="rp-pick__text">
         <span className="rp-pick__name"><strong>{row.name}</strong>{final && row.fresh && <span className="rp-new">새로 들어옴</span>}</span>
-        <span>{row.role} · {dueLabel(row)}</span>
+        <span>{row.role}, {dueLabel(row)}</span>
         {final && <span className="rp-pick__why">{pickReason(row)}</span>}
       </span>
       {final
@@ -269,7 +269,7 @@ function lineText(line: LogLine): ReactNode {
     case 'checking': return <><b>{line.candidate.companyName}</b> 공고의 겹치는 조건 {line.candidate.overlap}개를 내 카드와 맞춰 보고 있어요</>;
     case 'hit': return <>
       <span className={cx('rp-tag', line.hit.type === 'REQUIRED' ? 'rp-tag--req' : 'rp-tag--pref')}>{line.hit.type === 'REQUIRED' ? '필수' : '우대'}</span>
-      <q>{line.hit.text}</q> 조건이 <span className="rp-card-name">{line.hit.cardTitle}</span> 카드와 맞아요
+      <q>{stripLineMark(line.hit.text)}</q> 조건이 <span className="rp-card-name">{line.hit.cardTitle}</span> 카드와 맞아요
     </>;
     case 'miss': return line.why === 'FAILED' ? `${line.candidate.companyName}, 응답을 받지 못해 건너뛰었어요`
       : line.why === 'NO_OVERLAP' ? `${line.candidate.companyName}, 겹치는 조건이 없어요`

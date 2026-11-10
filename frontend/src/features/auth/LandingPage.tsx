@@ -1,7 +1,6 @@
 import { useCallback, useState, type CSSProperties } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useMe } from '@/api/queries';
-import { ArrowRight } from 'lucide-react';
 import { Button, Note } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { LANDING_HOLD_EXTENSION_MS, LandingBrand, shouldPlayLandingIntro } from './LandingBrand';
@@ -41,7 +40,6 @@ export function LandingPage() {
 
       <section className="landing__hero" inert={introActive}>
         <div className="landing__copy stack">
-          <span className="landing__eyebrow">코드에 남긴 기록, 나만의 경험으로</span>
           <h1 className="landing__h1">커밋과 PR을<br /><span>자소서 경험으로</span></h1>
           <p className="landing__lead">
             레포를 고르면 내가 한 일을 찾아 상황, 과제, 행동, 결과로 정리해요.
@@ -49,9 +47,8 @@ export function LandingPage() {
           </p>
 
           <div className="landing__actions">
-            <Button size="xl" loading={login.pending} onClick={() => login.isDemo ? void login.start() : setSp({ consent: '1' })}>{login.label} <ArrowRight size={16} /></Button>
+            <Button size="xl" loading={login.pending} onClick={() => login.isDemo ? void login.start() : setSp({ consent: '1' })}>{login.label}</Button>
           </div>
-          <p className="legal-consent">시작하면 <Link to="/terms">이용약관</Link>과 <Link to="/privacy">개인정보처리방침</Link>에 동의하게 돼요.</p>
           {error === 'access_denied' && <p className="landing-notice" role="status">GitHub 연결을 취소했어요. 준비되면 다시 시작해 주세요.</p>}
           {error && error !== 'access_denied' && <p className="landing-notice landing-notice--error" role="alert">GitHub 연결에 실패했어요. 다시 시작해 주세요.</p>}
           {reason === 'expired' && !error && !login.isDemo && <p className="landing-notice" role="status">로그인이 만료됐어요. 다시 시작해 주세요.</p>}
@@ -72,7 +69,7 @@ export function LandingPage() {
       {consent && !login.isDemo && (
         <Modal title="GitHub 연결 권한 확인" width={520}
           onClose={() => setSp({})}
-          footer={{ strong: '쓰기 권한은 요청하지 않아요', actions: <><Button variant="outline" onClick={() => setSp({})}>취소</Button><Button loading={login.pending} onClick={() => void login.start()}>GitHub으로 이동</Button></> }}>
+          footer={{ strong: '쓰기 권한은 요청하지 않아요', actions: <><Button variant="secondary" onClick={() => setSp({})}>취소</Button><Button loading={login.pending} onClick={() => void login.start()}>GitHub으로 이동</Button></> }}>
           {login.failure && <Note strong="시작하지 못했어요" tone="danger">{login.failure}</Note>}
           <p className="t-14">프로필 정보와 공개 레포만 읽어요.</p>
           <p className="legal-consent">시작하면 <Link to="/terms">이용약관</Link>과 <Link to="/privacy">개인정보처리방침</Link>에 동의하게 돼요.</p>

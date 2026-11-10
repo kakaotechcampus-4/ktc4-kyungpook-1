@@ -14,18 +14,31 @@ const cx = (...xs: (string | false | null | undefined)[]) => xs.filter(Boolean).
 const STAR_LABELS: Record<StarField, string> = { S: '상황', T: '과제', A: '행동', R: '결과' };
 
 // ───────── Button ─────────
-type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  /** ghost = 아이콘 + 옅은 배경. 글자처럼 보이면 안 되는 보조 행동(새로고침, 복사, 수정)에 쓴다. */
-  variant?: 'primary' | 'outline' | 'ghost' | 'text' | 'danger';
-  size?: 'sm' | 'md' | 'lg' | 'xl';
-  loading?: boolean;
-};
+/**
+ * 버튼은 네 가지뿐이다(#804). 새 화면도 이 넷 말고는 만들지 않는다 — 견본은 /__ui(목에서만).
+ * - primary: 검정 채움. 그 화면에서 사용자가 눌러야 할 다음 걸음, 화면마다 하나
+ * - secondary: 연한 글자 + 테두리. 이전, 뒤로, 닫기, 다른 선택지
+ * - text: 글자만. 부가 정보, 자세히 보기
+ * - danger: 빨간 글자와 테두리. 취소, 삭제처럼 되돌리기 어려운 일
+ */
+export type ButtonVariant = 'primary' | 'secondary' | 'text' | 'danger';
+export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
+/** 버튼 모양 클래스 — Button 이나 ButtonLink 를 못 쓰는 태그(바깥 링크 a, 폼 button)에서만 쓴다. "btn …" 을 손으로 쓰지 않는다 */
+export const buttonClass = (variant: ButtonVariant = 'primary', size: ButtonSize = 'md', extra?: string) =>
+  cx('btn', `btn--${variant}`, size !== 'md' && `btn--${size}`, extra);
+
+type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; size?: ButtonSize; loading?: boolean };
 export function Button({ variant = 'primary', size = 'md', loading, className, children, disabled, ...rest }: BtnProps) {
   return (
-    <button type="button" className={cx('btn', `btn--${variant}`, size !== 'md' && `btn--${size}`, loading && 'btn--loading', className)} disabled={disabled || loading} aria-busy={loading || undefined} {...rest}>
+    <button type="button" className={cx(buttonClass(variant, size, className), loading && 'btn--loading')} disabled={disabled || loading} aria-busy={loading || undefined} {...rest}>
       {children}
     </button>
   );
+}
+
+/** 버튼 모양의 화면 이동 링크 — <Link className="btn …"> 대신 쓴다 */
+export function ButtonLink({ variant = 'primary', size = 'md', className, ...rest }: ComponentPropsWithRef<typeof Link> & { variant?: ButtonVariant; size?: ButtonSize }) {
+  return <Link className={buttonClass(variant, size, className)} {...rest} />;
 }
 
 // ───────── Badge (kind = enum 그대로) ─────────
@@ -62,7 +75,7 @@ export const Note = ({ strong, children, tone }: { strong: string; children?: Re
 export const EmptyState = ({ title, desc, icon: Icon = Inbox, children }: { title: string; desc: string; icon?: LucideIcon; children?: ReactNode }) => (
   <div className="empty">
     <IconBox icon={Icon} size={44} tone="paper" />
-    <h2 className="t-18 w-600" style={{ fontSize: 16 }}>{title}</h2>
+    <h2 className="t-18 w-bold" style={{ fontSize: 16 }}>{title}</h2>
     <p className="c-2" style={{ maxWidth: 620, fontSize: 13, lineHeight: '21px' }}>{desc}</p>
     {children && <div className="row" style={{ gap: 10, marginTop: 6, flexWrap: 'wrap', justifyContent: 'center' }}>{children}</div>}
   </div>
@@ -73,7 +86,7 @@ export const Divider = () => <div className="divider" role="separator" />;
 export function Field({ label, hint, right, children }: { label: string; hint?: string; right?: ReactNode; children: ReactNode }) {
   return (
     <label className="field">
-      <span className="field__label">{label}{right && <span className="right c-3" style={{ fontWeight: 400, fontSize: 11 }}>{right}</span>}</span>
+      <span className="field__label">{label}{right && <span className="right c-3" style={{ fontWeight: 'var(--weight-regular)', fontSize: 11 }}>{right}</span>}</span>
       {children}
       {hint && <span className="t-12l c-2">{hint}</span>}
     </label>
@@ -193,6 +206,10 @@ export const PageTitle = ({ children, right, sub, lead, after }: { children: Rea
     {lead && <p className="page-lead">{lead}</p>}
   </div>
 );
+/** 제목 옆 개수 — '지원할 곳 3'처럼 제목과 같은 크기, 옅은 색으로 한 칸 띄워 둔다. 단위(개, 건)는 붙이지 않는다(#918) */
+export const TitleCount = ({ n, live }: { n: number | string; live?: boolean }) => (
+  <>{' '}<span className="title-count" aria-live={live ? 'polite' : undefined}>{n}</span></>
+);
 export const SectionHead = ({ label, count, right }: { label: string; count?: number; right?: ReactNode }) => (
   <div className="section-head">
     <h2>{label}</h2>
@@ -221,8 +238,9 @@ export const RepoContext = ({ name, note, right }: { name: string; note: string;
     {right}
   </div>
 );
-export const StickyFooter = ({ strong, sub, children }: { strong: string; sub?: string; children: ReactNode }) => (
-  <div className="sticky-footer">
+/** compact: 폰에서 설명 줄을 화면 읽기에만 두고 버튼 한 줄만 보인다(버튼 이름이 할 일을 말하는 화면) */
+export const StickyFooter = ({ strong, sub, children, compact }: { strong: string; sub?: string; children: ReactNode; compact?: boolean }) => (
+  <div className={cx('sticky-footer', compact && 'sticky-footer--compact')}>
     <div className="sticky-footer__text"><strong>{strong}</strong>{sub && <span>{sub}</span>}</div>
     <div className="sticky-footer__actions">{children}</div>
   </div>

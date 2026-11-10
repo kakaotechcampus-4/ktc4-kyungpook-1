@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRepo, useRepos, useStartAnalysis } from '@/api/queries';
 import type { RepoSummary } from '@/api/schemas';
 import { FolderGit2 } from 'lucide-react';
-import { Badge, Button, IconBox, Radio, PageTitle, SectionHead, Skeleton, StickyFooter, Note, EmptyState } from '@/components/ui';
+import { Badge, Button, ButtonLink, EmptyState, IconBox, Note, PageTitle, Radio, SectionHead, Skeleton, StickyFooter, TitleCount } from '@/components/ui';
 import { AiWait } from '@/components/ui/AiWait';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGrid } from '@/features/auth/LandingPage';
@@ -70,7 +70,7 @@ export function ReposPage() {
       </ol>
       <div className="list-head">
         {/* 아직 못 받았으면 개수를 모른다 — 0 으로 보이면 "레포가 없다"로 읽힌다 */}
-        <PageTitle>레포 {repos.data && <span className="c-3 t-14">{repos.data.length}</span>}</PageTitle>
+        <PageTitle>레포{repos.data && <TitleCount n={repos.data.length} />}</PageTitle>
         <div className="right">
           <SearchField className="list-search" value={q} onChange={setQ} placeholder="레포 이름 검색" />
           <Select value={sort} onChange={setSort} label="정렬" options={(Object.keys(SORT_LABEL) as Sort[]).map((value) => ({ value, label: SORT_LABEL[value] }))} />
@@ -87,7 +87,7 @@ export function ReposPage() {
       </>}
       {repos.isSuccess && shown === 0 && <div className="stack" style={{ gap: 12, alignItems: 'center' }}>
         <EmptyState title={q.trim() ? '검색 결과가 없어요' : '아직 불러온 레포가 없어요'} desc={q.trim() ? '이름을 확인하거나 검색을 초기화해 주세요.' : '비공개 레포, 커밋이 없는 레포와 내 프로필 README 레포는 목록에서 제외돼요. GitHub 연결 상태도 확인해 주세요.'} />
-        {q ? <Button variant="outline" onClick={() => setQ('')}>검색 초기화</Button> : <Link to="/settings/github" className="btn btn--outline">GitHub 연결 확인</Link>}
+        {q ? <Button variant="secondary" onClick={() => setQ('')}>검색 초기화</Button> : <ButtonLink to="/settings/github" variant="secondary">GitHub 연결 확인</ButtonLink>}
       </div>}
       {shown > 0 && (
         <div className="repo-groups">
@@ -101,20 +101,20 @@ export function ReposPage() {
         </div>
       )}
 
-      <StickyFooter strong={selected ? `${selected.name} 을 골랐어요` : '레포를 하나 골라 주세요'} sub={selected ? '다음은 읽는 범위 확인이에요' : undefined}>
-        <Link to="/" className="btn btn--outline">취소</Link>
+      <StickyFooter strong={selected ? `${selected.name} 을 골랐어요` : '정리할 레포를 고르면 다음으로 넘어가요'}>
+        <ButtonLink to="/" variant="secondary">취소</ButtonLink>
         <Button size="lg" disabled={!selected} onClick={openDisclose}>다음</Button>
       </StickyFooter>
 
       {disclose && selected && (
         <Modal title="읽는 범위 확인" width={720} onClose={closeDisclose}
           footer={{ strong: detail.data ? `약 ${detail.data.disclosure.estimatedSeconds}초` : '…',
-            actions: <><Button variant="outline" onClick={closeDisclose}>취소</Button><Button onClick={begin} loading={start.isPending} disabled={!detail.data}>정리 시작</Button></> }}>
+            actions: <><Button variant="secondary" onClick={closeDisclose}>취소</Button><Button onClick={begin} loading={start.isPending} disabled={!detail.data}>정리 시작</Button></> }}>
             <div className="stack" style={{ gap: 14 }}>
               <div className="card card--paper repo-ctx" style={{ padding: '14px 16px' }}>
                 <IconBox icon={FolderGit2} size={36} />
                 <div className="stack grow" style={{ gap: 3 }}>
-                  <span className="w-600" style={{ fontSize: 14 }}>{selected.owner} / {selected.name}</span>
+                  <span className="w-bold" style={{ fontSize: 14 }}>{selected.owner} / {selected.name}</span>
                   <span className="t-12 c-2">{isCounting(selected) ? `기여 개수를 ${COUNTING}이에요 — 0건이 아니라 집계 전이에요` : `내 커밋 ${selected.contribution.mine} / 팀 ${selected.contribution.team}, PR ${selected.prCount}, 리뷰 ${selected.reviewCount}`}</span>
                 </div>
                 <Badge kind="NEUTRAL">읽기 전용</Badge>

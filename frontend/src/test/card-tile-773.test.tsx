@@ -46,7 +46,7 @@ describe('#773 카드 타일: 결과 한 줄', () => {
 
 describe('#773 카드 타일: 출처 줄과 바탕', () => {
   it.each([
-    ['2026-10', 'PR #594 · 2026.10'],
+    ['2026-10', 'PR #594, 2026.10'],
     [undefined, 'PR #594'],
   ])('기술 카드의 출처 줄은 PR 번호와 기간이고, 기간이 없으면(%s) 출처만이다', (period, line) => {
     const item = tile({ sourceType: 'PR', sourceLabel: '#594', period });
@@ -59,13 +59,13 @@ describe('#773 카드 타일: 출처 줄과 바탕', () => {
     const item = tile({ kind: 'QUALITATIVE', sourceLabel: 'MANUAL', period: '2026-10' });
 
     expect(item).toHaveClass('gcard--experience');
-    expect(source(item)).toBe('경험 카드 · 2026.10');
+    expect(source(item)).toBe('경험 카드, 2026.10');
   });
 
   it('활동 안의 경험 카드는 출처 줄이 활동 이름과 기간이다', () => {
     const item = tile({ kind: 'QUALITATIVE', sourceLabel: 'MANUAL', period: '2026-10', activity: { id: 'act_club', name: '교내 개발 동아리', type: 'CLUB' } });
 
-    expect(source(item)).toBe('교내 개발 동아리 · 2026.10');
+    expect(source(item)).toBe('교내 개발 동아리, 2026.10');
   });
 });
 

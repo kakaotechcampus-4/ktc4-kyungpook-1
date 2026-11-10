@@ -1,13 +1,10 @@
 /* White surfaces, charcoal structure, and restrained semantic pastel accents. */
 :root { --shadow-card: 0 6px 24px rgb(28 28 36 / 3%); --heading-weight: 650; }
-.btn { border-radius: 12px; }
 /* 고르기 칸도 버튼과 같은 둥글기여야 한 줄에 놓였을 때 어긋나 보이지 않는다 */
 .select-trigger { border-radius: 12px; }
 /* 아직 안 한 단계 번호의 테두리는 흰 배경과 3:1 이상이어야 보인다 */
 :root:not([data-theme="dark"]) { --step-idle-border: #8E8E98; }
 .card, .modal { border-radius: 20px; }
-.btn--outline { border-color: var(--border-default); }
-.btn--outline:hover:not(:disabled) { border-color: var(--border-strong); }
 
 /* The navigation stays dark in either theme, independent of content surfaces. */
 @media screen and (min-width: 768px) {
@@ -45,10 +42,10 @@
 .landing__eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
   background: var(--pastel-lavender); color: var(--text-strong); border: 0;
-  padding: 8px 12px; font-size: 11px; font-weight: 600;
+  padding: 8px 12px; font-size: 11px; font-weight: var(--weight-bold);
 }
 .landing__eyebrow::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.landing__h1 { font-weight: 750; letter-spacing: -.055em; line-height: 1.25; font-size: clamp(38px, 3.6vw, 54px); }
+.landing__h1 { font-weight: var(--weight-heavy); letter-spacing: -.055em; line-height: 1.25; font-size: clamp(38px, 3.6vw, 54px); }
 .landing__h1 > span { text-decoration: underline; text-decoration-color: var(--pastel-blue); text-decoration-thickness: 12px; text-underline-offset: -4px; text-decoration-skip-ink: none; }
 .landing__lead { max-width: 390px; font-size: 15px; line-height: 1.9; }
 .landing__actions { margin-top: 8px; }
@@ -64,7 +61,7 @@
 .landing-card { border: 0; box-shadow: none; background: var(--bg-surface); }
 .landing-card > .example-heading { background: #252527; color: #FFFFFF; border: 0; }
 .landing-card > .example-heading > span { color: #D5D5DE; }
-.landing-card h2 { font-weight: 700; font-size: 17px; }
+.landing-card h2 { font-weight: var(--weight-bold); font-size: 17px; }
 .landing-card__fields { gap: 8px; padding-bottom: 16px; }
 .landing-card__field { padding: 10px; border: 0; border-radius: 12px; background: var(--pastel-blue); }
 .landing-card__field[data-slot='T'] { background: var(--pastel-lavender); }

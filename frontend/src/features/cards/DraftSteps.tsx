@@ -31,8 +31,8 @@ export function DraftProcess({ card, onHistory }: { card: Card; onHistory?: () =
         : <p className="draft-process__line">{card.candidate ? '만든 과정 기록이 없는 카드예요' : '직접 쓴 카드예요'}</p>}
       {(lines.length > 0 || changes > 0) && (
         <div className="draft-process__actions">
-          {lines.length > 0 && <Button variant="outline" onClick={() => setOpen(true)}>자세히 보기</Button>}
-          {changes > 0 && <Button variant="outline" onClick={onHistory}><History size={16} aria-hidden />{historyActionLabel}</Button>}
+          {lines.length > 0 && <Button variant="secondary" onClick={() => setOpen(true)}>자세히 보기</Button>}
+          {changes > 0 && <Button variant="secondary" onClick={onHistory}><History size={16} aria-hidden />{historyActionLabel}</Button>}
         </div>
       )}
       {open && <DraftStepsDialog steps={card.draftSteps} onClose={() => setOpen(false)} />}

@@ -1,6 +1,6 @@
 import { isRouteErrorResponse, useRouteError, Link } from 'react-router-dom';
 import { ApiError, ContractError } from '@/api/client';
-import { Button } from '@/components/ui';
+import { Button, buttonClass } from '@/components/ui';
 import { ReportProblemAction } from '@/features/feedback/ReportProblem';
 
 /**
@@ -21,7 +21,7 @@ export function ErrorBoundary() {
       <p className="error-screen__desc">{notFound ? '주소가 바뀌었거나 삭제된 화면이에요.' : '다시 시도해도 같으면 홈에서 다시 시작해 주세요.'}</p>
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         {!notFound && <Button onClick={() => location.reload()}>다시 시도</Button>}
-        <Link to="/" className={`btn ${notFound ? 'btn--primary' : 'btn--outline'}`}>홈으로</Link>
+        <Link to="/" className={buttonClass(notFound ? 'primary' : 'secondary')}>홈으로</Link>
         <ReportProblemAction />
       </div>
       {detail && (

@@ -407,15 +407,26 @@ export const useRefreshRepoRecommendation = (repoId: string) => {
  * 전체 매칭(#614) — 서버가 배경에서 계산하고 화면은 저장된 결과를 읽는다. 읽기는 AI 를 부르지 않아 열 때마다 다시 읽고,
  * 계산 중에는 확인한 공고 수가 바뀌므로 2초마다 다시 읽는다. 화면을 떠나도 계산은 서버에서 이어진다.
  */
-export const useOverallRecommendation = () =>
-  useQuery({
+export const useOverallRecommendation = () => {
+  const client = useQueryClient();
+  return useQuery({
     queryKey: matchKeys.overall,
-    queryFn: () => matchingApi.recommendations(),
+    queryFn: async () => {
+      const before = client.getQueryData<OverallRecommendation>(matchKeys.overall);
+      const data = await matchingApi.recommendations();
+      // 맞춰 보기가 끝나면 공고마다 저장된 조건 판단도 바뀐다. 홈 '지원할 곳'이 옛 '아직 맞춰 보지 않은 조건'을 들고 있지 않게
+      // 공고 상세를 낡음으로 표시해 다음에 열 때 다시 읽게 한다(#919)
+      if (before?.status === "COMPUTING" && data.status !== "COMPUTING") {
+        await client.invalidateQueries({ queryKey: matchKeys.details, refetchType: "none" });
+      }
+      return data;
+    },
     enabled: matchSupported(),
     retry: false,
     refetchOnWindowFocus: false,
     refetchInterval: (query) => (query.state.data?.status === "COMPUTING" ? 2000 : false),
   });
+};
 export const useStartOverallRecommendation = () => {
   const client = useQueryClient();
   return useMutation({

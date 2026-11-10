@@ -29,7 +29,7 @@ function Section({ section, title, count, onAdd, error, children }: {
       {children}
       {error && <p className="profile-error" role="alert">{error}</p>}
       <div className="profile-add">
-        <Button id={addId(section)} variant="outline" disabled={full} onClick={onAdd}><Plus size={16} aria-hidden />{SECTION_NOUN[section]} 추가</Button>
+        <Button id={addId(section)} variant="secondary" disabled={full} onClick={onAdd}><Plus size={16} aria-hidden />{SECTION_NOUN[section]} 추가</Button>
         {full && <span className="t-12">최대 {max}개까지 입력할 수 있어요</span>}
       </div>
     </section>
@@ -383,7 +383,7 @@ export function CertificationQuick({ state }: { state: ProfileFormState }) {
           <Input aria-label="자격증 직접 입력" autoComplete="off" spellCheck={false} maxLength={PROFILE_LIMITS.TEXT} placeholder="예) 정보통신기사" value={custom}
             onChange={(e) => setCustom(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addName(custom); setCustom(''); } }} />
         </Field>
-        <Button variant="outline" disabled={!custom.trim() || full} onClick={() => { addName(custom); setCustom(''); }}>추가</Button>
+        <Button variant="secondary" disabled={!custom.trim() || full} onClick={() => { addName(custom); setCustom(''); }}>추가</Button>
       </div>
       {others.length > 0 && (
         <ul className="quick-chips" aria-label="직접 적은 자격증">

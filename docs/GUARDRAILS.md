@@ -56,6 +56,7 @@ AI 가 무엇을 스스로 정하는지는 [에이전트 설계](AGENT_DESIGN.md
 | 후보 답과 판단 이유에 지어낸 수치가 실리는 것 | 입력에 없는 수치나 빈칸(`___`)이 든 후보 답은 버리고, 이유에 그런 수치가 있으면 이유를 비운다 | `interview_llm.py:_suggestions`·`_reason` | `test_interview_llm_loop.py::test_suggestions_drop_invented_metrics_and_keep_two`, `::test_reason_with_invented_numbers_is_dropped` |
 | 답에 없는 숫자가 카드 문장에 실리는 것 | 다듬은 문장의 수치는 사용자의 답, 앞서 한 답, 그 칸의 기존 글 중 한 곳에 있어야 한다. AI 와 Spring 이 각각 확인하고, 어기면 카드에 넣지 않는다 | `interview_llm.py:_reply_problem`, `card/domain/InterviewReplyService.java:unusableSentence` | `test_interview_reply.py::test_number_in_none_of_the_three_sources_is_retried_then_unusable`, `InterviewReplyApiTest` |
 | 답이 다른 칸의 글을 덮어쓰는 것 | 물은 칸 말고는 비어 있는 칸에만 넣는다 | `interview_llm.py:_reply_extra`, `InterviewReplyService.java:usableExtra` | `test_interview_reply.py::test_extra_keeps_only_valid_sentences_for_other_empty_slots`, `InterviewReplyApiTest` |
+| 서버가 묻지 않은 질문을 끝없이 만드는 것 | 초안을 쓴 뒤 확정되지 않은 카드에 한 번만 첫 질문을 만들고, 열린 질문이 있거나 상한이면 만들지 않는다. 직접 쓴 칸을 묻던 질문은 닫는다 | `card/domain/interview/InterviewAutoAsker.java`, `card/domain/DraftSaveService.java` | `InterviewAutoAskerTest`, `DraftSaveServiceTurnTest` |
 | 같은 것을 끝없이 되묻는 것 | 한 번 더 묻기는 한 번만 허락하고, 모델이 또 물으면 받지 않는다 | `InterviewReplyService.java`, `interview_llm.py:_reply_problem` | `test_interview_reply.py::test_ask_more_when_follow_up_is_not_allowed_is_retried_then_unusable`, `InterviewReplyApiTest` |
 
 ### 홈 한 줄 명령

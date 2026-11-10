@@ -42,13 +42,13 @@ test('DRAFT response renders card counts instead of four analysis phases', async
   await expect(
     page.getByRole('heading', { name: '카드 초안을 쓰고 있어요' }),
   ).toBeVisible({ timeout: 20000 });
-  await expect(page.getByText('카드 초안 10 / 40장')).toBeVisible();
+  await expect(page.getByText('40장 중 11번째')).toBeVisible();
   await expect(
     page.getByRole('progressbar', { name: '초안 생성 진행률' }),
   ).toHaveAttribute('aria-valuenow', '25');
   await expect(page.locator('.stage')).toHaveCount(0);
   await expect(page.locator('.star-key')).toHaveCount(0);
-  await expect(page.locator('.job-live')).toBeVisible();
+  await expect(page.locator('.draft-line__pulse')).toBeVisible();
   await expect(
     page.getByRole('link', { name: '홈으로', exact: true }),
   ).toBeVisible();

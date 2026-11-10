@@ -108,6 +108,7 @@ button.chip { min-height: var(--control-touch-size); }
 .track { height: 6px; border-radius: var(--radius-full); background: var(--border-default); overflow: hidden; width: 100%; }
 .track > span { display: block; height: 100%; background: var(--bg-ink-solid); border-radius: inherit; transition: width .5s ease; min-width: 4px; }
 /* 진행 중임을 보이는 움직임 — 값(너비)은 그대로 두고 빛만 흘려 보낸다 */
+.track--thin { height: 4px; }
 .track--live > span { position: relative; overflow: hidden; }
 .track--live > span::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .35), transparent); transform: translateX(-100%); animation: track-sheen 1.6s ease-in-out infinite; }
 @keyframes track-sheen { to { transform: translateX(100%); } }

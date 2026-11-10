@@ -117,7 +117,7 @@ describe('자소서 화면과 목록', () => {
     createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-01T00:00:00Z', ...over,
   });
 
-  it('목록은 직무가 공고 제목 그대로면 회사만, 다르면 회사 · 제목, 공고가 없으면 더 보이지 않는다', () => {
+  it('목록은 직무가 공고 제목 그대로면 제목을 다시 쓰지 않고, 다르면 기업 아래에 공고 제목을 따로 보이고, 공고가 없으면 기업을 보이지 않는다', () => {
     mount('/cover-letters', (c) => c.setQueryData(coverLetterKeys.all, [
       summary({ id: 'a', jobRole: POSTING.title, posting: POSTING }),
       summary({ id: 'b', jobRole: '서버 개발', posting: POSTING }),
@@ -125,7 +125,9 @@ describe('자소서 화면과 목록', () => {
     ]));
     const rows = screen.getAllByRole('listitem');
     expect(within(rows[0]).getByText('가온소프트')).toBeInTheDocument();
-    expect(within(rows[1]).getByText('가온소프트, 백엔드 엔지니어 (Java·Spring)')).toBeInTheDocument();
+    expect(within(rows[0]).getAllByText(POSTING.title)).toHaveLength(1);
+    expect(within(rows[1]).getByText('가온소프트')).toBeInTheDocument();
+    expect(within(rows[1]).getByText(POSTING.title)).toBeInTheDocument();
     expect(within(rows[2]).queryByText(/가온소프트/)).not.toBeInTheDocument();
   });
 

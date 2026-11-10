@@ -28,6 +28,7 @@ INTERNAL_PATHS = {
     "/internal/interview-turns",
     "/internal/interview-measured-sentence",
     "/internal/interview-polished-sentence",
+    "/internal/interview-replies",
     "/internal/card-themes",
     "/internal/interview-answer-evaluations",
     "/internal/job-postings/extract",

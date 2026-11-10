@@ -6,6 +6,7 @@ import { endpoints } from '@/api/endpoints';
 import { keys } from '@/api/keys';
 import type { Card, InterviewTurn } from '@/api/schemas';
 import { InterviewPage } from '@/features/cards/InterviewPage';
+import { answeredBy, appliedReply } from './replyResult';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 
@@ -36,9 +37,9 @@ function serve(turns: InterviewTurn[], save: () => Promise<Card> = async () => c
   let list = turns;
   vi.spyOn(endpoints, 'interviewTurns').mockImplementation(async () => list);
   vi.spyOn(endpoints, 'askInterview').mockResolvedValue(null);
-  return vi.spyOn(endpoints, 'answerInterview').mockImplementation(async (_id, no, body) => {
-    list = list.map((t) => (t.turnNo === no ? { ...t, answer: body as InterviewTurn['answer'], outcome: 'ANSWERED' } : t));
-    return save();
+  return vi.spyOn(endpoints, 'replyInterview').mockImplementation(async (_id, no, body) => {
+    list = list.map((t) => (t.turnNo === no ? answeredBy(t, body) : t));
+    return appliedReply(await save());
   });
 }
 
@@ -63,12 +64,12 @@ describe('되묻기 대화 모양', () => {
     mount(turns);
 
     fireEvent.change(screen.getByRole('textbox', { name: '답변' }), { target: { value: 'T 답' } });
-    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
 
     await waitFor(() => expect(thread().querySelector('.chat-bub--me')).toHaveTextContent('T 답'));
     expect(screen.getByRole('textbox', { name: '답변' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '답변 저장' })).toBeDisabled();
-    expect(screen.getByText('답변을 과제 칸 문장으로 다듬어 카드에 넣는 중이에요')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '답 보내기' })).toBeDisabled();
+    expect(screen.getByText('답을 읽고 카드 문장으로 쓰는 중이에요')).toBeInTheDocument();
     await act(async () => { finish(); });
     await screen.findByText('추가 질문을 마쳤어요');
   });

@@ -137,7 +137,7 @@ public class InterviewContextAssembler {
 
     }
 
-    // 결과가 정해진 질문만 보내고, 지금 쓰지 않는 LATER·INSUFFICIENT 는 AI 계약에 없어 뺀다
+    // 결과가 정해진 질문만 보내고, 질문 AI 계약에 없는 LATER·INSUFFICIENT 는 뺀다
     private static InterviewCardKind kindOf(Card card) {
 
         return InterviewCardKind.valueOf(card.getCardType().name());

@@ -124,7 +124,7 @@ public class InterviewPolishedDraftService {
     }
 
     // 1,000 과 1000 을 같은 수로 보도록 쉼표를 지우고 견주며, 다듬은 문장에 나온 순서대로 한 번씩 돌려준다
-    private static List<String> inventedNumbers(String written, String answer) {
+    static List<String> inventedNumbers(String written, String answer) {
 
         Set<String> answered = new HashSet<>();
         Matcher inAnswer = NUMBER.matcher(answer);

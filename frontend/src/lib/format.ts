@@ -14,6 +14,18 @@ export function ymd(iso: string): string {
   if (Number.isNaN(d.getTime())) return '';
   return `${ym(iso)}.${String(d.getDate()).padStart(2, '0')}`;
 }
+const KO_FULL = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+const KO_MONTH_DAY = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric' });
+/** "2026년 10월 6일" — 점 표기(ymd)가 읽기 어려운 문장 안에서 쓴다. */
+export function koYmd(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : KO_FULL.format(d);
+}
+/** "11월 9일" */
+export function koMd(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : KO_MONTH_DAY.format(d);
+}
 export function ymdhm(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';

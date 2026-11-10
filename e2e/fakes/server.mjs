@@ -193,6 +193,10 @@ function handleLlm(body, res) {
         reason: 'E2E 가짜 LLM 이 만든 설명입니다.',
       })),
     };
+  } else if (schema === 'ReplyOutput') {
+    // 되묻기 답은 적은 그대로 그 칸의 문장으로 넣는다고 답한다
+    const user = body.messages?.find((m) => m.role === 'user')?.content ?? '{}';
+    content = { verdict: 'APPLY', sentence: JSON.parse(user).answer ?? '', extra: [], follow_up: null, reason: null };
   } else {
     return send(res, 500, { error: { message: `fake: 모르는 출력 형식 ${schema}` } });
   }

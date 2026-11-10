@@ -53,7 +53,7 @@ docker compose -f e2e/compose.yaml -p gitory-e2e down -v
 |---|---|
 | GitHub OAuth 로그인 | `/login/oauth/authorize` 가 바로 `code` 를 붙여 돌려보내고, 토큰에 로그인을 넣어(`gho_E2E_<login>`) 사용자를 가른다 |
 | GitHub REST·GraphQL | 손으로 만든 저장소 `sample-app` 하나(커밋 10·PR 2·이슈 1). `fakes/fixtures/sample-app.json` |
-| LLM | OpenAI 호환 `/chat/completions`. 경험 그룹화 두 단계만 답한다 |
+| LLM | OpenAI 호환 `/chat/completions`. 경험 그룹화 두 단계와 되묻기 답 읽기(적은 그대로 넣는다고 답함)만 답한다 |
 
 ## 시험하지 못하는 것
 

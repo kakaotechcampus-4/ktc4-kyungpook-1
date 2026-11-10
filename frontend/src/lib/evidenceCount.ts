@@ -10,9 +10,8 @@ export function evidenceCounts(items: Pick<Evidence, 'type'>[]): { commits: numb
   return { commits, answers: items.length - commits };
 }
 
-/** "근거 커밋 3개, 내 답변 1개". 기본은 0 인 쪽을 빼고, `showZero` 면 두 쪽을 늘 적는다(요약 줄처럼 자리가 고정된 곳). */
-export function evidenceCountLabel(items: Pick<Evidence, 'type'>[], options: { showZero?: boolean } = {}): string {
+/** "근거 커밋 3개, 내 답변 1개". 0 인 쪽은 뺀다. */
+export function evidenceCountLabel(items: Pick<Evidence, 'type'>[]): string {
   const { commits, answers } = evidenceCounts(items);
-  const showZero = options.showZero ?? false;
-  return [(showZero || commits) && `근거 커밋 ${commits}개`, (showZero || answers) && `내 답변 ${answers}개`].filter(Boolean).join(', ');
+  return [commits && `근거 커밋 ${commits}개`, answers && `내 답변 ${answers}개`].filter(Boolean).join(', ');
 }

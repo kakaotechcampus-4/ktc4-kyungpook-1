@@ -6,7 +6,7 @@ import { loginAsDemo } from './helpers';
 const panel = (page: Page) => page.locator('.iv__panel');
 async function answerWith(page: Page, text: string) {
   await page.getByRole('textbox', { name: '답변', exact: true }).fill(text);
-  await page.getByRole('button', { name: '답변 저장', exact: true }).click();
+  await page.getByRole('button', { name: '답 보내기', exact: true }).click();
 }
 const overflows = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
 

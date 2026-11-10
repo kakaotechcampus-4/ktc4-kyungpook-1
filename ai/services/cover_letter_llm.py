@@ -99,6 +99,11 @@ class CoverLetterLimits:
     fill_review_reserve_seconds: float = 15.0
     # 빈칸 자리를 쓰면서 이어지는 앞 문장 하나는 다듬어도 되고, 그보다 많이 바꾸면 앞 글로 되돌린다
     max_fill_changed_sentences: int = 1
+    # 채팅을 여는 순간 화면에 같이 뜨는 제안이라 채팅 턴처럼 짧게 끊는다
+    suggest_deadline_seconds: float = 20.0
+    suggest_max_completion_tokens: int = 1_500
+    max_suggestions: int = 3
+    max_angle_chars: int = 60
     # 다시 쓴 글에 새로 생긴 문제(새 답의 기술 이름이 상한을 넘는 등)를 고쳐 쓸 기회
     fill_fix_rounds: int = 1
 

@@ -574,3 +574,65 @@ class FillResult(BaseModel):
         ..., description="다시 쓴 글. 고쳐 써도 새 문제가 남거나 다른 문장을 여럿 바꾸면 앞 글로 되돌리고 steps 에 REVERTED 가 남는다",
     )
     steps: list[DraftStep]
+
+
+SuggestionSource = Literal["CARD", "CANDIDATE"]
+
+
+class SuggestionQuestion(StrictRequestModel):
+    question_id: PositiveId
+    text: NonBlankText = Field(..., max_length=500)
+    char_limit: int = Field(..., ge=100, le=5_000, strict=True)
+    question_theme: Optional[QuestionTheme] = Field(None, description="문항 유형을 아직 모르면 null")
+
+
+class SuggestionCard(StrictRequestModel):
+    card_id: PositiveId
+    title: NonBlankText = Field(..., max_length=256)
+    card_kind: CardKind = "TECH"
+    source_name: Optional[str] = Field(None, max_length=100)
+    period: Optional[str] = Field(None, max_length=50)
+    summary: NonBlankText = Field(..., max_length=300)
+
+
+class SuggestionCandidate(StrictRequestModel):
+    candidate_id: NonBlankText = Field(..., max_length=64)
+    title: NonBlankText = Field(..., max_length=256)
+    reason: NonBlankText = Field(..., max_length=500)
+    repo_name: NonBlankText = Field(..., max_length=100)
+    commit_messages: list[Annotated[NonBlankText, StringConstraints(max_length=200)]] = Field(
+        default_factory=list, max_length=5, description="커밋 메시지 첫 줄",
+    )
+    review_comment_count: int = Field(0, ge=0, strict=True)
+
+
+class SuggestionRequest(StrictRequestModel):
+    """`POST /internal/cover-letter-suggestions` 요청 모델."""
+
+    cover_letter_id: PositiveId
+    job_role: NonBlankText = Field(..., max_length=100)
+    memo: Optional[str] = Field(None, max_length=1_000)
+    posting: Optional[Posting] = None
+    question: SuggestionQuestion
+    cards: list[SuggestionCard] = Field(default_factory=list, max_length=30, description="이 자소서가 쓰지 않은 확정 카드")
+    candidates: list[SuggestionCandidate] = Field(default_factory=list, max_length=30, description="아직 카드가 되지 않은 경험 후보")
+
+    @model_validator(mode="after")
+    def _ids_are_unique(self) -> "SuggestionRequest":
+        card_ids = [card.card_id for card in self.cards]
+        candidate_ids = [candidate.candidate_id for candidate in self.candidates]
+        if len(set(card_ids)) != len(card_ids) or len(set(candidate_ids)) != len(candidate_ids):
+            raise ValueError("cards 의 card_id, candidates 의 candidate_id 는 겹칠 수 없습니다.")
+        return self
+
+
+class Suggestion(BaseModel):
+    source: SuggestionSource
+    id: str = Field(..., description="source 가 CARD 면 card_id 문자열, CANDIDATE 면 candidate_id")
+    angle: str = Field(..., description="이 재료가 문항에 어떻게 답이 되는지 해요체 한 문장(60자 이내)")
+
+
+class SuggestionResult(BaseModel):
+    """`POST /internal/cover-letter-suggestions` 응답 `data` 모델."""
+
+    suggestions: list[Suggestion] = Field(..., description="잘 맞는 순서, 최대 3개. 맞는 것이 없으면 빈 배열")

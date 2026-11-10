@@ -523,7 +523,7 @@ class TurnRequest(StrictRequestModel):
 class TurnMessage(BaseModel):
     text: str = Field(..., description="AI 말풍선 글. 질문은 세 줄 안(뭐가 비었는지·왜 필요한지·뭘 알려 달라는지와 예시)")
     question_id: int
-    item: Optional[MaterialItem] = Field(None, description="묻거나 받은 항목. DONE 이면 null")
+    item: Optional[MaterialItem] = Field(None, description="묻거나 받은 항목. DONE 이면 null, 쓸 만한 일을 열어서 묻는 첫 질문이나 여러 항목을 한 번에 받았을 때도 null")
 
 
 class TurnAnswer(BaseModel):
@@ -536,8 +536,9 @@ class TurnResult(BaseModel):
     """`POST /internal/cover-letter-turns` 응답 `data` 모델."""
 
     message: TurnMessage
-    answer: Optional[TurnAnswer] = Field(
-        None, description="USER_REPLY 에서 받은 답. FILLED 면 Spring 이 저장하고 문항을 다시 쓴다",
+    answers: list[TurnAnswer] = Field(
+        default_factory=list,
+        description="USER_REPLY 에서 받은 답으로, 한 번의 말에 여러 항목이 들어 있으면 항목마다 하나. FILLED 면 Spring 이 저장하고 문항을 다시 쓴다",
     )
     status: TurnStatus
 

@@ -3,7 +3,7 @@ import { getAssistantRun, sayToAssistantRun, startAssistantRun, type AssistantRe
 import { mockMatchDetail, mockMatchedPostings, mockMatchList, mockOverall, mockRefreshRepoRecommendation, mockRepoRecommendation, mockStartGapFill, startMockOverall } from './matching';
 import { getProfile, putProfile } from './profile';
 import { listNotices, readAllNotices, readNotice, seedNotices } from './notifications';
-import { applyPolish, chooseCards, confirmInference, createCoverLetter, deleteCoverLetter, discardPolish, getCoverLetter, listCoverLetters, listCoverLetterTurns, openCoverLetterTurn, polishQuestion, replyCoverLetterTurn, retryCoverLetter, saveAnswers, saveDraft, skipCoverLetterTurn, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
+import { applyPolish, chooseCards, confirmInference, createCoverLetter, deleteCoverLetter, discardPolish, getCoverLetter, listCoverLetters, listCoverLetterTurns, openCoverLetterTurn, polishQuestion, replyCoverLetterTurn, rewriteCoverLetterQuestion, retryCoverLetter, saveAnswers, saveDraft, skipCoverLetterTurn, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
 /**
  * 목 API 라우터 — 순수 함수. 요청을 받아 { status, data, error } 를 돌려준다.
  * 실서버(Spring) 의 응답 형태를 그대로 흉내낸다. 노드·브라우저 어디서도 돈다.
@@ -91,6 +91,7 @@ on('GET', '/cover-letters/:id/turns', ({ params }) => letter(listCoverLetterTurn
 on('POST', '/cover-letters/:id/questions/:qid/turns/open', ({ params }) => letter(openCoverLetterTurn(params[0], params[1])));
 on('POST', '/cover-letters/:id/questions/:qid/turns/skip', ({ params }) => letter(skipCoverLetterTurn(params[0], params[1])));
 on('POST', '/cover-letters/:id/questions/:qid/turns', ({ params, body }) => letter(replyCoverLetterTurn(params[0], params[1], body)));
+on('POST', '/cover-letters/:id/questions/:qid/rewrite', ({ params, body }) => letter(rewriteCoverLetterQuestion(params[0], params[1], body)));
 on('DELETE', '/cover-letters/:id', ({ params }) => letter(deleteCoverLetter(params[0])));
 // 홈 한 줄 명령 — 계약 검증과 진행은 mock/assistant.ts
 const assist = (r: AssistantResult): MockResult => (r.ok ? ok(r.data) : fail(r.status, r.code, r.message));

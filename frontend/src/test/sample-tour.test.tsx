@@ -25,7 +25,7 @@ it('T1 turns the demo on for a production build only while the sample flag is se
 it('T2 starts the tour from the landing button: flag and session set, db dropped, reload at /', () => {
   sessionStorage.setItem('gitory.demo.db', '{}');
   render(<StartActions label="GitHub로 시작" pending={false} onStart={() => {}} />);
-  fireEvent.click(screen.getByRole('button', { name: '둘러보기' }));
+  fireEvent.click(screen.getByRole('button', { name: '샘플 데이터로 둘러보기' }));
   expect(sessionStorage.getItem(SAMPLE_KEY)).toBe('1');
   expect(sessionStorage.getItem('gitory.demo.session')).toBe('1');
   expect(sessionStorage.getItem('gitory.demo.db')).toBeNull();

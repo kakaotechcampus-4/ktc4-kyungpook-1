@@ -31,6 +31,8 @@
 .landing-morph[data-phase='commit'] .landing-morph__commit, .landing-morph[data-phase='sentence'] .landing-morph__sentence, .landing-morph[data-phase='chip'] .landing-morph__sentence { opacity: 1; }
 /* 문장은 커밋이 거의 사라진 뒤에 떠오른다 — 돌아갈 때는 빈 단계가 같은 간격을 만든다 */
 .landing-morph[data-phase='sentence'] .landing-morph__sentence, .landing-morph[data-phase='chip'] .landing-morph__sentence { transition-delay: .6s; }
+/* 비울 때는 0.6초 뒤 다음 커밋으로 글자가 바뀌므로 그 전에 다 사라져야 한다 — 사라지는 중에 바뀌면 다음 문장이 비친다 */
+.landing-morph[data-phase='blank'] > p { transition-duration: .5s; }
 .landing-morph__chip { padding: 3px 12px; border: 1px solid var(--border-default); border-radius: 999px; color: var(--text-secondary); font-size: 12px; line-height: 18px; opacity: 0; transition: opacity .6s ease; }
 .landing-morph__chip code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
 .landing-morph[data-phase='chip'] .landing-morph__chip { opacity: 1; }

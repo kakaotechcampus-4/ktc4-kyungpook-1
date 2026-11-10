@@ -32,6 +32,7 @@ import com.gitory.backend.recommend.domain.CandidateDraftSource;
 import com.gitory.backend.recommend.domain.CandidateDraftSourceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -42,15 +43,22 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
- * 카드 초안 Job 이 만든 카드를 한 장씩 diff 근거, STAR 초안, 저장 순서로 채우고 카드마다의 결과로 Job 을 끝낸다
+ * 카드 초안 Job 이 만든 카드를 설정한 장수씩 같이 diff 근거, STAR 초안, 저장 순서로 채우고 카드마다의 결과로 Job 을 끝낸다
  * AI 를 기다리는 동안 DB 커넥션과 잠금을 붙잡지 않도록 진행을 남기거나 저장할 때만 Job 행을 잠그고, 그때 Job 이 RUNNING 이 아니면 멈춘다
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@EnableConfigurationProperties(CardDraftParallelProperties.class)
 public class CardDraftRunner {
 
     // AI 가 diff 근거를 만들 때 앞의 50개 커밋까지만 읽는다
@@ -70,33 +78,91 @@ public class CardDraftRunner {
     private final RepoRecommendationTrigger recommendations;
     private final CardDraftLiveLog live;
     private final ApplicationEventPublisher events;
+    private final CardDraftParallelProperties parallel;
 
     public void run(AnalysisJob job) {
 
         List<GeneratedCard> cards = generatedCards.cardsOf(job.getPublicId());
         String login = users.loginOf(job.getUserId());
         int total = cards.size();
-        if (!record(job.getId(), 0, 0, total)) {
+        Progress progress = new Progress(total, new AtomicInteger(), new AtomicInteger());
+        if (!record(job.getId(), progress)) {
             return;
         }
 
         live.start(job.getId(), cards);
+        // 카드 초안 LLM 스레드는 AI 쪽에 한정돼 있어 카드를 다 한꺼번에 띄우지 않고 설정한 장수만 같이 돌린다
+        ExecutorService pool = Executors.newFixedThreadPool(Math.max(1, Math.min(parallel.draftParallel(), total)));
         try {
-            List<CardDraftResult> results = new ArrayList<>();
+            AtomicBoolean stopped = new AtomicBoolean();
+            List<Future<Optional<CardDraftResult>>> futures = new ArrayList<>();
             for (GeneratedCard card : cards) {
-                Optional<CardDraftResult> result = AiCallContext.callForCard(card.id(),
-                        () -> draft(job, card, login, results.size(), total));
-                if (result.isEmpty()) {
-                    return;
+                futures.add(pool.submit(() -> draftOne(job, card, login, progress, stopped)));
+            }
+
+            // 먼저 끝난 카드와 상관없이 카드 순서대로 모아야 Job 결과가 카드 순서와 같다
+            List<CardDraftResult> results = new ArrayList<>();
+            boolean ended = false;
+            RuntimeException failure = null;
+            for (Future<Optional<CardDraftResult>> future : futures) {
+                try {
+                    Optional<CardDraftResult> result = future.get();
+                    ended |= result.isEmpty();
+                    result.ifPresent(results::add);
+                } catch (ExecutionException e) {
+                    failure = failure == null ? asRuntime(e.getCause()) : failure;
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    stopped.set(true);
+                    throw new IllegalStateException("카드 초안을 기다리다 멈췄다", e);
                 }
-                live.end(job.getId(), card.id(), result.get());
-                results.add(result.get());
+            }
+            if (failure != null) {
+                throw failure;
+            }
+
+            // Job 이 이미 RUNNING 이 아니면 끝내지 않고 그대로 둔다
+            if (ended) {
+                return;
             }
 
             transaction.executeWithoutResult(status -> finish(job.getId(), results));
         } finally {
+            pool.shutdown();
             live.finish(job.getId());
         }
+
+    }
+
+    /** 앞 카드에서 Job 이 RUNNING 이 아니게 됐거나 실패가 나면 아직 시작하지 않은 카드는 AI 를 부르지 않고 빈 값으로 끝낸다 */
+    private Optional<CardDraftResult> draftOne(AnalysisJob job, GeneratedCard card, String login, Progress progress,
+                                               AtomicBoolean stopped) {
+
+        if (stopped.get()) {
+            return Optional.empty();
+        }
+
+        try {
+            progress.started().incrementAndGet();
+            // 호출 기록이 Job 과 카드를 알아보는 값은 스레드에 걸려 있어, Job 스레드에서 넘어오지 않으므로 카드를 채우는 스레드마다 다시 건다
+            Optional<CardDraftResult> result = AiCallContext.callForJob(job.getId(),
+                    () -> AiCallContext.callForCard(card.id(), () -> draft(job, card, login, progress)));
+            if (result.isEmpty()) {
+                stopped.set(true);
+                return result;
+            }
+            live.end(job.getId(), card.id(), result.get());
+            return result;
+        } catch (RuntimeException failure) {
+            stopped.set(true);
+            throw failure;
+        }
+
+    }
+
+    private static RuntimeException asRuntime(Throwable cause) {
+
+        return cause instanceof RuntimeException runtime ? runtime : new IllegalStateException(cause);
 
     }
 
@@ -104,25 +170,25 @@ public class CardDraftRunner {
      * 카드 한 장을 채우고 진행 숫자를 한 장 늘리며, 그사이 Job 이 RUNNING 이 아니게 되면 빈 값을 돌려준다
      * AI 나 저장이 실패한 카드는 실패로 세고 다음 카드로 넘어간다
      */
-    private Optional<CardDraftResult> draft(AnalysisJob job, GeneratedCard card, String login, int done, int total) {
+    private Optional<CardDraftResult> draft(AnalysisJob job, GeneratedCard card, String login, Progress progress) {
 
         try {
             live.read(job.getId(), card.id());
             Optional<CandidateDraftSource> source = sourceOf(card);
             if (source.isEmpty()) {
-                return finishCard(job.getId(), done, total, () -> CardDraftResult.SKIPPED);
+                return finishCard(job.getId(), progress, () -> CardDraftResult.SKIPPED);
             }
 
             List<DraftCommit> commits = source.get().commits();
             DiffEvidenceResult evidence = activities.diffEvidence(new DiffEvidenceRequest(job.getUserRepositoryId(),
                     commits.stream().map(DraftCommit::sha).toList(), source.get().githubPrNumber(), card.title()));
             commitSummaries.recordDiffSummaries(diffSummariesOf(evidence, commits));
-            if (!record(job.getId(), done + 1, done, total)) {
+            if (!record(job.getId(), progress)) {
                 return Optional.empty();
             }
 
             if (evidence.evidence().isEmpty()) {
-                return finishCard(job.getId(), done, total, () -> noEvidence(card));
+                return finishCard(job.getId(), progress, () -> noEvidence(card));
             }
 
             String body = pullRequestBodyOf(job.getUserRepositoryId(), source.get(), login);
@@ -130,11 +196,11 @@ public class CardDraftRunner {
             StarDraft draft = star.draft(requestOf(source.get(), card, login, evidence, body, materials),
                     live.write(job.getId(), card.id()));
             live.written(job.getId(), card.id(), draft);
-            return finishCard(job.getId(), done, total, () -> written(card, draft, commits));
+            return finishCard(job.getId(), progress, () -> written(card, draft, commits));
         } catch (RuntimeException failure) {
             log.warn("카드 초안 Job {} 의 카드 {} 를 채우지 못했다", job.getId(), card.id(), failure);
             CardDraftFailure reason = failureOf(failure);
-            return finishCard(job.getId(), done, total, () -> failed(card, reason));
+            return finishCard(job.getId(), progress, () -> failed(card, reason));
         }
 
     }
@@ -219,8 +285,8 @@ public class CardDraftRunner {
 
     }
 
-    /** Job 행을 잠가 아직 RUNNING 일 때만 카드에 쓰고 진행 숫자를 한 장 늘린다 */
-    private Optional<CardDraftResult> finishCard(Long jobId, int done, int total, Supplier<CardDraftResult> write) {
+    /** Job 행을 잠가 아직 RUNNING 일 때만 카드에 쓰고 끝난 장수를 하나 늘리며, 숫자를 잠근 뒤에 읽어야 카드끼리 서로의 기록을 되돌리지 않는다 */
+    private Optional<CardDraftResult> finishCard(Long jobId, Progress progress, Supplier<CardDraftResult> write) {
 
         return transaction.execute(status -> {
             AnalysisJob job = jobs.findWithLockById(jobId).orElseThrow();
@@ -228,26 +294,26 @@ public class CardDraftRunner {
                 return Optional.empty();
             }
             CardDraftResult result = write.get();
-            job.recordDraftProgress(done + 1, done + 1, total);
+            job.recordDraftProgress(progress.started().get(), progress.finished().incrementAndGet(), progress.total());
             return Optional.of(result);
         });
 
     }
 
-    private boolean record(Long jobId, int read, int finished, int total) {
+    private boolean record(Long jobId, Progress progress) {
 
         return Boolean.TRUE.equals(transaction.execute(status -> {
             AnalysisJob job = jobs.findWithLockById(jobId).orElseThrow();
             if (job.getState() != JobState.RUNNING) {
                 return false;
             }
-            job.recordDraftProgress(read, finished, total);
+            job.recordDraftProgress(progress.started().get(), progress.finished().get(), progress.total());
             return true;
         }));
 
     }
 
-    private void finish(Long jobId, List<CardDraftResult> results) {
+    void finish(Long jobId, List<CardDraftResult> results) {
 
         AnalysisJob job = jobs.findWithLockById(jobId).orElseThrow();
         if (job.getState() == JobState.RUNNING) {
@@ -316,5 +382,8 @@ public class CardDraftRunner {
                 StarEvidenceSource.valueOf(item.summarySource().name()), item.technicalPoints(), item.url(),
                 item.changedPaths());
 
+    }
+
+    private record Progress(int total, AtomicInteger started, AtomicInteger finished) {
     }
 }

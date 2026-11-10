@@ -162,6 +162,8 @@ gitory:
       enabled: ${JOB_WORKER_ENABLED:true}
       # 동시에 실행하는 Job 수로 카드 초안 Job 도 같은 자리를 쓰며, 같은 사용자의 분석 Job·카드 초안 Job 은 종류마다 이 수와 상관없이 하나씩 실행한다
       concurrency: ${JOB_WORKER_CONCURRENCY:3}
+    # 카드 초안 Job 하나가 같이 채우는 카드 수로, AI 쪽 카드 초안 LLM 스레드가 6개라 Job 3개 × 2장 = 6 에 맞춘 값이다
+    draft-parallel: ${JOB_DRAFT_PARALLEL:2}
   mail:
     # 켜면 인적사항에서 수신을 켠 사용자에게 확인 메일과 새 공고 메일을 보낸다. 켜기 전에 MAIL_USERNAME 과 MAIL_PASSWORD(Gmail 앱 비밀번호)를 넣는다
     enabled: ${MAIL_ENABLED:false}

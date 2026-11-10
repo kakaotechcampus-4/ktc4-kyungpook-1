@@ -3,6 +3,8 @@ gitory:
   job:
     worker:
       enabled: false
+    # 카드 초안 시험은 카드를 한 장씩 돌려 순서가 정해진 시험으로 두고, 같이 돌리는 시험만 장수를 올린다
+    draft-parallel: 1
   cover-letter:
     worker:
       enabled: false

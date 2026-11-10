@@ -8,13 +8,16 @@ import java.util.List;
 import java.util.UUID;
 
 public record ToolCall(UUID runId, AssistantTool tool, RunItem.Find find, String postingRef, RunItem.Posting posting,
-                       String repoRef, RepoLabel repo, String jobRole, List<NewQuestion> questions) {
+                       String repoRef, RepoLabel repo, String jobRole, List<NewQuestion> questions, String cardRef,
+                       CardLabel card, String letterRef, LetterLabel letter) {
 
     public static ToolCall of(AssistantRun run, AssistantStepReply reply) {
 
         return new ToolCall(run.getPublicId(), reply.tool(), findOf(reply), reply.postingRef(),
                 run.postingOf(reply.postingRef()).orElse(null), reply.repoRef(),
-                run.repoOf(reply.repoRef()).orElse(null), reply.jobRole(), questionsOf(reply));
+                run.repoOf(reply.repoRef()).orElse(null), reply.jobRole(), questionsOf(reply), reply.cardRef(),
+                run.cardOf(reply.cardRef()).orElse(null), reply.letterRef(),
+                run.letterOf(reply.letterRef()).orElse(null));
 
     }
 
@@ -23,9 +26,11 @@ public record ToolCall(UUID runId, AssistantTool tool, RunItem.Find find, String
 
         return switch (tool) {
             case FIND_POSTINGS -> true;
-            case MATCH_POSTING -> posting != null;
+            case MATCH_POSTING, FILL_POSTING_GAPS -> posting != null;
             case START_COVER_LETTER -> postingRef == null || posting != null;
             case START_REPO_ANALYSIS -> repo != null;
+            case ASK_CARD_GAP -> card != null;
+            case POLISH_COVER_LETTER -> letter != null;
         };
 
     }

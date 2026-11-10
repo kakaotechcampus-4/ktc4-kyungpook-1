@@ -2,6 +2,7 @@ package com.gitory.backend.assistant.domain;
 
 import com.gitory.backend.agent.port.AssistantStepRequest;
 import com.gitory.backend.assistant.port.RepoAnalysisPort;
+import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.domain.MeCardStatsService;
 import com.gitory.backend.consent.domain.UserLoginService;
 import com.gitory.backend.ingest.domain.RepositoryListService;
@@ -19,13 +20,18 @@ import java.util.stream.Collectors;
 
 /**
  * AI 에 보낼 요청을 만든다 — 사용자의 말 전부, 끝난 걸음, 지금 읽은 확정 카드 수·레포 상태·관심 분야, 남은 걸음 수
- * 하는 중인 걸음은 결과가 없어 보내지 않고, 레포 이름표는 실행을 만들 때 정한 것을 그대로 쓴다
+ * 하는 중인 걸음은 결과가 없어 보내지 않고, 레포·카드·자소서 이름표는 실행을 만들 때 정한 것을 그대로 쓴다
  */
 @Component
 @RequiredArgsConstructor
 class AssistantStepRequestFactory {
 
     private static final int MAX_INTERESTS = 5;
+    private static final Map<StarField, String> STAR_WORDS = Map.of(
+            StarField.S, "상황",
+            StarField.T, "과제",
+            StarField.A, "행동",
+            StarField.R, "결과");
     // ETC 는 낱말로 바꿀 만한 분야가 아니라 뺀다
     private static final Map<InterestCategory, String> INTEREST_WORDS = Map.of(
             InterestCategory.BACKEND, "백엔드",
@@ -68,7 +74,34 @@ class AssistantStepRequestFactory {
                         .map(INTEREST_WORDS::get)
                         .filter(word -> word != null)
                         .limit(MAX_INTERESTS)
-                        .toList());
+                        .toList(),
+                cards(run), letters(run));
+
+    }
+
+    private static List<AssistantStepRequest.Card> cards(AssistantRun run) {
+
+        if (run.getCards() == null) {
+            return List.of();
+        }
+
+        return run.getCards().stream()
+                .map(card -> new AssistantStepRequest.Card(card.ref(), card.title(),
+                        card.missing().stream().map(STAR_WORDS::get).toList()))
+                .toList();
+
+    }
+
+    private static List<AssistantStepRequest.Letter> letters(AssistantRun run) {
+
+        if (run.getLetters() == null) {
+            return List.of();
+        }
+
+        return run.getLetters().stream()
+                .map(letter -> new AssistantStepRequest.Letter(letter.ref(), letter.jobRole(), letter.company(),
+                        letter.questionCount()))
+                .toList();
 
     }
 
@@ -96,7 +129,26 @@ class AssistantStepRequestFactory {
 
         return new AssistantStepRequest.DoneStep(item.seq(), item.tool(), item.ok(), item.error(), find(item.find()),
                 item.postingRef(), item.repoRef(), postings(item.postings()), item.totalFound(), match(item.match()),
-                item.questionCount());
+                item.questionCount(), item.cardRef(), item.letterRef(), item.gapsFilled(), question(item.question()),
+                polished(item.polished()), item.remainingQuestions());
+
+    }
+
+    private static AssistantStepRequest.QuestionAsked question(RunItem.Question question) {
+
+        return question == null ? null : new AssistantStepRequest.QuestionAsked(question.field(), question.text());
+
+    }
+
+    private static List<AssistantStepRequest.Polished> polished(List<RunItem.Polished> polished) {
+
+        if (polished == null) {
+            return List.of();
+        }
+
+        return polished.stream()
+                .map(done -> new AssistantStepRequest.Polished(done.seq(), done.points()))
+                .toList();
 
     }
 

@@ -58,6 +58,7 @@ public class AiAssistantStepAdapter implements AssistantStepPort {
         return switch (enumOf(data, "action", AssistantStepReply.Action.class)) {
             case CALL_TOOL -> AssistantStepReply.call(enumOf(data, "tool", AssistantTool.class),
                     find(data.path("find")), optionalString(data, "posting_ref"), optionalString(data, "repo_ref"),
+                    optionalString(data, "card_ref"), optionalString(data, "letter_ref"),
                     optionalString(data, "job_role"), questions(data.path("questions")));
             case ASK_USER -> ask(data, say);
             case FINISH -> AssistantStepReply.finish(say);

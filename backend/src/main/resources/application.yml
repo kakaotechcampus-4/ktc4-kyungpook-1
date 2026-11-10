@@ -135,6 +135,8 @@ gitory:
     groups-read-timeout: ${AI_GROUPS_READ_TIMEOUT:600s}
     # 프론트가 요청을 30초에 끊으므로 되묻기는 그 전에 AI 응답을 받아야 한다
     interview-read-timeout: 20s
+    # 자소서 문항을 열 때 제안은 있으면 좋은 쪽이라 AI 쪽 기한(20초)보다 조금만 더 기다리고 끊는다
+    suggest-read-timeout: 25s
     # 카드 초안의 diff 근거·STAR 초안은 AI 가 240초·150초 안에 정리해 답하므로, 그 답을 놓치지 않게 조금 더 기다린다
     diff-evidence-read-timeout: ${AI_DIFF_EVIDENCE_READ_TIMEOUT:300s}
     star-read-timeout: ${AI_STAR_READ_TIMEOUT:180s}

@@ -58,7 +58,7 @@ def _as_list(value: Any) -> list[Any]:
 
 def build_request(case: dict[str, Any]) -> AssistantStepRequest:
     """사례의 말은 글만 적고, 순번과 상태 기본값은 여기서 채운다."""
-    context = {"confirmed_cards": 3, "repos": [], "interests": []} | case.get("context", {})
+    context = {"confirmed_cards": 3, "repos": [], "cards": [], "letters": [], "interests": []} | case.get("context", {})
     return AssistantStepRequest.model_validate({
         "messages": [{"seq": index, "text": text} for index, text in enumerate(case["messages"], start=1)],
         "steps": case.get("steps", []),
@@ -138,7 +138,8 @@ def short(answer: Optional[dict[str, Any]]) -> str:
     if answer is None:
         return "-"
     detail = answer["tool"] or answer["ask_kind"] or ""
-    return f"{answer['action']}{'/' + detail if detail else ''}"
+    ref = answer.get("posting_ref") or answer.get("repo_ref") or answer.get("card_ref") or answer.get("letter_ref")
+    return f"{answer['action']}{'/' + detail if detail else ''}{'(' + ref + ')' if ref else ''}"
 
 
 async def run_case(inner: Any, case: dict[str, Any], run_index: int) -> dict[str, Any]:
@@ -176,7 +177,7 @@ def render_table(entries: list[dict[str, Any]]) -> str:
     lines = ["| 사례 | 기대 | 모델 첫 답 | 최종 | 맞음 | 시간(초) |", "|---|---|---|---|---|---|"]
     for entry in entries:
         expect = entry["expect"]
-        wanted = "/".join(str(item) for key in ("action", "tool", "ask_kind", "posting_ref", "repo_ref")
+        wanted = "/".join(str(item) for key in ("action", "tool", "ask_kind", "posting_ref", "repo_ref", "card_ref", "letter_ref")
                           for item in _as_list(expect.get(key, [])))
         called = "(LLM 안 부름)" if entry["calls"] == 0 else short(entry["model_first"])
         final = entry["error"] or short(entry["final"])

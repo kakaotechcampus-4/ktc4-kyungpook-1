@@ -12,6 +12,7 @@ import { ITEM_LABEL, THEME_LABEL } from '@/lib/coverLetterCopy';
 import { splitSentences } from '@/lib/draftPaper';
 import { blanksIn } from '@/lib/draftText';
 import { useReducedMotion } from '@/lib/useLiveText';
+import { SuggestionBox } from './SuggestionBox';
 
 /** 답으로 다시 쓴 글은 '다시 쓰는 중'을 이만큼 보인 뒤 종이에 넣는다 — 요청은 하나라 기다림을 두 단계로 나눠 보인다 */
 export const FILL_REVEAL_MS = 600;
@@ -228,6 +229,7 @@ export function FillTab({ letter, activeId, texts, onText, talk, onTalked, onSho
   if (turns.length === 0 && !busy && !firstQ) {
     return (
       <>
+        <SuggestionBox key={active.id} letter={letter} question={active} onText={onText} />
         <p className="clp-lead">{letter.questions.some(hasBlank) ? '비어 있는 곳을 한 번에 하나씩 물어봐요' : '빈 곳이 없어요. 더 다듬고 싶은 문항이 있으면 얘기해 주세요.'}</p>
         {failure && <p className="clp-note clp-note--error" role="alert">{failure.message} {retryButton}</p>}
         <Button size="xl" className="clp-block" onClick={() => start(active.id)}>Q{active.seq} 얘기하기</Button>
@@ -236,6 +238,8 @@ export function FillTab({ letter, activeId, texts, onText, talk, onTalked, onSho
   }
   return (
     <div className="clp-chat">
+      {/* 중심 카드가 없는 문항을 열었을 때만 — 대화보다 위에 둔다 */}
+      <SuggestionBox key={active.id} letter={letter} question={active} onText={onText} />
       <div className="chat-thread" ref={threadRef}>
         {turns.map(bubble)}
         {sending && <Bubble side="me" enter>{sending}</Bubble>}

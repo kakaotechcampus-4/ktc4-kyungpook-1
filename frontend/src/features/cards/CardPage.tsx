@@ -305,7 +305,11 @@ export function CardPage() {
           : reviewFields.length > 0 && <Button size="lg" title={interviewActionLabel} onClick={() => ask(reviewFields[0])}>답변하기</Button>}
       </StickyFooter>
 
-      {sp.get('confirm') === '1' && <ConfirmDialog card={card} onClose={close} onConfirmed={() => nav(cardFolderPath(card), { replace: true, state: { confirmed: card.id } })} />}
+      {sp.get('confirm') === '1' && <ConfirmDialog card={card} onClose={close} onConfirmed={() => {
+        const returnTo = (location.state as { returnTo?: unknown } | null)?.returnTo;
+        if (typeof returnTo === 'string') nav(returnTo, { replace: true });
+        else nav(cardFolderPath(card), { replace: true, state: { confirmed: card.id } });
+      }} />}
       {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
       {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
       {metadataDialog}

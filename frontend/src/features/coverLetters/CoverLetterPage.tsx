@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Briefcase, PenLine } from 'lucide-react';
-import { useCoverLetter, useRetryCoverLetter, useStartAsking, useStartDrafting, type CoverLetter, type CoverLetterPosting } from '@/api/coverLetters';
+import { useCoverLetter, useRetryCoverLetter, useRewriteQuestion, useStartAsking, useStartDrafting, type CoverLetter, type CoverLetterPosting } from '@/api/coverLetters';
 import { errorView } from '@/api/errorView';
 import { Breadcrumb, Button, ButtonLink, Note, PageTitle, Skeleton, buttonClass } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
@@ -43,6 +43,30 @@ function useContinue(id: string, letter: CoverLetter | undefined): Failure | nul
   return step?.isError ? { error: step.error, retry: send } : null;
 }
 
+/**
+ * 카드를 확인하고 돌아온 길(?useCard=&question=) — 그 문항을 그 카드로 한 번만 다시 쓰고 주소의 표시를 지운다.
+ * 다시 쓰는 동안은 returning 이 true 라서 화면이 옛 글로 편집기를 먼저 열지 않고, 다시 쓰지 못했으면 failed 로 한 줄 알린다.
+ */
+function useReturnRewrite(id: string, letter: CoverLetter | undefined): { returning: boolean; failed: boolean } {
+  const [sp, setSp] = useSearchParams();
+  const rewrite = useRewriteQuestion(id);
+  const sent = useRef(false);
+  const [failed, setFailed] = useState(false);
+  const cardId = sp.get('useCard');
+  const questionId = sp.get('question');
+  const want = !!cardId && !!questionId;
+  useEffect(() => {
+    if (!want || letter?.stage !== 'DRAFTED' || sent.current) return;
+    sent.current = true;
+    rewrite.mutate({ questionId, cardId }, {
+      onSuccess: (r) => { if (r.rewriteFailed) setFailed(true); },
+      onError: () => setFailed(true),
+      onSettled: () => setSp({}, { replace: true }),
+    });
+  }, [want, letter?.stage]);
+  return { returning: want, failed };
+}
+
 /** 자소서 한 편 — 응답의 stage 가 화면을 정한다. 카드 고르기와 재료 확인이 끝난 단계에서도 멈추지 않고 다음 기다림 화면을 보인다 */
 export function CoverLetterPage() {
   const { coverLetterId = '' } = useParams();
@@ -50,6 +74,7 @@ export function CoverLetterPage() {
   const letter = useCoverLetter(coverLetterId);
   const l = letter.data;
   const failure = useContinue(coverLetterId, l);
+  const { returning, failed: returnFailed } = useReturnRewrite(coverLetterId, l);
   useDocumentTitle(l ? `${l.jobRole} 자소서` : '자소서');
   const crumbs = [{ label: '홈', to: '/' }, { label: '자소서', to: '/cover-letters' }, { label: l?.jobRole ?? '…' }];
 
@@ -80,7 +105,9 @@ export function CoverLetterPage() {
       {l.stage === 'FAILED' && <Failed letter={l} />}
       {(l.stage === 'ASSIGNED' || l.stage === 'ASKING') && <AskWait letter={l} failure={failure} />}
       {(l.stage === 'ASKED' || l.stage === 'DRAFTING') && <DraftWait letter={l} failure={failure} />}
-      {l.stage === 'DRAFTED' && <DraftEditor key={l.id} letter={l} />}
+      {l.stage === 'DRAFTED' && returning && <PageTitle sub={<WaitNote />}>고른 카드로 다시 쓰고 있어요</PageTitle>}
+      {l.stage === 'DRAFTED' && !returning && returnFailed && <Note strong="고른 카드로 다시 쓰지 못했어요" tone="danger">글은 그대로예요. 대화 탭의 제안에서 다시 고를 수 있어요.</Note>}
+      {l.stage === 'DRAFTED' && !returning && <DraftEditor key={l.id} letter={l} />}
     </main>
   );
 }

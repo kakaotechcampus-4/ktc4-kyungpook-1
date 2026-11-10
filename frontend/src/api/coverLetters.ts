@@ -95,6 +95,15 @@ const QuestionPolish = z.object({
 });
 export type QuestionPolish = z.infer<typeof QuestionPolish>;
 
+/** 중심 카드가 없는 문항에 AI 가 내놓은 쓸거리(#938) — 모양이 다른 하나는 그것만 버리고, 아직 묻지 않았으면 null */
+export const SUGGESTION_SOURCES = ['CARD', 'CANDIDATE'] as const;
+const Suggestion = z.object({ source: z.enum(SUGGESTION_SOURCES), id: z.string(), title: z.string(), angle: z.string(), repoId: nullable(z.string()) });
+export type Suggestion = z.infer<typeof Suggestion>;
+const suggestions = z.unknown().transform((v): Suggestion[] | null => {
+  if (v == null) return null;
+  return Array.isArray(v) ? v.flatMap((x) => { const r = Suggestion.safeParse(x); return r.success ? [r.data] : []; }) : [];
+});
+
 const Question = z.object({
   id: z.string(),
   seq: z.number(),
@@ -118,6 +127,7 @@ const Question = z.object({
   polish: nullable(QuestionPolish),
   /** 첨삭을 적용한 횟수 — 0 이면 아직 AI 원본 그대로의 판이다 */
   polishAppliedCount: z.number().nullish().catch(null).transform((v) => v ?? 0),
+  suggestions,
 });
 export type CoverLetterQuestion = z.infer<typeof Question>;
 
@@ -238,11 +248,15 @@ export const coverLetterApi = {
     api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/polish`, { method: 'DELETE' }),
   remove: (id: string) => api(z.object({ ok: z.boolean() }), `/cover-letters/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   turns: (id: string) => api(TurnsResponse, `/cover-letters/${encodeURIComponent(id)}/turns`),
+  /** 처음 열 때는 서버가 쓸 만한 카드 제안(20초)과 여는 말(20초)을 차례로 받아 기본 30초로는 모자랄 수 있다 */
   openTurn: (id: string, questionId: string) =>
-    api(TurnReply, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/turns/open`, { method: 'POST' }),
+    api(TurnReply, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/turns/open`, { method: 'POST', timeoutMs: 60_000 }),
   /** 답이 충분하면 서버가 그 문항을 다시 쓴 뒤에 답한다 — 수십 초가 걸릴 수 있어 첨삭과 같은 100초를 준다 */
   replyTurn: (id: string, questionId: string, text: string) =>
     api(TurnReply, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/turns`, { method: 'POST', body: { text }, timeoutMs: 150_000 }),
+  /** 고른 확정 카드로 그 문항 하나를 처음부터 다시 쓴다 — AI 가 쓰는 동안 기다린다 */
+  rewriteQuestion: (id: string, questionId: string, cardId: string) =>
+    api(TurnReply, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/rewrite`, { method: 'POST', body: { cardId }, timeoutMs: 150_000 }),
   skipTurn: (id: string, questionId: string) =>
     api(TurnReply, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/turns/skip`, { method: 'POST' }),
 };
@@ -355,3 +369,5 @@ export const useOpenTurn = (id: string) => useTurnMutation(id, ({ questionId }: 
 export const useReplyTurn = (id: string) =>
   useTurnMutation(id, ({ questionId, text }: { questionId: string; text: string }) => coverLetterApi.replyTurn(id, questionId, text));
 export const useSkipTurn = (id: string) => useTurnMutation(id, ({ questionId }: { questionId: string }) => coverLetterApi.skipTurn(id, questionId));
+export const useRewriteQuestion = (id: string) =>
+  useTurnMutation(id, ({ questionId, cardId }: { questionId: string; cardId: string }) => coverLetterApi.rewriteQuestion(id, questionId, cardId));

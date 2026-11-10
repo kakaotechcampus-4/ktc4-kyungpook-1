@@ -101,6 +101,7 @@ export function CoverLetterPage() {
       </div>
       <Stepper current={flowStep(l.stage, l.failedStep)} />
       {l.posting && <PostingLine posting={l.posting} />}
+      {l.defaultQuestions && l.stage !== 'FAILED' && <p className="cl-wait-note">자주 나오는 문항으로 썼어요 · 실제 문항이 있으면 문항 고치기로 바꿔 주세요</p>}
       {l.stage === 'ASSIGNING' && <AssignWait letter={l} />}
       {l.stage === 'FAILED' && <Failed letter={l} />}
       {(l.stage === 'ASSIGNED' || l.stage === 'ASKING') && <AskWait letter={l} failure={failure} />}

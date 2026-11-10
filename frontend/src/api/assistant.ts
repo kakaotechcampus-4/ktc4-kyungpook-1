@@ -63,6 +63,7 @@ export const AssistantItem = z.object({
   polished: z.array(z.object({ seq: z.number(), points: z.number() })).default([]),
   remainingQuestions: nullish(z.number()),
   questionCount: nullish(z.number()),
+  defaultQuestions: nullish(z.boolean()),
   coverLetterId: nullish(z.string()),
   repoId: nullish(z.string()),
   repoName: nullish(z.string()),

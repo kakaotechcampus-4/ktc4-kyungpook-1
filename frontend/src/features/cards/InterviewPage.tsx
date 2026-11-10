@@ -19,7 +19,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { useReducedMotion } from '@/lib/useLiveText';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges';
-import { cardFolderPath, folderPath } from '@/lib/cardFolders';
+import { cardFolderPath, folderPath, returnToOf } from '@/lib/cardFolders';
 import { StarRow } from '@/components/ui/StarRow';
 import { UnsavedChangesDialog } from '@/components/SaveStatus';
 import { AiJudgement, AiLive } from './AiJudgement';
@@ -38,6 +38,7 @@ export function InterviewPage() {
   const [sp] = useSearchParams();
   const location = useLocation();
   const nav = useNavigate();
+  const returnTo = returnToOf(location.state);
   const { card: q } = useCard(cardId);
   const turns = useInterview(cardId);
   const ask = useAskInterview(cardId);
@@ -336,7 +337,7 @@ export function InterviewPage() {
               )}
               <div className="row" style={{ gap: 8 }}>
                 {settledHere
-                  ? <Button onClick={() => nav(cardFolderPath(card), { state: { confirmed: cardId } })}>폴더로 돌아가기</Button>
+                  ? <Button onClick={() => (returnTo ? nav(returnTo) : nav(cardFolderPath(card), { state: { confirmed: cardId } }))}>{returnTo ? '공고로 돌아가기' : '폴더로 돌아가기'}</Button>
                   : confirmed
                   ? <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드로 돌아가기</Button>
                   : ended || capReached

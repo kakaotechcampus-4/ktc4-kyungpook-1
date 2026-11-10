@@ -23,7 +23,6 @@ ai/evals/model_endpoints.json
 # 원본 결과는 올리지 않고, 하니스가 쓴 요약(history)과 기존 latest 만 올린다.
 ai/evals/results/*
 !ai/evals/results/history/
-!ai/evals/results/latest/
 ai/evals/fixtures/generated/
 *.pem
 *.key

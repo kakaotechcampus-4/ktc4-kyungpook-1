@@ -233,7 +233,7 @@ def install() -> None:
 
 
 HISTORY_DIR = _EVALS_ROOT / "results" / "history"
-BACKFILL_NOTE = "원본 결과 파일에서 뒤늦게 만든 요약 — date 는 원본 파일 시각, git_sha 는 요약을 만든 때의 커밋"
+BACKFILL_NOTE = "원본 결과 파일에서 뒤늦게 만든 요약 — date 는 원본 파일 시각, git_sha 는 알 수 없어 비움"
 _MAX_TEXT = 200
 
 
@@ -249,7 +249,8 @@ def _clean(value):
         try:
             from services.secret_redaction import mask_emails, redact_secrets
         except ImportError:
-            return value
+            # 가림 도구가 없는 채로 글을 그대로 쓰면 비밀값이 샐 수 있어 글을 버린다
+            return None
         return mask_emails(redact_secrets(value))
     if isinstance(value, (list, tuple)):
         return [item for item in map(_clean, value) if item is not None]

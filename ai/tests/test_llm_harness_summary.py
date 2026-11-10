@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from datetime import datetime
 
 import pytest
@@ -99,3 +100,10 @@ def test_interview_asks_보고는_요약_파일을_남긴다(history, tmp_path, 
     body = read(written[0])
     assert body["metrics"]["all"]["cards"] == 1 and body["metrics"]["all"]["asked_again"] == 0
     assert body["calls"] == 1 and body["spend_won"] == 1.5
+
+
+def test_가림_도구를_못_불러오면_글은_버리고_숫자만_남긴다(history, monkeypatch):
+    monkeypatch.setitem(sys.modules, "services.secret_redaction", None)
+    path = llm_harness.record_summary("demo", "after", {"ratio": 0.5, "label": "sk-abcdefghijklmnop"})
+    metrics = json.loads(path.read_text(encoding="utf-8"))["metrics"]
+    assert metrics == {"ratio": 0.5}

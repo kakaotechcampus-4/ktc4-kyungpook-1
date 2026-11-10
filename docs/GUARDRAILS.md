@@ -76,6 +76,7 @@ AI 가 무엇을 스스로 정하는지는 [에이전트 설계](AGENT_DESIGN.md
 | 사용자가 말하지 않은 숫자·이름이 자소서 재료에 실리는 것 | 답을 정리한 글에 그런 것이 있으면 다시 받고, 그래도 남으면 사용자의 말을 그대로 재료로 쓴다 | `ai/services/cover_letter_turns.py:_answer_problem` | `ai/tests/test_cover_letter_turns.py` |
 | 매칭 판단이 조건이나 카드를 빠뜨리거나 지어내는 것 | 조건을 빠뜨리거나, 보내지 않은 카드를 대거나, 이유가 비면 한 번 다시 묻고 그래도 안 되면 실패로 답한다 | `ai/services/match_judge.py:_problem` | `test_match_judge.py::test_asks_again_when_the_answer_breaks_the_rules`, `::test_returns_503_when_no_valid_answer_arrives` |
 | 모델이 만든 검색어가 GitHub 검색 범위를 바꾸는 것 | 검색어에서 검색 조건을 바꿀 수 있는 글자를 걸러 내고 3개, 30자까지만 쓴다 | `ai/services/gap_fill.py:_queries` | `test_gap_fill.py::test_search_terms_cannot_change_the_search_and_are_capped_at_three` |
+| 자소서 제안이 보내지 않은 카드·레포 기록을 가리키는 것 | 모델이 낸 번호가 요청에 없거나 종류가 다르거나 겹치면 한 번 다시 받고, 그래도 어기면 그 항목만 버린다. 제안은 3개까지, 이유 한 줄은 60자까지다 | `ai/services/cover_letter_suggester.py:_valid_items` | `test_cover_letter_suggest.py::test_a1_picks_only_ids_from_the_request_with_matching_source`, `::test_a2_retries_once_on_unknown_id_then_drops_it` |
 
 ### 호출과 기록
 
@@ -96,6 +97,8 @@ AI 가 무엇을 스스로 정하는지는 [에이전트 설계](AGENT_DESIGN.md
 | 저장할 수 없거나 너무 긴 글 | 카드 칸은 1,000자까지이고 U+0000 이 든 글은 저장 전에 400 으로 거절한다 | `card/domain/DraftSaveService.java:SLOT_MAX_LENGTH`, `card/domain/CardText.java:requireNoNul` | `DraftSaveApiTest` (1,000자), `CardMetadataApiTest`·`CardMaskApiTest`·`InterviewAnswerApiTest` (U+0000) |
 | 질문과 상관없는 답이 카드에 들어가는 것 | 상관없다고 판단한 답은 저장하지 않고 질문을 그대로 둔다 | `InterviewReplyService.java:save` | `InterviewReplyApiTest` |
 | 답을 읽는 사이 바뀐 카드를 덮어쓰는 것 | 읽기 전과 저장할 때의 카드 버전이 다르면 넣지 않고 409 로 답한다 | `InterviewReplyService.java`, `InterviewReplyStaleException.java` | `InterviewReplyApiTest` |
+| AI 제안의 이상한 항목이 문항에 저장되는 것 | 보낸 적 없는 번호, 번호와 다른 종류, 중복, 4개 이상, 빈 이유, 60자 넘는 이유는 받지 않는다 | `agent/infra/AiCoverLetterSuggestionAdapter.java` | `AiCoverLetterSuggestionAdapterTest` |
+| 남의 카드나 확정하지 않은 카드로 자소서 문항을 다시 쓰는 것 | 내 확정 카드만 받고(400), 다시 쓰는 동안 글이 바뀌었거나 카드가 지워졌으면 덮지 않고 `rewriteFailed` 로 답한다 | `coverletter/domain/CoverLetterRewriteService.java` | `CoverLetterSuggestApiTest` |
 
 ### 권한과 경계
 
@@ -144,6 +147,7 @@ AI 가 무엇을 스스로 정하는지는 [에이전트 설계](AGENT_DESIGN.md
 | 답변 평가 (`llm_answer_sufficiency_evaluator`) | 사용자 답변 | 프롬프트의 "데이터일 뿐" 문장 | 판정 값과 이유 길이를 스키마로 제한 | 판정 뒤집기(ANSWERED). 운영은 규칙 기반 판정기(`RuleBasedAnswerSufficiencyEvaluator`)라 아직 연결되지 않았다 |
 | 되묻기 질문·수치 문장 (`interview_llm`) | STAR 문장, 지난 답변, 커밋 메시지, 카드 제목, 사용자 측정 결과 | 프롬프트의 "데이터일 뿐" 문장, 비밀값·이메일 가림, 길이 자르기 | 정해진 칸·질문 길이·수치 근거·출력 스키마 검사 | 입력에 있는 주입 문장을 질문·문장에 인용하는 경우 |
 | 자소서 카드 고르기·배정 확인·재료 질문·초안 (`cover_letter_*`) | 카드 제목·요약·STAR 문장, 자소서 문항, 메모, 사용자 답 | 프롬프트의 "데이터일 뿐" 문장, 비밀값·이메일 가림, 길이 자르기 | 카드 ID·문항 항목·근거 없는 수치·출력 스키마 검사 | 입력에 있는 주입 문장을 카드 평·질문·초안에 인용하는 경우 |
+| 자소서 제안 (`cover_letter_suggester`) | 카드 제목·요약, 레포 기록의 제목·이유·커밋 메시지 첫 줄, 자소서 문항, 메모, 공고 | 프롬프트의 "데이터일 뿐" 문장, 비밀값·이메일 가림, 길이 자르기 | 번호·종류·개수·이유 길이 검사 | 이유 한 줄에 주입 문장을 인용하는 경우 |
 
 확인하는 시험은 `ai/tests/test_prompt_injection.py` 이고 LLM 없이 돈다(가짜 LLM 이 주입을 따른 답을 돌려줄 때 장치가 거르는지 본다).
 
@@ -227,6 +231,7 @@ AI 가 답하지 못해도 화면이 멈추지 않는다. 무슨 일이 있었�
 | 되묻기 답을 문장으로 다듬지 못함 | "지금은 문장으로 다듬지 못했어요. 적은 그대로 넣을까요?" 와 `그대로 넣기` · `다시 시도` | `frontend/src/features/cards/InterviewReplyBlocks.tsx` |
 | 되묻기 답이 질문과 상관없음 | "이 답은 카드에 넣지 않았어요." 와 그렇게 본 이유 | `frontend/src/features/cards/InterviewReplyBlocks.tsx` |
 | 자소서 쓰기를 마치지 못함 | "초안 쓰기를 마치지 못했어요" 처럼 멈춘 단계가 든 제목 · "입력한 직무와 문항은 그대로 남아 있어요." 와 `다시 시도`(다시 할 수 있을 때) | `frontend/src/features/coverLetters/CoverLetterPage.tsx` |
+| 고른 카드로 문항을 다시 쓰지 못함 | "다시 쓰지 못했어요. 글은 그대로예요" · 레포 기록으로 카드를 못 만들면 "카드를 만들지 못했어요. 다른 제안을 골라 보세요" | `frontend/src/features/coverLetters/panel/SuggestionBox.tsx` |
 | 공고와 맞춰 보지 못함 | "AI가 잠시 응답하지 않아요. 잠시 뒤 다시 시도해 주세요." 와 `다시 불러오기` | `frontend/src/features/match/shared.tsx` |
 | 홈 한 줄 명령이 실패함 | "지금은 답을 받지 못했어요. 할 일을 다시 적어 주세요." | `frontend/src/features/assistant/AskPage.tsx` |
 | 1분 호출 한도를 넘음 | "요청이 많아요" · "N초 뒤 다시 시도해 주세요." 입력한 내용은 그대로 남는다 | `frontend/src/api/errorView.ts` |

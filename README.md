@@ -16,23 +16,23 @@
 
 ---
 
-## 시연 영상
+## 🎬 시연 영상
 
 https://github.com/user-attachments/assets/7c769b51-049e-4cbc-aecd-0da89dfcb1f6
 
 저장소를 고르고 경험 카드가 써지는 것부터 맞는 공고와 자소서 초안까지, 실제 서비스 화면으로 담았습니다.
 
-## 목차
+## 📑 목차
 
-- 🧭 **[한눈에 보기](#한눈에-보기)** — 무엇을 해결하는지, 네 걸음 흐름
-- 🖥️ **[주요 기능과 화면](#주요-기능과-화면)** — 기능 5개와 움직이는 화면
-- 🧠 **[AI는 어디까지 맡기나](#ai는-어디까지-맡기나)** — AI 가 정하는 곳과 상한, 숫자로 확인한 것
-- 🏗️ **[서비스 구성](#서비스-구성)** — 아키텍처, AI 흐름, 기술 스택
-- ✅ **[품질과 자동화](#품질과-자동화)** — 시험 층, CI 와 배포
-- 🚀 **[직접 실행하기](#직접-실행하기)** — 파트별 실행 · 검증 문서
-- 👥 **[팀 소개](#팀-소개)** · 📚 **[개발 문서](#개발-문서)**
+- **[한눈에 보기](#-한눈에-보기)** — 무엇을 해결하는지, 네 걸음 흐름
+- **[주요 기능과 화면](#-주요-기능과-화면)** — 기능 5개와 움직이는 화면
+- **[AI는 어디까지 맡기나](#-ai는-어디까지-맡기나)** — AI 가 정하는 곳과 상한, 숫자로 확인한 것
+- **[서비스 구성](#-서비스-구성)** — 아키텍처, AI 흐름, 기술 스택
+- **[품질과 자동화](#-품질과-자동화)** — 시험 층, CI 와 배포
+- **[직접 실행하기](#-직접-실행하기)** — 파트별 실행 · 검증 문서
+- **[팀 소개](#-팀-소개)** · **[개발 문서](#-개발-문서)**
 
-## 한눈에 보기
+## 🧭 한눈에 보기
 
 커밋은 쌓였지만, 자소서 앞에서는 내가 어떤 문제를 풀었는지 다시 찾아야 합니다.
 Gitory는 **개발자 취업 준비생이 GitHub 기록에서 자신의 기여를 찾고, 지원에 쓸 경험으로 정리하는 서비스**입니다.
@@ -56,7 +56,7 @@ Gitory는 **개발자 취업 준비생이 GitHub 기록에서 자신의 기여�
   <img src="./docs/images/readme/flow.png" width="100%" alt="GitHub 기록이 지원서가 되기까지 네 걸음. 1 저장소 고르기, 2 경험 카드(조건이 맞으면 스스로 확정, 확인할 칸이 남으면 AI가 먼저 묻기), 3 공고 매칭(부족한 조건은 저장소에서 더 찾기), 4 자소서(확정 카드가 그대로 재료). AI는 고르고, 코드가 검사하고, 사용자는 확인할 칸만 봅니다" />
 </p>
 
-## 주요 기능과 화면
+## 💻 주요 기능과 화면
 
 아래 정지 화면은 **2026년 11월 9일 [운영 서비스](https://gitory.duckdns.org/)에서 직접 캡처**했습니다.
 공개 저장소의 개발 기록으로 만든 경험 카드와 당시의 공고·자소서 초안입니다. 수치·마감일은 캡처 시점의 값이며, 이미지를 누르면 원본을 볼 수 있습니다.
@@ -157,7 +157,7 @@ AI가 일하는 동안 화면이 멈춰 있지 않습니다. 읽는 기록, 써�
 - **기업별 공고 모아 보기** — 한 기업의 공고를 모아 보고, 목록의 검색·직무 조건을 그대로 이어 적용합니다.
 - **관심 분야와 메일 알림** — 인적사항은 관심 분야만 받아 공고를 고르는 데 쓰고, 메일 수신을 켜면 새 공고 메일을 받습니다.
 
-## AI는 어디까지 맡기나
+## 🧠 AI는 어디까지 맡기나
 
 Gitory의 AI는 **고르기만 합니다.** 근거와 수치는 코드가 검사하고, 실행과 저장은 서버가 하며, 확인할 칸이 남은 카드는 확정하지 않습니다.
 그 안에서 AI는 다음 일을 스스로 정합니다.
@@ -186,7 +186,7 @@ Gitory의 AI는 **고르기만 합니다.** 근거와 수치는 코드가 검사
 
 판단의 갈래와 상한은 [에이전트 설계](./docs/AGENT_DESIGN.md), 막는 장치와 그 시험은 [가드레일](./docs/GUARDRAILS.md), 잰 숫자는 [AI 품질 평가 결과](./ai/evals/RESULTS.md)에 있습니다.
 
-## 근거를 남기는 방식
+## 🔍 근거를 남기는 방식
 
 | 구분 | 맡은 일 |
 | --- | --- |
@@ -198,7 +198,7 @@ Gitory의 AI는 **고르기만 합니다.** 근거와 수치는 코드가 검사
 - **기록에 없는 내용은 확인을 요청합니다.** 빈칸과 확인 필요 표시를 질문·편집으로 보완합니다.
 - **수집 범위와 실패 상태를 드러냅니다.** 부분 수집, 후보 없음, 분석 실패를 구분하고 다음 행동을 안내합니다.
 
-## 서비스 구성
+## 🧱 서비스 구성
 
 ### 시스템 아키텍처
 
@@ -228,7 +228,7 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
 | **Infra** | ![AWS EC2](https://img.shields.io/badge/AWS_EC2-FF9900?style=for-the-badge&logo=amazonec2&logoColor=232F3E) ![Docker Compose](https://img.shields.io/badge/Docker_Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white) ![Caddy](https://img.shields.io/badge/Caddy-1F88C0?style=for-the-badge&logo=caddy&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white) ![CloudWatch](https://img.shields.io/badge/CloudWatch-FF4F8B?style=for-the-badge&logo=amazoncloudwatch&logoColor=white) |
 | **Test** | ![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white) ![Playwright](https://img.shields.io/badge/Playwright-2EAD33?style=for-the-badge) ![JUnit 5](https://img.shields.io/badge/JUnit_5-25A162?style=for-the-badge&logo=junit5&logoColor=white) ![Testcontainers](https://img.shields.io/badge/Testcontainers-2B2B2B?style=for-the-badge) ![ArchUnit](https://img.shields.io/badge/ArchUnit-3A3A41?style=for-the-badge) ![pytest](https://img.shields.io/badge/pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white) |
 
-## 품질과 자동화
+## ✅ 품질과 자동화
 
 | 층 | 무엇을 지키나 | 어디에 |
 | --- | --- | --- |
@@ -251,7 +251,7 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
   <img src="./docs/images/readme/deploy.png" width="100%" alt="PR에서 서버까지. 1 PR, 2 CI 4개, 3 develop 머지, 4 배포 게이트(그 커밋의 CI 4개가 모두 초록인지 확인), 5 EC2 배포. 확인에 실패하면 직전 커밋으로 자동 롤백" />
 </p>
 
-## 직접 실행하기
+## 🚀 직접 실행하기
 
 운영 서비스는 [gitory.duckdns.org](https://gitory.duckdns.org/)에서 바로 쓸 수 있고, 로그인 없이 [샘플 데이터로 둘러보기](https://gitory.duckdns.org/login)도 됩니다. 직접 띄우거나 검증하려면 파트별 문서를 따라가면 됩니다.
 
@@ -263,7 +263,7 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
 | Spring Boot–FastAPI 연결 · 환경변수 | [BE–AI 연결 가이드](./docs/BE_AI_INTEGRATION.md) |
 | Docker Compose 배포 · 롤백 · 로그 · 백업 | [배포 가이드](./docs/DEPLOYMENT.md) |
 
-## 팀 소개
+## 👥 팀 소개
 
 **카카오테크 캠퍼스 4기 경북대 1팀**이 기획부터 개발·배포까지 함께 만드는 프로젝트입니다.
 
@@ -298,7 +298,7 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
 
 [프로젝트 기여 내역 보기](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/graphs/contributors)
 
-## 개발 문서
+## 📚 개발 문서
 
 | 알고 싶은 내용 | 문서 |
 | --- | --- |

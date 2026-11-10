@@ -421,6 +421,37 @@ class InterviewAskServiceTest {
 
     }
 
+    @Test
+    @DisplayName("서버가 먼저 만드는 첫 질문은 사용자의 질문 받기 호출 제한을 쓰지 않고 초안 Job 이 도는 중에도 저장된다")
+    void firstQuestionByServerSkipsRateLimitAndGeneratingCheck() {
+
+        UserRateLimiter limiter = mock(UserRateLimiter.class);
+        when(port.nextQuestion(request)).thenReturn(question(InterviewStarSlot.S));
+
+        InterviewTurnView view = service(8, limiter).askFirst(PUBLIC_ID, USER_ID);
+
+        assertThat(view.question()).isEqualTo("묻는 글");
+        verifyNoInteractions(limiter);
+        verifyNoInteractions(generation);
+        verify(turns).save(any(InterviewTurn.class));
+
+    }
+
+    @Test
+    @DisplayName("서버가 먼저 묻는데 AI 가 끝내자고 하면 질문도 끝낸 이유도 저장하지 않고 null 을 돌려준다")
+    void firstQuestionByServerSavesNothingWhenAiEnds() {
+
+        when(port.nextQuestion(request)).thenReturn(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null,
+                null, null, null, List.of(), null, List.of()));
+
+        InterviewTurnView view = service(8).askFirst(PUBLIC_ID, USER_ID);
+
+        assertThat(view).isNull();
+        verify(turns, never()).save(any(InterviewTurn.class));
+        verify(ownership, never()).lockOwned(any(), any(), any());
+
+    }
+
     private static VersionSlots filled(StarField... slots) {
 
         Map<StarField, SlotContent> contents = new EnumMap<>(StarField.class);
@@ -468,8 +499,14 @@ class InterviewAskServiceTest {
 
     private InterviewAskService service(int maxTurns) {
 
+        return service(maxTurns, mock(UserRateLimiter.class));
+
+    }
+
+    private InterviewAskService service(int maxTurns, UserRateLimiter limiter) {
+
         return new InterviewAskService(ownership, generation, turns, candidates, assembler, port, new InterviewLimits(maxTurns),
-                transactionManager, mock(UserRateLimiter.class), reader, themeSuggester);
+                transactionManager, limiter, reader, themeSuggester);
 
     }
 }

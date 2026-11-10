@@ -1,9 +1,11 @@
 package com.gitory.backend.card.domain;
 
 import com.gitory.backend.audit.domain.AuditAction;
+import com.gitory.backend.card.domain.interview.InterviewTurn;
 import com.gitory.backend.card.infra.CardSlotNoteRepository;
 import com.gitory.backend.card.infra.CardStatementRepository;
 import com.gitory.backend.card.infra.CardVersionRepository;
+import com.gitory.backend.card.infra.InterviewTurnRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,12 +33,15 @@ public class DraftSaveService {
     private final CardVersionReader reader;
     private final CardVersionWriter writer;
     private final CardThemeSuggester themeSuggester;
+    private final InterviewTurnRepository turns;
 
     @Transactional
     public SavedDraft save(UUID publicId, Long userId, Map<StarField, String> texts) {
 
         Card card = ownership.lockOwned(publicId, userId, AuditAction.EDIT_CARD);
         Map<StarField, String> sent = checkedTexts(texts);
+
+        skipOpenTurnsOfFilledSlots(card.getId(), sent);
 
         CardVersion current = versions.findByCardIdAndVersionNo(card.getId(), card.getCurrentVersion()).orElseThrow();
         VersionSlots currentSlots = reader.read(card.getId(), current.getVersionNo());
@@ -55,6 +60,17 @@ public class DraftSaveService {
         themeSuggester.settle(card, reader.read(card.getId(), next.getVersionNo()));
 
         return new SavedDraft(card.getPublicId(), next.getVersionNo(), sent, next.getUpdatedAt());
+
+    }
+
+    // 손으로 채운 칸을 묻는 질문이 열려 있으면 이미 답한 칸을 다시 묻지 않도록 넘긴 것으로 닫는다
+    private void skipOpenTurnsOfFilledSlots(Long cardId, Map<StarField, String> sent) {
+
+        for (InterviewTurn turn : turns.findByCardIdOrderBySeqAsc(cardId)) {
+            if (!turn.isClosed() && sent.get(turn.getStarSlot()) != null) {
+                turn.skip();
+            }
+        }
 
     }
 

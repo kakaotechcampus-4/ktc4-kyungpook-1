@@ -24,143 +24,66 @@ https://github.com/user-attachments/assets/7c769b51-049e-4cbc-aecd-0da89dfcb1f6
 
 ## 📑 목차
 
-- **[한눈에 보기](#-한눈에-보기)** — 무엇을 해결하는지, 네 걸음 흐름
-- **[주요 기능과 화면](#-주요-기능과-화면)** — 기능 5개와 움직이는 화면
-- **[AI는 어디까지 맡기나](#-ai는-어디까지-맡기나)** — AI 가 정하는 곳과 상한, 숫자로 확인한 것
-- **[서비스 구성](#-서비스-구성)** — 아키텍처, AI 흐름, 기술 스택
-- **[품질과 자동화](#-품질과-자동화)** — 시험 층, CI 와 배포
-- **[직접 실행하기](#-직접-실행하기)** — 파트별 실행 · 검증 문서
-- **[팀 소개](#-팀-소개)** · **[개발 문서](#-개발-문서)**
+- **[왜 만들었나](#-왜-만들었나)** — 문제와 네 걸음 흐름
+- **[핵심 기능](#-핵심-기능)** — 기능 5개, 움직이는 화면으로
+- **[Agentic AI 설계](#-agentic-ai-설계)** — AI 가 스스로 정하는 것과 넘지 못하는 선
+- **[서비스 구성](#-서비스-구성)** — 아키텍처와 기술 스택
+- **[품질과 배포](#-품질과-배포)** — 시험 층, CI 와 배포
+- **[직접 실행하기](#-직접-실행하기)** · **[팀](#-팀)** · **[개발 문서](#-개발-문서)**
 
-## 🧭 한눈에 보기
+## 🧭 왜 만들었나
 
-커밋은 쌓였지만, 자소서 앞에서는 내가 어떤 문제를 풀었는지 다시 찾아야 합니다.
-Gitory는 **개발자 취업 준비생이 GitHub 기록에서 자신의 기여를 찾고, 지원에 쓸 경험으로 정리하는 서비스**입니다.
-
-| 경험을 찾습니다 | 근거를 확인합니다 | 지원으로 이어갑니다 |
-| :--- | :--- | :--- |
-| 저장소에 흩어진 내 작업을 경험 후보로 묶고, 추천 후보로 STAR 초안을 바로 씁니다. | 문장마다 연결된 커밋을 확인하고, 부족한 맥락은 AI의 질문에 답해 채웁니다. | 확정 카드로 공고 조건을 비교하고, 문항별 자소서 초안을 쓰고 다듬습니다. |
-
-> **STAR**는 상황(Situation) · 과제(Task) · 행동(Action) · 결과(Result)로 경험을 설명하는 방식입니다.
-
-**다른 방법과 무엇이 다른가**
-
-| 흔히 하는 방법 | 어려운 점 | Gitory |
-| --- | --- | --- |
-| 커밋 로그를 챗봇에 붙여 넣고 경험 정리를 부탁 | 남의 커밋이 섞이고, 문장의 근거를 다시 찾아야 함 | 본인 기여만 거르고, 문장마다 근거 커밋을 연결 |
-| 포트폴리오를 손으로 정리 | 시간이 오래 걸리고 빠뜨림 | 저장소를 고르면 후보 묶기부터 STAR 초안까지 이어서 진행 |
-| 공고를 보며 자격 요건을 눈으로 대조 | 내가 뭘 갖췄는지 한눈에 안 보임 | 조건마다 맞음 · 부족 · 직접 확인을 나누고 근거 카드로 연결 |
-| 자소서 첨삭 서비스 | 내 경험을 다시 설명해야 함 | 확정 카드가 그대로 재료가 되고, 빈칸은 대화로 채움 |
+커밋은 쌓였지만 자소서 앞에서는 내가 어떤 문제를 풀었는지 다시 찾아야 합니다.
+Gitory 는 **개발자 취업 준비생이 GitHub 기록에서 자신의 기여를 찾아, 근거가 연결된 경험 카드로 정리하고, 맞는 공고와 자소서까지 이어 가는 서비스**입니다.
 
 <p align="center">
-  <img src="./docs/images/readme/flow.png" width="100%" alt="GitHub 기록이 지원서가 되기까지 네 걸음. 1 저장소 고르기, 2 경험 카드(조건이 맞으면 스스로 확정, 확인할 칸이 남으면 AI가 먼저 묻기), 3 공고 매칭(부족한 조건은 저장소에서 더 찾기), 4 자소서(확정 카드가 그대로 재료). AI는 고르고, 코드가 검사하고, 사용자는 확인할 칸만 봅니다" />
+  <img src="./docs/images/readme/flow.png" width="100%" alt="GitHub 기록이 지원서가 되기까지 네 걸음. 1 저장소 고르기, 2 경험 카드(조건이 맞으면 스스로 확정, 확인할 칸이 남으면 AI가 먼저 묻기), 3 공고 매칭, 4 자소서. AI는 고르고, 코드가 검사하고, 사용자는 확인할 칸만 봅니다" />
 </p>
 
-## 💻 주요 기능과 화면
+## 💻 핵심 기능
 
-아래 정지 화면은 **2026년 11월 9일 [운영 서비스](https://gitory.duckdns.org/)에서 직접 캡처**했습니다.
-공개 저장소의 개발 기록으로 만든 경험 카드와 당시의 공고·자소서 초안입니다. 수치·마감일은 캡처 시점의 값이며, 이미지를 누르면 원본을 볼 수 있습니다.
+아래 화면은 로그인 없이 쓰는 **샘플 데이터**로 찍은 실제 화면입니다.
 
-### 01. 홈에서 다음 할 일 찾기
+### 1. 한 줄로 맡기기
 
-내 카드와 맞는 공고, 조건을 채운 경험, 이어서 볼 자소서를 한곳에서 봅니다.
-입력창에 할 일을 한 문장으로 적으면 AI가 공고 찾기·매칭·자소서 시작 같은 도구를 차례로 실행합니다. 모자란 정보는 되묻고, 끝나면 결과 화면으로 연결합니다.
+홈 입력창에 할 일을 한 문장으로 적으면 AI 가 공고 찾기 · 매칭 · 자소서 시작 같은 도구 7개를 차례로 실행합니다.
+모자란 정보는 되묻고, 끝나면 결과 화면으로 연결합니다.
 
-[![자연어 작업 입력과 내 경험으로 조건을 채운 채용 공고를 보여 주는 Gitory 홈](./docs/images/readme/01-home.png)](./docs/images/readme/01-home.png)
+<p align="center"><img src="./docs/images/readme/gif/home-command.gif?v=20261111c" width="880" alt="홈 입력창에 한 문장을 맡기면 AI 가 도구를 차례로 실행해 결과로 연결하는 화면" /></p>
 
-### 02. 저장소에서 내 경험 고르기
+### 2. 저장소 정리
 
-공개 저장소에서 본인의 커밋·PR·리뷰를 읽고, 함께 한 작업을 경험 후보로 묶습니다.
-읽는 과정은 화면에 그대로 보입니다. 정리가 끝나면 추천 후보로 카드 초안을 바로 쓰고, 다시 정리할 때는 지난 정리 뒤 새로 생긴 기록만 읽습니다.
-후보 보드에서 **한 번에 최대 10개**를 골라 카드로 만들 수도 있고, 코드에 남지 않은 경험은 직접 쓸 수 있습니다.
+공개 저장소에서 본인의 PR · 리뷰 · 커밋만 읽어 같은 일을 한 경험으로 묶고, 추천 이유를 붙입니다.
+읽는 과정이 화면에 그대로 보이고, 끝나면 추천 후보로 카드 초안을 바로 씁니다.
 
-<details>
-<summary><strong>저장소 선택 · 경험 후보 보드 보기</strong></summary>
+<p align="center"><img src="./docs/images/readme/gif/analysis-run.gif?v=20261111c" width="880" alt="레포 정리 화면. 읽은 PR 과 커밋 줄이 차례로 나오고 후보로 묶은 뒤 추천 이유를 붙인다" /></p>
 
-**저장소 선택** — 기여가 많은 저장소, 아직 정리하지 않은 저장소, 이미 정리한 저장소를 구분합니다.
+### 3. 경험 카드
 
-[![본인의 기여 정보와 함께 정리할 공개 저장소를 선택하는 화면](./docs/images/readme/02-repositories.png)](./docs/images/readme/02-repositories.png)
+고른 경험의 코드 변경을 읽어 상황 · 과제 · 행동 · 결과를 근거 커밋과 함께 씁니다. 근거 없는 숫자는 코드가 잡아 다시 씁니다.
+상황과 행동이 차면 스스로 확정되고, 기록만으로 알 수 없는 칸은 AI 가 먼저 묻고 답을 카드 문장으로 다듬어 넣습니다.
 
-**경험 후보 보드** — 읽은 기록의 범위와 부분 결과 여부를 확인하고, 카드로 남길 작업을 고릅니다.
+<p align="center"><img src="./docs/images/readme/gif/card-draft-live.gif?v=20261111c" width="880" alt="카드 초안 화면. 네 칸이 한 글자씩 써지고, 검사에 걸린 결과 칸을 이슈를 열어 본 뒤 다시 쓴다" /></p>
 
-[![추천 경험 후보와 이미 카드로 만든 일을 구분해 보여 주는 후보 보드](./docs/images/readme/03-candidates.png)](./docs/images/readme/03-candidates.png)
+<p align="center"><img src="./docs/images/readme/gif/interview-chat.gif?v=20261111c" width="880" alt="답변하기 화면. 답을 보내면 AI 가 판단 이유와 함께 카드 문장으로 다듬어 넣고 다음 빈칸을 묻는다" /></p>
 
-</details>
+### 4. 공고 매칭
 
-### 03. 근거가 연결된 STAR 카드 완성하기
+수집한 개발 직무 공고를 확정 카드와 견줘 조건마다 **맞음 · 부족 · 직접 확인**을 나누고, 판단의 근거가 된 카드로 연결합니다.
+한 저장소의 카드로 지금 지원할 수 있는 기업을 고르는 과정과 이유도 실시간으로 보여 줍니다.
 
-고른 경험의 코드 변경을 읽어 상황·과제·행동·결과 초안을 씁니다. 각 칸에서 **근거 커밋으로 이동**할 수 있고, 초안을 만든 과정과 작성 이력도 볼 수 있습니다.
-기록만으로 알 수 없는 역할·판단·결과는 AI가 먼저 묻습니다. 질문마다 그 질문에 맞는 답변 예시가 붙고, 답하면 그 칸이 채워집니다.
-상황과 행동이 찬 카드는 스스로 확정되고, 확인할 칸이 남은 카드만 직접 보고 확정합니다.
+<p align="center"><img src="./docs/images/readme/gif/repo-match-pick.gif?v=20261111c" width="880" alt="한 저장소의 카드로 맞는 기업을 고르는 화면. 기술이 겹치는 회사를 찾고 조건마다 근거 카드를 댄다" /></p>
 
-[![각 STAR 칸의 근거 커밋과 생성 과정, 출처, 작성 이력을 확인하는 확정 경험 카드](./docs/images/readme/04-star-card.png)](./docs/images/readme/04-star-card.png)
+### 5. 자소서
 
-### 04. 공고의 조건과 내 경험 비교하기
+공고와 문항을 넣으면 AI 가 문항마다 쓸 카드를 고르고 초안을 씁니다. 빈칸은 대화로 채우고, 진단과 첨삭 · 짐작 확인 · 글자 수까지 한 화면에서 끝냅니다.
+새 카드가 생기면 지금 글은 두고 끼울 문장만 더합니다.
 
-수집한 개발 직무 공고를 기업·직무로 찾고, 확정한 카드로 조건을 비교합니다.
-공고마다 **맞는 조건·부족한 경험·직접 확인할 조건**을 나누고, 판단의 근거가 된 카드로 연결합니다.
-부족한 조건은 내 저장소에서 근거를 더 찾아 채울 수 있습니다. 공고 원문으로 가거나 그 공고의 자소서를 바로 시작합니다.
+<p align="center"><img src="./docs/images/readme/gif/cover-letter-fill.gif?v=20261111c" width="880" alt="자소서 대화 탭. 한 줄로 알려 주면 종이의 그 자리를 다시 쓴다" /></p>
 
-[![공고의 자격 요건별 충족 여부와 근거 경험 카드를 보여 주는 매칭 상세](./docs/images/readme/06-posting.png)](./docs/images/readme/06-posting.png)
+## 🧠 Agentic AI 설계
 
-<details>
-<summary><strong>내 카드로 맞춰 본 공고 목록 보기</strong></summary>
-
-[![필수 조건을 채운 정도와 아직 부족한 경험을 비교하는 공고 매칭 목록](./docs/images/readme/05-matching.png)](./docs/images/readme/05-matching.png)
-
-</details>
-
-### 05. 경험 카드로 자소서 쓰고 다듬기
-
-지원 공고와 문항을 넣으면 AI가 문항마다 쓸 카드를 고르고, 부족한 재료를 묻고, 초안을 씁니다.
-빠진 내용은 **대화로 채우거나 직접 고칠 수 있고**, 진단과 첨삭 · 짐작한 내용 확인 · 글자 수 · 복사까지 한 화면에서 끝냅니다.
-맞는 카드가 없는 문항에는 다른 카드와 저장소 기록을 제안하고, 나중에 새 카드가 생기면 그 문항에 쓸 수 있다고 알려 줍니다.
-
-[![문항별 자소서 초안과 빈칸 안내, 대화·진단과 첨삭·짐작 확인 패널](./docs/images/readme/07-cover-letter.png)](./docs/images/readme/07-cover-letter.png)
-
-### 움직이는 화면
-
-AI가 일하는 동안 화면이 멈춰 있지 않습니다. 읽는 기록, 써지는 글, 고르는 이유를 그대로 보여 줍니다.
-아래는 로그인 없이 쓰는 **샘플 데이터** 화면입니다.
-
-<table>
-  <tr>
-    <td width="50%"><strong>레포 정리</strong> — 읽은 PR·커밋과 묶은 이유가 차례로</td>
-    <td width="50%"><strong>카드 초안</strong> — 네 칸이 한 글자씩, 고칠 때는 달라진 뒷부분만</td>
-  </tr>
-  <tr>
-    <td><img src="./docs/images/readme/gif/analysis-run.gif?v=20261111b" alt="레포 정리 화면. PR과 리뷰 읽기, 커밋 읽기, 후보로 추리기, 추천 이유 붙이기 단계가 차례로 진행된다" /></td>
-    <td><img src="./docs/images/readme/gif/card-draft-live.gif?v=20261111b" alt="카드 초안 화면. 상황·과제·행동·결과 칸의 글이 한 글자씩 써진다" /></td>
-  </tr>
-  <tr>
-    <td><strong>되묻기</strong> — 답하면 그 칸에 다듬어 넣고, 다음 빈칸을 물음</td>
-    <td><strong>자소서 채우기</strong> — 한 줄로 알려 주면 그 자리를 다시 씀</td>
-  </tr>
-  <tr>
-    <td><img src="./docs/images/readme/gif/interview-chat.gif?v=20261111b" alt="답변하기 화면. 답을 보내면 AI가 판단 이유와 함께 카드 문장으로 다듬어 넣는다" /></td>
-    <td><img src="./docs/images/readme/gif/cover-letter-fill.gif?v=20261111b" alt="자소서 대화 탭. 한 줄 답을 보내면 다시 쓰는 중 표시 뒤 종이의 문장이 바뀐다" /></td>
-  </tr>
-  <tr>
-    <td><strong>맞는 기업 고르기</strong> — 고르는 과정과 이유를 실시간으로</td>
-    <td><strong>홈 한 줄 명령</strong> — 공고 찾기·매칭·자소서 시작을 도구로 이어 실행</td>
-  </tr>
-  <tr>
-    <td><img src="./docs/images/readme/gif/repo-match-pick.gif?v=20261111b" alt="한 저장소의 카드로 맞는 기업을 고르는 과정 화면" /></td>
-    <td><img src="./docs/images/readme/gif/home-command.gif?v=20261111b" alt="홈 입력창에 한 문장을 맡기면 AI가 도구를 차례로 실행하는 화면" /></td>
-  </tr>
-</table>
-
-### 그 밖의 기능
-
-- **알림** — 카드 초안이 끝나거나, 정리한 저장소를 다시 읽었거나, 새 공고가 내 카드와 맞거나, 새 카드를 쓸 수 있는 자소서 문항이 있으면 알려 주고 이어서 할 일로 연결합니다.
-- **저장소 새 활동 반영** — 정리한 저장소에 새 push가 있으면 홈에 들어올 때 서버가 다시 읽어 새 카드 초안을 만듭니다.
-- **기업별 공고 모아 보기** — 한 기업의 공고를 모아 보고, 목록의 검색·직무 조건을 그대로 이어 적용합니다.
-- **관심 분야와 메일 알림** — 인적사항은 관심 분야만 받아 공고를 고르는 데 쓰고, 메일 수신을 켜면 새 공고 메일을 받습니다.
-
-## 🧠 AI는 어디까지 맡기나
-
-Gitory의 AI는 **고르기만 합니다.** 근거와 수치는 코드가 검사하고, 실행과 저장은 서버가 하며, 확인할 칸이 남은 카드는 확정하지 않습니다.
-그 안에서 AI는 다음 일을 스스로 정합니다.
+AI 는 **고르기만** 합니다. 근거와 수치는 코드가 검사하고, 실행과 저장은 서버가 하며, 확인할 칸이 남은 카드는 확정하지 않습니다.
 
 | 어디서 | AI가 정하는 것 | 넘지 못하는 선 |
 | --- | --- | --- |
@@ -171,10 +94,10 @@ Gitory의 AI는 **고르기만 합니다.** 근거와 수치는 코드가 검사
 | 홈 한 줄 명령 | 도구 7개 중 무엇을 부를지, 사용자에게 물을지, 끝낼지 | 도구 호출 6번, 같은 일을 되풀이하면 멈춤 |
 
 <p align="center">
-  <img src="./docs/images/readme/ai-loop.png" width="100%" alt="경험 카드 한 장이 만들어지는 길. 한 경험으로 묶기와 STAR 초안 쓰기는 AI가, 근거·수치 검사는 코드가 하고, 걸린 칸은 AI가 자료를 더 읽을지 다시 쓸지 정합니다(다시 쓰기 5번, 자료 3개). 확인할 칸이 없으면 서버가 카드를 확정하고, 남으면 AI가 무엇을 물을지 골라 묻고 사용자 답을 넣을지 한 번 더 물을지 정합니다(카드마다 8번, 칸마다 2번)" />
+  <img src="./docs/images/readme/ai-loop.png" width="100%" alt="경험 카드 한 장이 만들어지는 길. 묶기와 초안은 AI 가, 근거·수치 검사는 코드가 하고, 걸린 칸은 AI 가 자료를 더 읽을지 다시 쓸지 정합니다(5번까지). 확인할 칸이 없으면 서버가 확정하고, 남으면 AI 가 묻고 답을 넣을지 정합니다(카드마다 8번)" />
 </p>
 
-**다 맡겨 봤더니** — AI에게 더 맡겼다가 숫자로 확인하고 코드로 옮긴 일들입니다.
+**다 맡겨 봤더니** — 더 맡겼다가 숫자로 확인하고 코드로 옮긴 일들입니다.
 
 - 새 카드를 자소서에 더할 때 "지금 글은 두고 한두 문장만 더해라"라고 다시 쓰게 했더니 5문항 중 4문항이 원래 문장을 바꿨습니다. 지금은 AI가 **끼울 자리와 문장만** 내고 코드가 끼웁니다. 되돌린 문항 4/5 → 1/5.
 - STAR 초안의 근거 커밋 번호를 모델이 한 글자만 틀려도 카드가 통째로 비었습니다. 코드가 **앞 7자로 맞춰** 확인합니다.
@@ -186,21 +109,7 @@ Gitory의 AI는 **고르기만 합니다.** 근거와 수치는 코드가 검사
 
 판단의 갈래와 상한은 [에이전트 설계](./docs/AGENT_DESIGN.md), 막는 장치와 그 시험은 [가드레일](./docs/GUARDRAILS.md), 잰 숫자는 [AI 품질 평가 결과](./ai/evals/RESULTS.md)에 있습니다.
 
-## 🔍 근거를 남기는 방식
-
-| 구분 | 맡은 일 |
-| --- | --- |
-| **AI** | 경험 묶기, 코드 변경 요약, STAR 초안과 되묻기, 공고 조건 추출, 자소서 재료 선택·작성·첨삭 |
-| **코드** | 본인 기여 거르기, 근거 커밋 확인, 근거 없는 문장 표시, 공고 조건의 원문 인용 검증, 요청·재시도·호출 한도 |
-| **사용자** | 확인할 칸이 남은 카드의 검토와 확정, 질문에 답하기, 문장 고치기, 자소서 최종 확인 |
-
-- **문장마다 출처를 따라갈 수 있습니다.** 코드에서 찾은 근거와 사용자가 답한 내용을 구분합니다.
-- **기록에 없는 내용은 확인을 요청합니다.** 빈칸과 확인 필요 표시를 질문·편집으로 보완합니다.
-- **수집 범위와 실패 상태를 드러냅니다.** 부분 수집, 후보 없음, 분석 실패를 구분하고 다음 행동을 안내합니다.
-
 ## 🧱 서비스 구성
-
-### 시스템 아키텍처
 
 [![EC2의 Docker Compose에서 Caddy·React, Spring Boot, FastAPI, PostgreSQL, Redis, ChromaDB가 연결되고 GitHub·LLM·채용 사이트·Gmail·CloudWatch와 통신하는 Gitory 시스템 아키텍처](./docs/images/architecture/system-architecture.svg)](./docs/images/architecture/system-architecture.svg)
 
@@ -208,16 +117,14 @@ Gitory의 AI는 **고르기만 합니다.** 근거와 수치는 코드가 검사
 Spring Boot는 인증·작업 상태·카드·매칭·자소서 데이터를 맡고, AI 처리는 내부 FastAPI에 요청합니다.
 PostgreSQL은 서비스 데이터를, Redis는 사용자별 호출 횟수를, ChromaDB는 공고 조건 벡터를 보관합니다.
 
-### 경험 정리부터 지원까지의 AI 흐름
+<details>
+<summary><strong>경험 정리부터 지원까지의 AI 흐름 보기</strong></summary>
 
 [![개발 기록의 경험 카드 생성과 검증, 공고 조건 색인·매칭, 문항별 자소서 작성·보강으로 이어지는 AI 파이프라인](./docs/images/architecture/ai-pipeline.svg)](./docs/images/architecture/ai-pipeline.svg)
 
-LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 작성에 씁니다. 공고 매칭은 조건을 임베딩해 찾은 뒤 카드의 근거와 함께 비교합니다.
-기본 모델은 `gpt-5.6-luna`이며 작업별 모델·추론 강도는 환경변수로 바꿉니다.
+LLM 은 경험 묶기 · STAR 초안 · 되묻기 · 공고 조건 추출 · 자소서 작성에 쓰고, 공고 매칭은 조건을 임베딩해 찾은 뒤 카드의 근거와 함께 비교합니다. 기본 모델은 `gpt-5.6-luna` 이며 작업별 모델 · 추론 강도는 환경변수로 바꿉니다.
 
-> 구성도는 저장소의 구현과 배포 설정 기준입니다. 공고 자동 수집·홈 한 줄 명령 같은 기능은 환경변수와 기능 스위치로 켭니다. [배포 가이드](./docs/DEPLOYMENT.md) · [AI README](./ai/README.md)
-
-### 기술 스택
+</details>
 
 | 영역 | 사용 기술 |
 | --- | --- |
@@ -228,7 +135,7 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
 | **Infra** | ![AWS EC2](https://img.shields.io/badge/AWS_EC2-FF9900?style=for-the-badge&logo=amazonec2&logoColor=232F3E) ![Docker Compose](https://img.shields.io/badge/Docker_Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white) ![Caddy](https://img.shields.io/badge/Caddy-1F88C0?style=for-the-badge&logo=caddy&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white) ![CloudWatch](https://img.shields.io/badge/CloudWatch-FF4F8B?style=for-the-badge&logo=amazoncloudwatch&logoColor=white) |
 | **Test** | ![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white) ![Playwright](https://img.shields.io/badge/Playwright-2EAD33?style=for-the-badge) ![JUnit 5](https://img.shields.io/badge/JUnit_5-25A162?style=for-the-badge&logo=junit5&logoColor=white) ![Testcontainers](https://img.shields.io/badge/Testcontainers-2B2B2B?style=for-the-badge) ![ArchUnit](https://img.shields.io/badge/ArchUnit-3A3A41?style=for-the-badge) ![pytest](https://img.shields.io/badge/pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white) |
 
-## ✅ 품질과 자동화
+## ✅ 품질과 배포
 
 | 층 | 무엇을 지키나 | 어디에 |
 | --- | --- | --- |
@@ -238,8 +145,6 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
 | AI (약 1,500개) | 응답 모양, 가드레일, 지시 주입 대응 | [ai/tests](./ai/tests) |
 | 전체 서비스 E2E (4 시나리오) | 로그인부터 카드 확정·되묻기까지, 가짜 GitHub·LLM 으로 전 서비스 | [e2e/tests](./e2e/tests) |
 | AI 품질 평가 | 작업별 평가 세트로 재고, 바꾼 뒤 다시 잼 | [평가 결과](./ai/evals/RESULTS.md) · [결과 파일](./ai/evals/results/history/) |
-
-규칙 코드의 시험은 코드를 되돌리면 실패하는지(변이 확인)까지 보고 PR 본문에 적습니다.
 
 | 언제 | 무엇이 돌아가나 |
 | --- | --- |
@@ -263,9 +168,9 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
 | Spring Boot–FastAPI 연결 · 환경변수 | [BE–AI 연결 가이드](./docs/BE_AI_INTEGRATION.md) |
 | Docker Compose 배포 · 롤백 · 로그 · 백업 | [배포 가이드](./docs/DEPLOYMENT.md) |
 
-## 👥 팀 소개
+## 👥 팀
 
-**카카오테크 캠퍼스 4기 경북대 1팀**이 기획부터 개발·배포까지 함께 만드는 프로젝트입니다.
+**카카오테크 캠퍼스 4기 경북대 1팀**이 기획부터 개발 · 배포까지 함께 만들었습니다. PR 1,000여 개를 리뷰 1명 이상을 거쳐 머지했고, 규칙은 [기여 가이드](./CONTRIBUTING.md)에 있습니다.
 
 <table align="center">
   <tr>
@@ -296,8 +201,6 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
   </tr>
 </table>
 
-[프로젝트 기여 내역 보기](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/graphs/contributors)
-
 ## 📚 개발 문서
 
 | 알고 싶은 내용 | 문서 |
@@ -311,5 +214,3 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
 | 브랜치 · 커밋 · PR · 리뷰 규칙 | [기여 가이드](./CONTRIBUTING.md) |
 | 화면 개선 · 오류 재현 · 발표와 데모 기록 | [개발 문서 모음](./docs/README.md) |
 | 화면·구성도 갱신 기준 | [캡처 기록](./docs/images/readme/README.md) · [구성도 출처](./docs/images/architecture/README.md) |
-
-날짜가 있는 기획·작업 문서는 작성 시점의 기록입니다. 현재 기능과 실행 설정은 최신 코드·파트별 가이드·운영 화면을 함께 확인하세요.

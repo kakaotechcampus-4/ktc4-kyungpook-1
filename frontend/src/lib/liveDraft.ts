@@ -11,7 +11,8 @@
  *  - 지금 보이는 카드 뒤의 카드가 쓰기 시작하면(WRITING 이상) 보이는 카드의 남은 글은 바로 마치고 넘어간다.
  *    뒤 카드가 아직 읽는 중(READING)이면 보이는 카드를 끝까지 펼친 뒤 DWELL_MS 쉬고 넘어간다.
  *  - 칸의 round 가 오르거나 글이 앞부분을 이어 쓰지 않고 바뀌면 달라진 곳까지 지우고 새 글을 쓴다.
- *    지우는 데 ERASE_MAX_MS, 지우고 다시 쓰는 데 REWRITE_MAX_MS 를 넘기지 않는다.
+ *    지우는 데 ERASE_MAX_MS, 지우고 다시 쓰는 데 REWRITE_MAX_MS 를 넘기지 않는다. 이 시간은 칸마다 그 칸의 차례가 온 때부터 센다
+ *    (뒤 칸의 시간이 앞 칸을 쓰는 동안 흘러가 버리면 뒤 칸이 한꺼번에 나타난다). 상한이 가까우면 한꺼번에 보이지 않고 속도를 올려 맞춘다.
  *  - Job 이 끝나면 마지막 카드까지 펼친 뒤에야 holding 이 풀린다. 끝나고 ENDED_MAX_MS 가 지나면 남은 글을 바로 마친다.
  *  - 폴링이 깨져 drafts 가 비거나 줄거나 되돌아가도 이미 받은 것을 유지한다.
  */
@@ -77,6 +78,8 @@ type SlotRun = {
   erasing: string[] | null;
   eraseDeadline: number | null;
   rewriteDeadline: number | null;
+  /** 다시 쓰기로 정해졌고 이 칸의 차례를 기다린다. 차례가 오면 그때부터 eraseDeadline 과 rewriteDeadline 을 센다 */
+  rewritePending: boolean;
   /**
    * 이 칸을 다 펼쳐 끝난 모습으로 보인 적이 있다. 앞 칸을 다시 쓰는 동안에도 이 칸은 대기로 돌아가지 않고 보이던 글 그대로 둔다.
    * 이 칸도 다시 쓰이면 차례가 왔을 때 보이던 글에서 지우고 새로 쓴다
@@ -85,7 +88,7 @@ type SlotRun = {
 };
 type Run = { cardId: string; slots: Record<StarField, SlotRun>; completedAt: number | null };
 
-const emptySlot = (): SlotRun => ({ present: false, chars: [], round: 0, done: false, pos: 0, eraseTo: null, erasing: null, eraseDeadline: null, rewriteDeadline: null, finished: false });
+const emptySlot = (): SlotRun => ({ present: false, chars: [], round: 0, done: false, pos: 0, eraseTo: null, erasing: null, eraseDeadline: null, rewriteDeadline: null, rewritePending: false, finished: false });
 /** 화면에 보이는 글자들. 지우는 동안은 지워지는 앞 글, 아니면 서버가 준 글 */
 const onScreen = (slot: SlotRun) => slot.eraseTo !== null && slot.erasing ? slot.erasing : slot.chars;
 const stopErasing = (slot: SlotRun) => { slot.eraseTo = null; slot.erasing = null; slot.eraseDeadline = null; };
@@ -153,7 +156,7 @@ export class DraftPlayback {
       this.endedAt = now;
       this.version += 1;
     }
-    if (this.run) this.sync(this.run, now);
+    if (this.run) this.sync(this.run);
     this.settle(now);
   }
 
@@ -172,7 +175,8 @@ export class DraftPlayback {
     if (!this.ended || !this.run) return false;
     if (this.instant) return false;
     const run = this.run;
-    return !(this.complete(run) && this.at !== null && run.completedAt !== null && this.at - run.completedAt >= DWELL_MS);
+    // 다 펼친 뒤에 끝났다는 응답이 늦게 오면 '다 썼어요' 를 볼 시간이 없어지므로 늦은 쪽부터 센다
+    return !(this.complete(run) && this.at !== null && run.completedAt !== null && this.at - Math.max(run.completedAt, this.endedAt ?? 0) >= DWELL_MS);
   }
 
   /** 보일 카드가 하나라도 있었는지 */
@@ -223,7 +227,7 @@ export class DraftPlayback {
   }
 
   /** 보이는 카드의 칸 글을 새 snapshot 에 맞춘다 */
-  private sync(run: Run, now: number) {
+  private sync(run: Run) {
     const card = this.cards.find((c) => c.cardId === run.cardId);
     if (!card) return;
     const incoming = slotMap(card);
@@ -257,10 +261,13 @@ export class DraftPlayback {
       if (shown > keep) {
         slot.erasing = visible;
         slot.eraseTo = keep;
-        slot.eraseDeadline = now + ERASE_MAX_MS;
-        slot.rewriteDeadline = now + REWRITE_MAX_MS;
+        slot.eraseDeadline = null;
+        slot.rewriteDeadline = null;
+        slot.rewritePending = true;
       } else {
         stopErasing(slot);
+        slot.rewriteDeadline = null;
+        slot.rewritePending = false;
         slot.pos = Math.min(slot.pos, keep);
       }
       run.completedAt = null;
@@ -288,17 +295,28 @@ export class DraftPlayback {
       if (!field) break;
       const slot = run.slots[field];
       if (!slot.present) break; // 서버가 이 칸을 아직 주지 않았다. 새 글을 기다린다
+      const clock = now - ms; // 이 걸음이 시작되는 시각(틱이 굵어도 걸음마다 맞춘다)
+      if (slot.rewritePending) {
+        // 다시 쓰는 칸은 차례가 온 때부터 상한을 센다
+        slot.rewritePending = false;
+        slot.eraseDeadline = slot.eraseTo !== null ? clock + ERASE_MAX_MS : null;
+        slot.rewriteDeadline = clock + REWRITE_MAX_MS;
+      }
       if (slot.eraseTo !== null) {
-        const rate = ERASE_CPS / 1000;
-        const need = (slot.pos - slot.eraseTo) / rate;
+        // 기본 속도로는 상한 안에 다 못 지우면 속도를 올려 상한에 맞춘다(상한에 닿아 한꺼번에 사라지지 않게)
+        const left = slot.pos - slot.eraseTo;
+        const rate = slot.eraseDeadline === null ? ERASE_CPS / 1000 : Math.max(ERASE_CPS / 1000, left / Math.max(1, slot.eraseDeadline - clock));
+        const need = left / rate;
         if (need <= ms) { slot.pos = slot.eraseTo; stopErasing(slot); ms -= need; } else { slot.pos -= ms * rate; ms = 0; }
         this.version += 1;
         continue;
       }
       if (slot.pos < slot.chars.length) {
-        const rate = TYPING_CPS / 1000;
-        const need = (slot.chars.length - slot.pos) / rate;
-        if (need <= ms) { slot.pos = slot.chars.length; ms -= need; } else { slot.pos += ms * rate; ms = 0; }
+        // 다시 쓰는 칸은 상한 안에 끝나도록 속도를 올린다(기본 초당 40자보다 느려지지는 않는다)
+        const left = slot.chars.length - slot.pos;
+        const rate = slot.rewriteDeadline === null ? TYPING_CPS / 1000 : Math.max(TYPING_CPS / 1000, left / Math.max(1, slot.rewriteDeadline - clock));
+        const need = left / rate;
+        if (need <= ms) { slot.pos = slot.chars.length; slot.rewriteDeadline = null; ms -= need; } else { slot.pos += ms * rate; ms = 0; }
         this.version += 1;
         continue;
       }
@@ -325,6 +343,7 @@ export class DraftPlayback {
       slot.pos = slot.chars.length;
       stopErasing(slot);
       slot.rewriteDeadline = null;
+      slot.rewritePending = false;
     }
     this.markFinished(run);
   }
@@ -342,7 +361,7 @@ export class DraftPlayback {
 
   private settle(now: number) {
     if (!this.cards.length) return;
-    if (!this.run) this.start(this.firstIndex(), now);
+    if (!this.run) this.start(this.firstIndex());
     for (let guard = 0; guard <= this.cards.length; guard += 1) {
       const run = this.run;
       if (!run) return;
@@ -357,13 +376,13 @@ export class DraftPlayback {
       // 뒤 카드가 글을 쓰기 시작했다 — 앞 카드의 남은 글은 바로 마치고 넘어간다
       if (this.cards.slice(index + 1).some(hasStarted)) {
         this.flush(run);
-        this.start(index + 1, now);
+        this.start(index + 1);
         continue;
       }
       // 뒤 카드가 아직 읽는 중이면 보이는 카드를 끝까지 펼친 뒤 잠깐 두고 넘어간다. Job 이 끝났는데 뒤 카드가 쓰인 적 없으면 넘어갈 곳이 없다
       const waited = this.instant || (run.completedAt !== null && now - run.completedAt >= DWELL_MS);
       if (done && isOver(card) && waited && !(this.ended && !hasStarted(next))) {
-        this.start(index + 1, now);
+        this.start(index + 1);
         continue;
       }
       return;
@@ -375,11 +394,11 @@ export class DraftPlayback {
     return open < 0 ? this.cards.length - 1 : open;
   }
 
-  private start(index: number, now: number) {
+  private start(index: number) {
     const card = this.cards[index];
     const slots = { S: emptySlot(), T: emptySlot(), A: emptySlot(), R: emptySlot() };
     this.run = { cardId: card.cardId, slots, completedAt: null };
-    this.sync(this.run, now);
+    this.sync(this.run);
     this.version += 1;
   }
 

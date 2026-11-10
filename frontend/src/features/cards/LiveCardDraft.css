@@ -37,9 +37,8 @@
 /* 지금 쓰는 칸은 두꺼운 윤곽으로 강조한다. 바탕은 비워 두어 '다 쓴 칸'의 채움과 겹쳐 보이지 않게 한다 */
 .live-slot[data-phase='NEXT'], .live-slot[data-phase='WRITING'], .live-slot[data-phase='REWRITING'] { background: var(--bg-surface); box-shadow: inset 0 0 0 2px var(--border-selected); z-index: 1; }
 .live-slot[data-phase='NEXT'] .live-slot__status, .live-slot[data-phase='WRITING'] .live-slot__status, .live-slot[data-phase='REWRITING'] .live-slot__status { color: var(--text-accent); }
-/* 다 쓴 칸은 색을 채운다. 왼쪽 띠는 장식이고 뜻은 '완료' 글자가 말한다 */
+/* 다 쓴 칸은 색을 채운다. 뜻은 '완료' 글자가 말한다. 두꺼운 왼쪽 띠는 두지 않는다: 아래 칸의 두꺼운 윤곽(지금 쓰는 칸)과 이어져 긴 검은 줄처럼 깨져 보였다 */
 .live-slot[data-phase='DONE'] { background: var(--bg-selected); }
-.live-slot[data-phase='DONE']::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--accent-point); }
 .live-slot[data-phase='DONE'] .live-slot__status { color: var(--text-accent); }
 /* 근거가 없어 비운 칸과 주지 않은 칸 */
 .live-slot[data-phase='BLANK'], .live-slot[data-phase='EMPTY'] { background: var(--field-dropped-bg); }
@@ -57,7 +56,7 @@
 /* 바퀴 이름이 첫 줄에 있으면 아이콘은 그 아래 글 줄에 맞춘다 */
 .live-step[data-round] .live-step__icon { margin-top: 16px; }
 .live-step[data-round]:not(:last-child)::before { top: 38px; }
-/* AI 가 스스로 고르고 이유를 남긴 단계는 아이콘 색으로도 눈에 띄게. 뜻은 아래 'AI 의 판단' 글자가 따로 말한다 */
+/* AI 가 스스로 고르고 이유를 남긴 단계는 아이콘 색으로도 눈에 띄게. 뜻은 아래 '고른 이유' 글자가 따로 말한다 */
 .live-step[data-judged] .live-step__icon { background: var(--accent-point-soft); border-color: var(--border-selected); color: var(--text-accent); }
 .live-step__body { display: flex; flex-direction: column; min-width: 0; }
 .live-step__round { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text-tertiary); }

@@ -48,14 +48,14 @@ it('건수를 아직 모르는 동안(조회 중)에는 빈 상태로 보지 않
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('경험 카드 —');
   expect(screen.getByRole('option', { name: '전체 —' })).toBeInTheDocument();
   expect(screen.queryByText('아직 카드가 없어요')).not.toBeInTheDocument();
-  expect(screen.getByRole('link', { name: '경험 카드 만들기' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '활동 만들기' })).toBeInTheDocument();
 });
 
 it('카드가 있으면 상단 도구와 탭이 그대로 보이고, 묶음 요약 단위가 모두 붙는다', () => {
   recentView();
   mount(seeded());
-  expect(primaries()).toHaveLength(1);
-  expect(screen.getByRole('link', { name: '경험 카드 만들기' })).toHaveAttribute('href', '/cards/new');
+  expect(primaries()).toHaveLength(0);
+  expect(screen.getByRole('link', { name: '활동 만들기' })).toHaveAttribute('href', '/activities/new');
   for (const tab of ['전체', '작성 중', '확정됨', '보완 필요']) expect(screen.getByRole('option', { name: new RegExp(`^${tab}`) })).toBeInTheDocument();
   const summaries = [...document.querySelectorAll('.card-group__counts')].map((node) => node.textContent);
   expect(summaries.length).toBeGreaterThan(0);
@@ -68,7 +68,7 @@ it('검색 결과가 없을 때는 필터 초기화가 다음 행동이고, 같�
   fireEvent.change(screen.getByRole('textbox', { name: '카드 이름으로 검색' }), { target: { value: 'no-such-card-title' } });
   expect(screen.getByText('조건에 맞는 카드가 없어요')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: '레포에서 카드 만들기' })).not.toBeInTheDocument();
-  expect(primaries()).toHaveLength(1);
+  expect(primaries()).toHaveLength(0);
   // 카드가 있으니 필터는 그대로 둔다
   expect(screen.getByRole('combobox', { name: '카드 작성 상태 필터' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: '필터 초기화' }));

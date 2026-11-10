@@ -29,12 +29,14 @@ test('320px primary and masking preset labels remain on one line', async ({ page
   await page.setViewportSize({ width: 320, height: 740 });
   await loginAsDemo(page);
   for (const [path, labels] of [
-    ['/repos/r_auth/run', ['정리 시작']],
+    ['/repos/r_web/run', ['정리 시작']],
+    // 정리한 레포는 지난 결과 보기(링크)와 다시 정리를 나란히 둔다
+    ['/repos/r_auth/run', ['다시 정리', '지난 결과 보기']],
     ['/cards/card_01?mode=mask', ['+ 규칙 추가', '+ 팀원 익명화', '+ 회사명 가리기']],
   ] as const) {
     await page.goto(path);
     for (const label of labels) {
-      const button = page.getByRole('button', { name: label, exact: true });
+      const button = page.getByRole(label === '지난 결과 보기' ? 'link' : 'button', { name: label, exact: true });
       await expect(button).toBeVisible();
       const lines = await button.evaluate(el => {
         const range = document.createRange(); range.selectNodeContents(el);

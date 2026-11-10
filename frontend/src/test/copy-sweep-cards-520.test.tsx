@@ -75,11 +75,12 @@ describe('근거 줄의 사용자 쪽 이름 (CD-03)', () => {
 });
 
 describe('후보 보드 (C-01, C-02, C-03, C-06, C-09)', () => {
-  function mountBoard(repoId: string, options: { path?: string; mutate?: (board: CandidateBoard) => CandidateBoard } = {}) {
+  function mountBoard(repoId: string, options: { path?: string; mutate?: (board: CandidateBoard) => CandidateBoard; analyzed?: boolean } = {}) {
     const qc = client();
     const board = CandidateBoard.parse(req('GET', `/repos/${repoId}/candidates`));
     qc.setQueryData(keys.candidates(repoId), options.mutate ? options.mutate(board) : board);
-    qc.setQueryData(keys.repo(repoId), RepoDetail.parse(req('GET', `/repos/${repoId}`)));
+    const repo = RepoDetail.parse(req('GET', `/repos/${repoId}`));
+    qc.setQueryData(keys.repo(repoId), options.analyzed ? { ...repo, lastAnalyzedAt: repo.lastAnalyzedAt ?? '2026-11-01T00:00:00Z' } : repo);
     render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={[options.path ?? `/repos/${repoId}/candidates`]}><Routes>
       <Route path="/repos/:repoId/candidates" element={<CandidateBoardPage />} />
     </Routes></MemoryRouter></QueryClientProvider>);
@@ -109,7 +110,7 @@ describe('후보 보드 (C-01, C-02, C-03, C-06, C-09)', () => {
   });
 
   it('후보가 하나도 없는 화면의 제목도 "후보"이고, 글을 직접 쓰는 길은 "직접 작성"이다', () => {
-    mountBoard('r_web');
+    mountBoard('r_web', { analyzed: true }); // 정리했는데 0개인 판정 화면(정리 전이면 '아직 정리하지 않은 레포예요')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('자동으로 찾은 후보가 없어요');
     expect(screen.getByRole('link', { name: '직접 작성' })).toHaveAttribute('href', '/cards/new?repo=r_web'); // 그 레포가 붙은 쓰기 화면(#673)
     expect(screen.queryByRole('link', { name: '직접 입력' })).not.toBeInTheDocument();
@@ -199,12 +200,12 @@ describe('경험 카드 상세 (CD-02, CD-03, CD-05, CD-06, CD-10, CD-12, CD-14)
     expect(document.body.textContent).not.toMatch(/내가 말한 것|근거 커밋 \d+건/);
   });
 
-  it('다시 열 때 작성 이력이라고 안내하고, 버튼은 "수정"이다', async () => {
+  it('다시 열 때 작성 이력이라고 안내한다 — 다시 여는 길은 칸 이름 옆 연필이다', async () => {
     const card = load('card_03');
     vi.spyOn(endpoints, 'reopen').mockResolvedValue({ ...card, status: 'DRAFT' });
     mountCard(card);
     expect(screen.queryByRole('button', { name: '수정하기' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '수정' }));
+    fireEvent.click(screen.getByRole('button', { name: '상황 수정' }));
     await waitFor(() => expect(toast).toHaveBeenCalledWith('다시 편집할 수 있어요. 확정했던 버전은 작성 이력에 남아요.'));
     expect(vi.mocked(toast).mock.calls.flat().join(' ')).not.toContain('히스토리');
   });
@@ -258,6 +259,8 @@ describe('경험 카드 상세 (CD-02, CD-03, CD-05, CD-06, CD-10, CD-12, CD-14)
     mountCard(load('card_03'));
     const button = screen.getByRole('button', { name: '카드 삭제' });
     expect(button).toHaveClass('card-delete-text');
+    // 지우기를 여는 글자 버튼은 빨간 글자(멘토 의견)이고, 확인 창의 '삭제' 도 빨강이다
+    expect(button).toHaveClass('btn--danger');
     fireEvent.click(button);
     expect(within(screen.getByRole('dialog')).getByText('이 레포의 후보 보드에서 다시 골라 카드를 만들 수 있어요.')).toBeInTheDocument();
   });

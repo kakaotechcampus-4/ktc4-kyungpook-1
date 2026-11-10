@@ -3,19 +3,19 @@ import { loginAsDemo as login } from './helpers';
 
 /** 멘토 리뷰(6주차 develop → main)에서 실제로 써 보며 느낀 점들. */
 
-test('분석이 도는 동안 경과 시간과 마지막 확인이 흐르고 진행 막대가 움직인다', async ({ page }) => {
+test('분석이 도는 동안 경과 시간과 마지막 확인이 흐르고 지금 읽는 단계가 파랑 점으로 펼쳐진다', async ({ page }) => {
   await login(page);
   await page.goto('/repos?select=r_auth&disclose=1');
   await page.getByRole('button', { name: '정리 시작' }).click();
   const live = page.locator('.job-live');
   await expect(live).toContainText(/(째 진행 중이에요|째 기다리는 중이에요)/);
   await expect(live).toContainText('마지막 확인');
-  await expect(page.getByRole('progressbar', { name: '정리 진행률' })).toHaveClass(/track--live/);
   const first = await live.innerText();
   await expect.poll(async () => live.innerText(), { timeout: 5000 }).not.toBe(first);   // 1초마다 흐른다
-  await expect(page.locator('.stage--NOW .spinner').first()).toBeVisible();
-  // 끝나면 활동 표시도 사라진다 — 후보 보드로 넘어간다
-  await expect(page).toHaveURL(/\/repos\/r_auth\/candidates/, { timeout: 30_000 });
+  await expect(page.locator('.tl__item--now')).toHaveCount(1, { timeout: 10_000 });   // 막대 대신 지금 단계만 펼친다(#789)
+  await expect(page.getByRole('progressbar')).toHaveCount(0);
+  // 끝나면 활동 표시도 사라진다 — r_auth 는 카드가 있어 카드 폴더로 넘어간다
+  await expect(page).toHaveURL(/\/cards\/repo\/r_auth/, { timeout: 30_000 });
 });
 
 test('후보 보드는 이미 카드로 만든 후보를 고르는 타일에서 빼고, 아래 한 줄 목록의 카드 보기로 그 카드를 연다', async ({ page }) => {

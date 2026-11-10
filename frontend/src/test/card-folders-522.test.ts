@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Activity } from '@/api/activities';
-import { CardSummary } from '@/api/schemas';
-import { buildFolders, deckLayers, folderLabel, folderNote, folderPeek, topTechs } from '@/lib/cardFolders';
+import { CardSummary, RepoSummary } from '@/api/schemas';
+import { buildFolders, deckLayers, folderCounts, folderLabel, topTechs } from '@/lib/cardFolders';
 
 const card = (id: string, over: Record<string, unknown> = {}) => CardSummary.parse({
   id, kind: 'TECH', status: 'DRAFT', title: id, versionNo: 1, areas: [], techs: [], repo: null, activity: null,
@@ -9,6 +9,10 @@ const card = (id: string, over: Record<string, unknown> = {}) => CardSummary.par
 });
 const activity = (id: string, over: Record<string, unknown> = {}) => Activity.parse({
   id, name: `활동 ${id}`, type: 'CLUB', startMonth: '2025-03', endMonth: null, role: null, cardCount: 0, confirmedCount: 0, createdAt: '2026-09-01T00:00:00Z', ...over,
+});
+const repoRow = (id: string, over: Record<string, unknown> = {}) => RepoSummary.parse({
+  id, owner: 'hong-dev', name: id, contribution: { mine: 1, team: 1, ratio: 0.5, level: 'SHARED' }, prCount: 0, reviewCount: 0, language: null,
+  activeFrom: '2026-01-01', activeTo: '2026-02-01', lastAnalyzedAt: null, candidateCount: null, cardCount: 0, recommended: false, ...over,
 });
 const auth = { id: 'r_auth', owner: 'hong-dev', name: 'auth-service' };
 const fts = { id: 'r_fts', owner: 'TaeHuiKKIM', name: 'free-tier-sleep' };
@@ -47,9 +51,16 @@ describe('경험 카드 폴더 묶기 (#522)', () => {
     expect(buildFolders([card('x')], []).map((f) => f.kind)).toEqual(['direct']);
   });
 
-  it('앞판 안내 한 줄: 빈 폴더는 만들러 들어오게, 기술 카드만 있는 레포·활동 폴더는 그 사실을 적고, 경험 카드가 있거나 직접 쓴 카드 폴더는 없다', () => {
-    const byKey = Object.fromEntries(buildFolders(cards, activities).map((f) => [f.key, folderNote(f)]));
-    expect(byKey).toEqual({ 'activity:a_empty': '아직 카드가 없어요 · 열어서 만들기', 'repo:r_fts': '기술 카드만 있어요', 'activity:a_club': null, 'repo:r_auth': null, direct: null });
+  it('앞판의 작은 글: 기술 카드와 경험 카드가 둘 다 있는 폴더만 두 장 수를 나눠 적고, 한 종류뿐이면 없고, 빈 폴더는 만들러 들어오게 한다', () => {
+    const byKey = Object.fromEntries(buildFolders(cards, activities).map((f) => [f.key, folderCounts(f)]));
+    expect(byKey).toEqual({ 'activity:a_empty': '아직 카드가 없어요 · 열어서 만들기', 'repo:r_fts': null, 'activity:a_club': null, 'repo:r_auth': '기술 1 · 경험 1', direct: null });
+  });
+
+  it('레포 폴더의 설명은 레포 목록에서 레포 id 로 이어 붙이고, 목록이 없거나 설명이 없으면 null 이며 활동·직접 폴더에는 설명이 없다', () => {
+    const repos = [repoRow('r_auth', { description: 'Spring Boot 인증 서비스', descriptionSource: 'GITHUB' }), repoRow('r_fts', { description: null, descriptionSource: null })];
+    const byKey = Object.fromEntries(buildFolders(cards, activities, repos).map((f) => [f.key, f.description]));
+    expect(byKey).toEqual({ 'activity:a_empty': null, 'repo:r_fts': null, 'activity:a_club': null, 'repo:r_auth': 'Spring Boot 인증 서비스', direct: null });
+    expect(buildFolders(cards, activities).every((f) => f.description === null)).toBe(true); // 레포 목록을 아직 못 읽었다
   });
 
   it('앞판 기술은 가장 많은 카드에 붙은 둘이다. 같으면 최근 카드의 것이 앞이고, 태그가 없으면 비어 있다(지어내지 않는다)', () => {
@@ -80,28 +91,19 @@ describe('경험 카드 폴더 묶기 (#522)', () => {
     expect(both.map((f) => f.key)).toEqual(['repo:r_auth']);
   });
 
-  it('링크 이름에 소유자, 이름, 장 수, 안내 한 줄, 기술이 모두 들어 있다(보이는 글이 이름에 들어 있어야 한다)', () => {
-    const folders = Object.fromEntries(buildFolders(cards, activities).map((f) => [f.key, f]));
-    expect(folderLabel(folders['repo:r_auth'])).toBe('레포 hong-dev, auth-service, 카드 2장, 기술 Java, Spring');
-    expect(folderLabel(folders['repo:r_fts'])).toBe('레포 TaeHuiKKIM, free-tier-sleep, 카드 1장, 기술 카드만 있어요, 기술 TypeScript');
+  it('링크 이름에 소유자, 이름, 장 수, 설명, 작은 글, 기술이 모두 들어 있다(보이는 글이 이름에 들어 있어야 한다)', () => {
+    const repos = [repoRow('r_auth', { description: 'Spring Boot 인증 서비스', descriptionSource: 'GITHUB' })];
+    const folders = Object.fromEntries(buildFolders(cards, activities, repos).map((f) => [f.key, f]));
+    expect(folderLabel(folders['repo:r_auth'])).toBe('레포 hong-dev, auth-service, 카드 2장, 확인할 카드 2장, Spring Boot 인증 서비스, 기술 1 · 경험 1, 기술 Java, Spring');
+    expect(folderLabel(folders['repo:r_fts'])).toBe('레포 TaeHuiKKIM, free-tier-sleep, 카드 1장, 확인할 카드 1장, 기술 TypeScript');
     expect(folderLabel(folders['activity:a_empty'])).toBe('활동, 공모전과 해커톤, 해커톤 참가, 카드 0장, 아직 카드가 없어요 · 열어서 만들기');
-    expect(folderLabel(folders['activity:a_club'])).toBe('활동, 동아리, 교내 개발 동아리, 카드 2장');
-    expect(folderLabel(folders.direct)).toBe('레포와 활동 없이 쓴 카드, 직접 쓴 카드, 카드 1장');
+    expect(folderLabel(folders['activity:a_club'])).toBe('활동, 동아리, 교내 개발 동아리, 카드 2장, 확인할 카드 1장');
+    expect(folderLabel(folders.direct)).toBe('레포와 활동 없이 쓴 카드, 직접 쓴 카드, 카드 1장, 확인할 카드 1장');
   });
 });
 
 describe('폴더 앞판 뒤로 겹쳐 보이는 카드 수 (#522)', () => {
   it('한 장은 겹치지 않고 둘은 한 겹, 셋 이상은 두 겹으로 멈춘다', () => {
     expect([0, 1, 2, 3, 4, 8, 100].map(deckLayers)).toEqual([0, 0, 1, 2, 2, 2, 2]);
-  });
-});
-
-describe('폴더 앞판 미리 보기 한 줄 (#758)', () => {
-  const titled = (...titles: string[]) => ({ cards: titles.map((title, i) => card(`p${i}`, { title })) });
-  it('빈 폴더는 없고, 한두 장은 제목만, 세 장 이상은 앞의 두 제목 뒤에 남은 장 수를 붙인다', () => {
-    expect(folderPeek(titled())).toBeNull();
-    expect(folderPeek(titled('로그인 세션 처리'))).toBe('로그인 세션 처리');
-    expect(folderPeek(titled('로그인 세션 처리', '결제 롤백 대응'))).toBe('로그인 세션 처리 · 결제 롤백 대응');
-    expect(folderPeek(titled('로그인 세션 처리', '결제 롤백 대응', 'c', 'd', 'e'))).toBe('로그인 세션 처리 · 결제 롤백 대응 · +3');
   });
 });

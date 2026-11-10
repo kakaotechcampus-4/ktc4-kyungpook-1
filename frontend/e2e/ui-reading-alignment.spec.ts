@@ -1,15 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { loginAsDemo, showCardTiles } from './helpers';
 
-test('desktop cards with different title lengths share STAR and footer baselines', async ({ page }) => {
+test('desktop cards with different title lengths share footer baselines', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/cards'); await showCardTiles(page);
   await expect(page.locator('.experience-item')).toHaveCount(8);
   // 묶음별로 나뉘어 화면의 처음 3장이 한 줄이라는 보장이 없다 — 같은 줄(같은 top)에 놓인 카드끼리 기준선을 비교한다
-  const bounds = await page.locator('.experience-item').evaluateAll(items => items.map(item=>({top:Math.round(item.getBoundingClientRect().top),star:item.querySelector('.stardots--labeled')!.getBoundingClientRect().top,footer:item.querySelector('.experience-item__footer')!.getBoundingClientRect().top})));
+  const bounds = await page.locator('.experience-item').evaluateAll(items => items.map(item=>({top:Math.round(item.getBoundingClientRect().top),footer:item.querySelector('.experience-item__footer')!.getBoundingClientRect().top})));
   const rows = Object.values(bounds.reduce<Record<number, typeof bounds>>((acc, b) => ((acc[b.top] ??= []).push(b), acc), {})).filter(row => row.length > 1);
   expect(rows.length).toBeGreaterThan(0);
   for (const row of rows) {
-    expect(Math.max(...row.map(b=>b.star))-Math.min(...row.map(b=>b.star))).toBeLessThanOrEqual(1);
     expect(Math.max(...row.map(b=>b.footer))-Math.min(...row.map(b=>b.footer))).toBeLessThanOrEqual(1);
   }
 });

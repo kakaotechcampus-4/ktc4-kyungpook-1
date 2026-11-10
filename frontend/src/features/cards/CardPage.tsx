@@ -9,7 +9,7 @@ import { CardThemes } from '@/components/cards/CardThemes';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
 import { CardStatusMark, cardStarStates } from '@/components/cards/CardStatusMark';
 import { useCard, useRegenerateField, useReopen, useRetryDraft } from '@/api/queries';
-import { isTerminal, StarField as StarFieldSchema, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
+import { isTerminal, StarField as StarFieldSchema, type Card, type StarField } from '@/api/schemas';
 import { Badge, Breadcrumb, Button, EvidenceList, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
 import { STAR_FIELDS, cardKindLabel, candidateRefLabel, fieldKey, starFieldName, starFieldShort, cardContentLabel, interviewActionLabel, historyActionLabel } from '@/lib/labels';
 import { ymd } from '@/lib/format';
@@ -25,7 +25,7 @@ import { CardCopyDialog } from './CardCopyDialog';
 import { CardMetadataDialog } from './CardMetadataDialog';
 import { cardMetadataSupported, cardRegenerationSupported } from '@/api/capabilities';
 import { matchSupported } from '@/api/matching';
-import { StarBlock, applyMask, railKind } from './StarBlock';
+import { StarBlock, applyMask } from './StarBlock';
 import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
 import { QueryFailure } from '@/components/ui/QueryFailure';
@@ -33,7 +33,7 @@ import { StarRow } from '@/components/ui/StarRow';
 import { canConfirmCard, emptyStarFields, starFieldsToReview } from '@/lib/cardRules';
 import { isDraftMetadataPending } from '@/lib/cacheSavedDraft';
 import { DraftProcess } from './DraftSteps';
-import { folderPath } from '@/lib/cardFolders';
+import { cardFolderPath, folderPath } from '@/lib/cardFolders';
 
 /**
  * /cards/:id — 상태로 화면이 갈린다.
@@ -69,10 +69,20 @@ export function CardPage() {
   const regen = useRegenerateField(cardId);
   const retry = useRetryDraft(cardId);
   const reopen = useReopen(cardId);
-  const [justConfirmed, setJustConfirmed] = useState<ConfirmResult | null>(null);
+  const [justConfirmed, setJustConfirmed] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const [metadataOpen, setMetadataOpen] = useState(false);
-  useEffect(() => { setCopyOpen(false); setMetadataOpen(false); setJustConfirmed(null); }, [cardId]);
+  useEffect(() => { setCopyOpen(false); setMetadataOpen(false); setJustConfirmed(false); }, [cardId]);
+  // 이 화면이 보는 동안 같은 카드가 작성 중에서 확정으로 바뀐 때만 안내한다 — 수정을 저장하다 상황과 행동이 차면 서버가 확정한다
+  // 확정 창으로 확정한 때는 곧 폴더로 가므로 제외한다
+  const lastSeen = useRef<{ id: string; status: Card['status'] } | null>(null);
+  useEffect(() => {
+    if (!q.data) return;
+    const { id, status } = q.data;
+    const seen = lastSeen.current;
+    if (seen?.id === id && seen.status === 'DRAFT' && status === 'CONFIRMED' && sp.get('confirm') !== '1') setJustConfirmed(true);
+    lastSeen.current = { id, status };
+  }, [q.data?.id, q.data?.status]);
   const parsedField = StarFieldSchema.safeParse(sp.get('field'));
   const editField = parsedField.success ? parsedField.data : undefined;
   useDocumentTitle(q.data?.title);
@@ -88,14 +98,15 @@ export function CardPage() {
   // 초안을 쓰는 동안 AI 가 칸을 쓰는 모습(#617). Job 이 끝나도 마지막 카드를 다 펼칠 때까지 이 화면을 붙잡는다(live.holding)
   const generating = !!q.data?.generation && !q.data.generation.partial;
   const live = useLiveDraft({ scope: cardId, jobId: q.data?.generation?.jobId, generating });
-  // 쓰는 화면을 보고 있다가 여러 장이 다 써졌으면 그 레포의 카드 폴더로 옮긴다 — 다음 일이 여러 장을 훑어 확정하는 것이다
+  // 쓰는 화면을 보고 있다가 여러 장이 다 써졌으면 그 레포로 옮긴다 — 다음 일이 여러 장을 훑어 확정하는 것이다.
+  // 매칭이 켜져 있으면 그 카드로 맞는 기업을 고르는 화면, 꺼져 있으면 카드 폴더다
   const showingLive = generating || live.holding;
   const wasShowingLive = useRef(false);
   const draftRepoId = q.data?.repo?.id;
   useEffect(() => {
     const done = live.job;
     if (wasShowingLive.current && !showingLive && done?.state === 'SUCCEEDED' && (done.result?.cardIds?.length ?? 0) > 1 && draftRepoId) {
-      nav(`/cards/repo/${encodeURIComponent(draftRepoId)}`, { replace: true });
+      nav(matchSupported() ? folderPath.repoMatch(draftRepoId) : folderPath.repo(draftRepoId), { replace: true });
     }
     wasShowingLive.current = showingLive;
   }, [showingLive, live.job, draftRepoId, nav]);
@@ -105,14 +116,14 @@ export function CardPage() {
   const card = q.data!;
   const repoName = card.repo ? `${card.repo.owner} / ${card.repo.name}` : null;
   const srcLabel = card.candidate ? candidateRefLabel(card.candidate.type, card.candidate.ref) : card.kind === 'QUALITATIVE' ? '직접 작성' : '카드';
-  // 활동 안의 카드는 경험 카드 목록 다음에 그 활동 폴더가 온다(#522)
-  const crumbs = [{ label: '홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }, { label: '후보 보드', to: `/repos/${card.repo.id}/candidates` }] : card.activity ? [{ label: '경험 카드', to: '/cards' }, { label: card.activity.name, to: folderPath.activity(card.activity.id) }] : [{ label: '경험 카드', to: '/cards' }]), { label: srcLabel, href: candidateGithubUrl(card) }];
+  // 경험 카드 목록 다음에 카드가 든 폴더(레포 또는 활동)가 온다(#522)
+  const crumbs = [{ label: '홈', to: '/' }, { label: '경험 카드', to: '/cards' }, ...(card.repo ? [{ label: card.repo.name, to: folderPath.repo(card.repo.id) }] : card.activity ? [{ label: card.activity.name, to: folderPath.activity(card.activity.id) }] : []), { label: srcLabel, href: candidateGithubUrl(card) }];
   const ask = (f: StarField) => nav(`/cards/${cardId}/interview?field=${f}`, { state: location.state });
   const close = () => setSp({});
   const masked = (t: string) => applyMask(t, card.maskRules);
-  // 제목·기간 수정은 제목 바로 옆 연필 하나로 — 무엇을 고치는지 위치가 말해 준다
-  const metadataAction = card.status === 'DRAFT' && cardMetadataSupported() ? <button type="button" className="title-edit" aria-label="기본 정보 수정" title="제목과 기간 수정" onClick={() => setMetadataOpen(true)}><Pencil size={18} aria-hidden /></button> : null;
-  const metadataDialog = metadataOpen && card.status === 'DRAFT' ? <CardMetadataDialog key={card.id} card={card} onClose={() => setMetadataOpen(false)} /> : null;
+  // 제목·기간 수정은 제목 바로 옆 연필 하나로 — 무엇을 고치는지 위치가 말해 준다. 서버가 확정 카드도 다시 열지 않고 받으므로 확정 카드에도 둔다
+  const metadataAction = cardMetadataSupported() ? <button type="button" className="title-edit" aria-label="기본 정보 수정" title="제목과 기간 수정" onClick={() => setMetadataOpen(true)}><Pencil size={18} aria-hidden /></button> : null;
+  const metadataDialog = metadataOpen ? <CardMetadataDialog key={card.id} card={card} onClose={() => setMetadataOpen(false)} /> : null;
   const exportMd = () => setCopyOpen(true);
   const print = () => { track('card_exported', { cardId, format: 'print' }); window.print(); };
   // 확정 카드를 편집 상태로 되돌린다. 칸 연필로 열었으면 되돌린 뒤 그 칸부터 고친다
@@ -128,7 +139,7 @@ export function CardPage() {
     return (
       <main className="main">
         <Breadcrumb items={[...crumbs.slice(0, -1), { label: '초안 생성 중' }]} />
-        <PageTitle>고른 후보의 카드 초안을 쓰고 있어요</PageTitle>
+        <PageTitle>카드 초안을 쓰고 있어요</PageTitle>
         {job.isError && <QueryFailure error={job.error} retry={() => job.refetch()} pending={job.isFetching} />}
         <DraftProgress job={j} checkedAt={job.dataUpdatedAt} />
         <LiveCardDraft view={live.view} instant={{ on: live.manualInstant, toggle: live.reducedMotion ? null : () => live.setManualInstant((on) => !on) }} />
@@ -145,34 +156,37 @@ export function CardPage() {
 
   // ── E2 읽기 (CONFIRMED) + D9 확정 직후
   if (card.status === 'CONFIRMED' && mode !== 'edit') {
+    const gapFields = emptyStarFields(card);
     return (
       <main className="main main--tight">
         <Breadcrumb items={crumbs} />
         {justConfirmed && (
-          <div className="card done-card">
+          // 수정을 저장하다 서버가 확정한 때의 안내이고, 확정 창으로 확정하면 폴더로 가서 다음 걸음은 폴더 맨 위가 말한다
+          <div className="card done-card" role="status">
             <span className="done-card__ok" aria-hidden>✓</span>
-            <div className="stack grow" style={{ gap: 5 }}>
-              <div className="row" style={{ gap: 8 }}><span className="w-600" style={{ fontSize: 16 }}>{card.title}</span><Badge kind="CONFIRMED">확정됨</Badge></div>
-              <span className="t-12l c-2">{evidenceCountLabel(card.evidence, { showZero: true })}, {emptyStarFields(card).length ? `${emptyStarFields(card).length}칸 비어 있음` : '네 칸 모두 채움'}</span>
+            <div className="stack grow" style={{ gap: 4 }}>
+              <span className="w-600" style={{ fontSize: 16 }}>카드를 확정했어요</span>
+              <span className="t-13 c-2">상황과 행동이 있어서 바로 쓸 수 있어요.</span>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setSp({ versions: '1' })}>{historyActionLabel}</Button>
-            {justConfirmed.repoId && justConfirmed.remainingCandidates > 0
-              ? <Button onClick={() => nav(`/repos/${justConfirmed.repoId}/candidates`)}>남은 후보 {justConfirmed.remainingCandidates}개 보기</Button>
-              : <Link to="/" className="btn btn--primary">홈으로</Link>}
-            {matchSupported() && <Link to="/match" className="btn btn--outline">이 경험과 맞는 공고 보기</Link>}
+            <Link to={cardFolderPath(card)} state={{ confirmed: card.id }} className="btn btn--primary">폴더로 돌아가기</Link>
           </div>
         )}
-        <CardHeader card={card} right={<>
-          <Button size="sm" onClick={exportMd} title="가린 정보를 적용한 내용을 복사해요">복사</Button>
-          <Button variant="outline" size="sm" loading={reopen.isPending} onClick={() => reopenCard()}>수정</Button>
-        </>} />
+        <CardHeader card={card} titleAction={metadataAction} right={<Button variant="outline" size="sm" onClick={exportMd} title="가린 정보를 적용한 내용을 복사해요">복사</Button>} />
+        {/* 과제·결과가 비어도 확정은 그대로이고, 채우고 싶을 때 바로 질문을 받게만 한다 */}
+        {gapFields.length > 0 && (
+          <div className="card row" style={{ gap: 16, padding: '16px 18px', background: 'var(--bg-inset)', border: 0, flexWrap: 'wrap' }}>
+            <span className="grow" style={{ fontSize: 14, lineHeight: '22px' }}>{gapFields.map((f) => starFieldShort[f]).join(', ')} 칸이 비어 있어요. 한두 가지만 알려 주면 채울 수 있어요</span>
+            <Button variant="outline" onClick={() => ask(gapFields[0])}>질문 받기</Button>
+          </div>
+        )}
         <div className="two-col two-col--340">
-          <div className="card star-read evidence-rail evidence-rail--rows">
+          <div className="card star-read star-read--rows">
             {STAR_FIELDS.map((f) => {
               const t = card.version[fieldKey[f]];
               const ev = card.evidence.filter((e) => e.field === f);
+              const rowClass = [!t && 'star-read__row--gap', f === 'R' && 'star-read__row--result'].filter(Boolean).join(' ');
               return (
-                <StarRow key={f} field={f} label={starFieldShort[f]} action={t && <button type="button" className="star__pencil" aria-label={`${starFieldShort[f]} 수정`} title={`${starFieldShort[f]} 수정`} disabled={reopen.isPending} onClick={() => reopenCard(f)}><Pencil size={16} aria-hidden /></button>} dropped={!t} className={t ? undefined : 'star-read__row--gap'} rail={{ commits: ev.filter((e) => e.type === 'COMMIT').length, kind: railKind(!t, ev) }}>
+                <StarRow key={f} field={f} label={starFieldShort[f]} action={<button type="button" className="star__pencil" aria-label={`${starFieldShort[f]} ${t ? '수정' : '채우기'}`} title={`${starFieldShort[f]} ${t ? '수정' : '채우기'}`} disabled={reopen.isPending} onClick={() => reopenCard(f)}><Pencil size={16} aria-hidden /></button>} dropped={!t} className={rowClass}>
                   {t ? <p className="star__text">{masked(t)}</p> : <span className="c-3 w-500" style={{ fontSize: 13 }}>비운 채로 확정했어요</span>}
                   <EvidenceList items={ev} label={starFieldName[f]} sentence={t ? masked(t) : null} />
                 </StarRow>
@@ -204,6 +218,7 @@ export function CardPage() {
         </div>
         {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
         {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
+        {metadataDialog}
         <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
       </main>
     );
@@ -281,12 +296,12 @@ export function CardPage() {
 
       <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
       <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 칸에 답변해 주세요` : canConfirm ? '내용을 확인한 뒤 확정해 주세요' : '상황과 행동을 작성해 주세요'} sub={!reviewFields.length && canConfirm ? '확정한 카드는 공고 매칭에 쓰여요. 나중에 다시 열어 고칠 수 있어요.' : undefined}>
-        {reviewFields.length === 0 && (card.repo ? <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--text">나중에</Link> : <Link to="/" className="btn btn--text">나중에</Link>)}
+        {reviewFields.length === 0 && <Link to={cardFolderPath(card)} className="btn btn--text">나중에</Link>}
         <Button variant={reviewFields.length ? 'outline' : 'primary'} size="lg" disabled={!canConfirm} onClick={() => setSp({ confirm: '1' })} title={canConfirm ? undefined : '상황과 행동을 작성해 주세요'}>확정</Button>
         {reviewFields.length > 0 && <Button size="lg" title={interviewActionLabel} onClick={() => ask(reviewFields[0])}>답변하기</Button>}
       </StickyFooter>
 
-      {sp.get('confirm') === '1' && <ConfirmDialog card={card} onClose={close} onConfirmed={(r) => { setJustConfirmed(r); close(); }} />}
+      {sp.get('confirm') === '1' && <ConfirmDialog card={card} onClose={close} onConfirmed={() => nav(cardFolderPath(card), { replace: true, state: { confirmed: card.id } })} />}
       {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
       {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
       {metadataDialog}

@@ -166,12 +166,6 @@ export type GeneralType = z.infer<typeof GeneralType>;
 export type GapFill = z.infer<typeof GapFill>;
 export type GapFillCondition = z.infer<typeof GapFillCondition>;
 export type GapFillProposal = z.infer<typeof GapFillProposal>;
-/**
- * 레포 화면의 추천 기업(#613, `GET /repos/{repoId}/recommendations`). 서버는 화면을 열 때 계산하지 않고 저장된 값을 준다.
- *  - COMPUTING 은 계산을 기다리거나 하는 중(확정 카드가 바뀌면 1분 뒤 다시 계산), NONE 은 아직 계산한 적 없음.
- *  - FAILED 여도 앞서 계산한 기업은 companies 에 남아 있다. 많아야 3곳이고 순위 순서다.
- *  - posting.closed 는 계산한 뒤 마감되거나 내려간 공고. 다시 계산하기 전까지 목록에 남는다.
- */
 /** 홈의 '매칭된 공고'(#711, `GET /matches/summary`). 전체 매칭·레포 추천·공고 상세 맞춰 보기가 쌓은 판단 중, 지금 확정 카드로 필수 기술·경험 조건을 채운 마감 전 공고 수 */
 export const MatchedPostings = z.object({ matchedPostings: z.number().int().nonnegative() });
 export const RecommendationStatus = z.enum(["COMPUTING", "READY", "FAILED", "NONE"]);
@@ -181,9 +175,38 @@ const recommendedPosting = z.object({
   deadline: z.string().datetime({ offset: true }).nullable(),
   closed: z.boolean(),
 });
+const liveHit = z.object({ type: z.enum(["REQUIRED", "PREFERRED"]), text: z.string(), cardTitle: z.string() });
+const liveCandidate = z.object({
+  companyId,
+  companyName: z.string(),
+  logoUrl,
+  posting: z.object({ id: z.string(), title: z.string(), deadline: z.string().datetime({ offset: true }).nullable() }),
+  overlap: count,
+  state: z.enum(["WAITING", "CHECKING", "DONE"]),
+  failed: z.boolean(),
+  hits: z.array(liveHit),
+});
+export const RepoLive = z.object({
+  cardCount: count,
+  techs: z.array(z.string()),
+  candidates: z.array(liveCandidate),
+  finished: z.boolean(),
+});
+/**
+ * 레포 화면의 추천 기업(#613, `GET /repos/{repoId}/recommendations`). 서버는 화면을 열 때 계산하지 않고 저장된 값을 준다.
+ *  - 그 레포의 카드 전체(작성 중 + 확정)로 계산한다. COMPUTING 은 계산을 기다리거나 하는 중, NONE 은 아직 계산한 적 없음.
+ *  - FAILED 여도 앞서 계산한 기업은 companies 에 남아 있다. 많아야 3곳이고 순위 순서다.
+ *  - posting.closed 는 계산한 뒤 마감되거나 내려간 공고. 다시 계산하기 전까지 목록에 남는다.
+ *  - queued 는 다시 계산이 예약돼 있고 아직 시작하지 않은 것이다. 이때도 status 는 COMPUTING 이고, 계산을 실제로 시작하면 false 가 된다(NONE 이면 늘 false). 이 칸이 없는 옛 서버는 false 로 읽는다.
+ *  - live 는 기업을 하나씩 확인하는 과정이다. 서버 메모리에 남은 진행이 없으면(서버가 다시 떴거나 옛 결과, FAILED) null 이고, 칸이 없거나 모양이 달라도 null 로 읽어 지난 결과만 그린다.
+ *    candidates 는 서버가 확인하는 순서이고, state 는 WAITING → CHECKING → DONE 이다. failed 는 판단을 받지 못한 회사로 state 는 DONE 이고, hits 는 DONE 이 아니거나 failed 면 빈 배열이다.
+ *    techs 는 카드 techs 와 같은 기술 이름, cardCount 는 계산에 쓴 카드 수(네 칸이 모두 빈 카드는 뺀다)다.
+ */
 export const RepoRecommendation = z.object({
   status: RecommendationStatus,
   computedAt: z.string().datetime({ offset: true }).nullable(),
+  queued: z.boolean().catch(false),
+  live: RepoLive.nullable().catch(null),
   companies: z.array(
     z.object({
       companyId,
@@ -194,22 +217,28 @@ export const RepoRecommendation = z.object({
       techs: z.array(z.string()),
       requiredMet: z.number().int().nonnegative(),
       preferredMet: z.number().int().nonnegative(),
+      /** 지난 결과에 없던 회사이고, 칸이 없는 옛 서버는 false 로 읽는다 */
+      fresh: z.boolean().catch(false),
     }),
   ),
 });
 export type RepoRecommendation = z.infer<typeof RepoRecommendation>;
+const namedCondition = z.object({ text: z.string(), techs: z.array(z.string()) });
 /**
  * 공고 페이지 위쪽 '나와 맞는 기업'(#614, `GET /recommendations`). 서버는 '내 조건으로 매칭하기'(`POST /recommendations`, 같은 응답)를 누를 때만 계산한다.
  *  - COMPUTING 동안 progress 로 '공고 15곳 중 6곳 확인' 을 그린다(그 밖에는 null). 계산은 1분 안팎이다.
  *  - FAILED 는 실패했거나 계산이 멈춘 것이라 다시 누르면 새로 계산한다. 계산 중·실패여도 지난 기업은 companies 에 남아 있다.
  *  - stale 이면 계산 뒤 확정 카드나 인적사항이 바뀐 것 → '조건이 바뀌었어요 — 다시 매칭하기'.
  *  - 기업은 많아야 5곳이고 순위 순서다. requiredMet / requiredTotal 로 '필수 4개 중 3개' 를 쓴다(학력·경력 같은 일반 조건은 세지 않는다).
+ *  - checked 는 계산할 때 확인한 공고 수(계산한 적 없으면 0). 이 칸이 생기기 전 서버는 주지 않아 0 으로 읽는다.
+ *  - met·missing 은 맞은·모자란 필수 조건 이름(공고에 적힌 순서, 각 3개까지). techs 는 카드 techs 와 같은 기술 이름이고 없는 조건은 빈 배열이다. 옛 서버에는 없어 빈 배열로 읽는다.
  */
 export const OverallRecommendation = z.object({
   status: RecommendationStatus,
   computedAt: z.string().datetime({ offset: true }).nullable(),
   stale: z.boolean(),
   progress: z.object({ done: count, total: count }).nullable(),
+  checked: count.default(0),
   companies: z.array(
     z.object({
       companyId,
@@ -220,6 +249,8 @@ export const OverallRecommendation = z.object({
       requiredTotal: count,
       preferredMet: count,
       preferredTotal: count,
+      met: z.array(namedCondition).default([]),
+      missing: z.array(namedCondition).default([]),
     }),
   ),
 });
@@ -277,6 +308,11 @@ export const matchingApi = {
   repoRecommendations: (repoId: string, env?: MatchEnv) =>
     matchSupported(env)
       ? api(RepoRecommendation, `/repos/${encodeURIComponent(repoId)}/recommendations`)
+      : Promise.reject(unavailable()),
+  /** 새 카드를 넣어 다시 고르기 시작한다. 응답은 읽기와 같고 queued 가 true 다 */
+  refreshRepoRecommendations: (repoId: string, env?: MatchEnv) =>
+    matchSupported(env)
+      ? api(RepoRecommendation, `/repos/${encodeURIComponent(repoId)}/recommendations/refresh`, { method: "POST" })
       : Promise.reject(unavailable()),
   recommendations: (env?: MatchEnv) =>
     matchSupported(env)
@@ -344,10 +380,7 @@ export const useGapFill = (id: string) => {
     onSuccess: (detail) => client.setQueryData(matchKeys.detail(id), detail),
   });
 };
-/** 홈의 '매칭된 공고' 수(#712). AI 를 부르지 않는 가벼운 조회라 홈을 열 때마다 다시 읽어, 그사이 쌓인 매칭 판단이 바로 반영된다 */
-export const useMatchedPostings = () =>
-  useQuery({ queryKey: matchKeys.summary, queryFn: () => matchingApi.matchedPostings(), enabled: matchSupported(), retry: false });
-/** 레포 폴더의 추천 기업(#709). 서버가 그 레포의 확정 카드가 바뀌면 배경에서 다시 계산하므로, 계산 중에만 2초마다 다시 읽는다 */
+/** 레포 폴더의 추천 기업(#709). 서버가 그 레포의 카드가 바뀌면 배경에서 다시 계산하므로, 계산 중이거나 계산이 예약돼 있는 동안만 2초마다 다시 읽는다 */
 export const useRepoRecommendation = (repoId: string | undefined) =>
   useQuery({
     queryKey: matchKeys.repo(repoId ?? ""),
@@ -355,8 +388,21 @@ export const useRepoRecommendation = (repoId: string | undefined) =>
     enabled: matchSupported() && !!repoId,
     retry: false,
     refetchOnWindowFocus: false,
-    refetchInterval: (query) => (query.state.data?.status === "COMPUTING" ? 2000 : false),
+    refetchInterval: (query) => (query.state.data?.status === "COMPUTING" || query.state.data?.queued ? 2000 : false),
   });
+/** 실패는 화면이 지금 결과를 그대로 보이면 되므로 알림을 띄우지 않는다 */
+export const useRefreshRepoRecommendation = (repoId: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => matchingApi.refreshRepoRecommendations(repoId),
+    onSuccess: async (data) => {
+      // 먼저 나간 읽기가 늦게 돌아와 새로 시작한 결과를 덮지 않게 한다
+      await client.cancelQueries({ queryKey: matchKeys.repo(repoId) });
+      client.setQueryData(matchKeys.repo(repoId), data);
+    },
+    meta: { errorPresentation: "inline" },
+  });
+};
 /**
  * 전체 매칭(#614) — 서버가 배경에서 계산하고 화면은 저장된 결과를 읽는다. 읽기는 AI 를 부르지 않아 열 때마다 다시 읽고,
  * 계산 중에는 확인한 공고 수가 바뀌므로 2초마다 다시 읽는다. 화면을 떠나도 계산은 서버에서 이어진다.

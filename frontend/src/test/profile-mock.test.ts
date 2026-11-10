@@ -103,6 +103,35 @@ describe('mock server: GET·PUT /profile (BE #552 contract)', () => {
   });
 });
 
+describe('mock server: 메일 알림 (F7, same rules as the real server P1~P5)', () => {
+  const saved = () => get().data as Profile;
+  it('P1: trims the address and clears it when blank', () => {
+    expect(put({ ...minimalInput(), email: '  me@example.com ' }).data).toMatchObject({ email: 'me@example.com' });
+    expect(put({ ...minimalInput(), email: '   ' }).data).toMatchObject({ email: null });
+  });
+  it('P2: rejects an address that is too long, has a space, has no single @, or has no dot after @', () => {
+    for (const email of [`${'a'.repeat(250)}@b.co`, 'a b@c.com', 'a@@c.com', 'a@b@c.com', 'a@bcom', 'sunjun@', '@c.com']) {
+      expect(put({ ...minimalInput(), email })).toMatchObject({ status: 400, error: { code: 'INVALID_REQUEST' } });
+    }
+    expect(saved().email).toBeNull();
+  });
+  it('P3: rejects turning mail on when there is no address to save', () => {
+    expect(put({ ...minimalInput(), email: '', mailOptIn: true })).toMatchObject({ status: 400 });
+    expect(put({ ...minimalInput(), mailOptIn: true })).toMatchObject({ status: 400 });
+    expect(put({ ...minimalInput(), email: 'me@example.com', mailOptIn: true })).toMatchObject({ status: 200 });
+  });
+  it('P4: keeps the saved address and checkbox when the request leaves them out', () => {
+    put({ ...minimalInput(), email: 'me@example.com', mailOptIn: true });
+    put(minimalInput());
+    expect(saved()).toMatchObject({ email: 'me@example.com', mailOptIn: true });
+  });
+  it('P5: answers with the address and checkbox, null and false before anything is saved', () => {
+    expect(saved()).toMatchObject({ email: null, mailOptIn: false });
+    put({ ...minimalInput(), email: 'me@example.com', mailOptIn: true });
+    expect(saved()).toMatchObject({ email: 'me@example.com', mailOptIn: true });
+  });
+});
+
 describe('demo database: reset, snapshot and restore', () => {
   it('resetDb empties a saved profile', () => {
     put(sampleInput());

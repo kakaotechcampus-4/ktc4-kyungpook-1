@@ -46,7 +46,7 @@ export function ActivitiesPage() {
               </Link>
               <div className="activity-row__actions">
                 <Link to={`/activities/${encodeURIComponent(activity.id)}/edit`} className="btn btn--outline btn--sm" aria-label={`${activity.name} 고치기`}>고치기</Link>
-                <Button variant="text" size="sm" aria-label={`${activity.name} 삭제`} onClick={() => setDeleting(activity)}>삭제</Button>
+                <Button variant="danger" size="sm" aria-label={`${activity.name} 삭제`} onClick={() => setDeleting(activity)}>삭제</Button>
               </div>
             </li>
           ))}

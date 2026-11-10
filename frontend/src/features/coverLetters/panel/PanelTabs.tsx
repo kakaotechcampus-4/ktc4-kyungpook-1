@@ -2,8 +2,8 @@ import { useRef, type KeyboardEvent } from 'react';
 
 export type PanelTab = 'fill' | 'polish' | 'inference';
 export const PANEL_TABS: { key: PanelTab; label: string }[] = [
-  { key: 'fill', label: '채우기' },
-  { key: 'polish', label: '진단·첨삭' },
+  { key: 'fill', label: '대화' },
+  { key: 'polish', label: '진단과 첨삭' },
   { key: 'inference', label: '짐작 확인' },
 ];
 export const tabId = (k: PanelTab) => `clp-tab-${k}`;

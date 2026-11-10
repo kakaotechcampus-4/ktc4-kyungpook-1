@@ -178,6 +178,9 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .sticky-footer__text strong { font-size: 14px; line-height: 20px; font-weight: var(--heading-weight); }
 .sticky-footer__text span { font-size: 12px; line-height: 16px; color: var(--text-secondary); }
 .repo-ctx { display: flex; align-items: center; gap: 14px; padding: 16px 20px; }
+/* 버튼이 둘 이상일 때(지난 결과 보기 · 다시 정리) 묶음. 좁은 화면에서는 아래 줄로 내린다(responsive.css) */
+.repo-ctx__actions { flex-shrink: 0; }
+.repo-ctx__actions .btn { white-space: nowrap; }
 .repo-ctx__icon { width: 24px; height: 24px; border-radius: var(--radius-sm); background: var(--border-strong); flex: 0 0 auto; }
 .repo-ctx__name { font-size: 16px; line-height: 20px; font-weight: var(--heading-weight); }
 .repo-ctx__note { font-size: 12px; line-height: 19px; color: var(--text-secondary); }
@@ -227,4 +230,3 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .mine-chip > svg { flex: none; align-self: center; }
 .match-meta, .match-card__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
 .match-card__go { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: var(--text-accent); font-weight: 600; }
-.prompt__icon { flex: none; color: var(--text-tertiary); }

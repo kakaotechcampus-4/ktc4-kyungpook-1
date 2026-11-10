@@ -106,7 +106,7 @@ function PolishResult({ polish, current, charLimit, applying, onRetry, onApply }
                   <span className="clp-pt__t">{p.title}</span>
                   <ChevronDown size={18} className="clp-pt__chev" aria-hidden />
                 </span>
-                {open === k && p.detail && <span className="clp-pt__w">→ {p.detail}</span>}
+                {open === k && p.detail && <span className="clp-pt__w">{p.detail}</span>}
               </button>
             </li>
           ))}
@@ -124,7 +124,7 @@ function PolishResult({ polish, current, charLimit, applying, onRetry, onApply }
         </p>
         <p className="clp-rewrite__count">{polish.draft.charCount.toLocaleString()} / {charLimit.toLocaleString()}자</p>
       </div>
-      <p className="clp-note">적용하기 전까지 종이의 글은 그대로예요 · 원본은 남아요</p>
+      <p className="clp-note">적용하기 전까지 종이의 글은 그대로예요. 원본은 남아요</p>
       <div className="clp-actions">
         <Button variant="outline" onClick={onRetry} disabled={applying}>다시 받기</Button>
         {differs && <Button className="clp-actions__main" onClick={onApply} loading={applying}>적용하기</Button>}
@@ -165,7 +165,7 @@ export function PolishTab({ q, current, view, step, error, applying, flags, onRu
       <>
         {alert}
         <div className="clp-applied"><span><Check size={16} aria-hidden />적용했어요</span><Button variant="outline" onClick={onRun}>다시 받기</Button></div>
-        <p className="clp-note">원본은 남아 있어요 · 종이 아래 '원본 보기'로 볼 수 있어요</p>
+        <p className="clp-note">원본은 남아 있어요. 종이 아래 '원본 보기'로 볼 수 있어요</p>
       </>
     );
   }

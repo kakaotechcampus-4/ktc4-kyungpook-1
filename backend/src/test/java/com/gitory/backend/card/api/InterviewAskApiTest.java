@@ -190,7 +190,7 @@ class InterviewAskApiTest {
     }
 
     @Test
-    @DisplayName("남의 카드가 확정돼 있어도 409 CARD_CONFIRMED 가 아니라 404 이며 거절 기록이 하나 남고 질문은 그대로이고 AI 를 부르지 않는다")
+    @DisplayName("남의 카드가 확정돼 있어도 404 이며 거절 기록이 하나 남고 질문은 그대로이고 AI 를 부르지 않는다")
     void othersConfirmedCardIsStillNotFound() throws Exception {
 
         Long othersCardId = othersCard();
@@ -226,60 +226,22 @@ class InterviewAskApiTest {
     }
 
     @Test
-    @DisplayName("확정된 카드는 409 CARD_CONFIRMED 이고 AI 를 부르지 않으며 질문도 감사 기록도 남지 않는다")
-    void confirmedCardIsConflict() throws Exception {
+    @DisplayName("확정된 카드도 질문을 받아 저장하고 카드는 확정과 현재 버전 그대로이며 감사 기록은 남지 않는다")
+    void confirmedCardGetsQuestionAndStaysConfirmed() throws Exception {
 
         Long cardId = confirmedCard();
+        AI.replyWith(FakeInterviewAi::askAgain);
 
         ask(myUserId, MY_CARD.toString(), "T")
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("CARD_CONFIRMED"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.turnNo").value(1));
 
-        assertThat(AI.requests()).isEmpty();
-        assertThat(interviews.turnsOf(cardId)).isEmpty();
+        assertThat(interviews.turnsOf(cardId)).hasSize(1);
+        assertThat(jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, cardId))
+                .isEqualTo("CONFIRMED");
+        assertThat(jdbc.queryForObject("SELECT current_version FROM card WHERE id = ?", Integer.class, cardId))
+                .isEqualTo(2);
         assertThat(events()).isEmpty();
-
-    }
-
-    @Test
-    @DisplayName("확정된 카드는 질문을 모두 답했어도 상한 409 INTERVIEW_CAP 이 아니라 409 CARD_CONFIRMED 이고 AI 를 부르지 않는다")
-    void confirmedCardWithAllTurnsAnsweredIsStillConfirmedConflict() throws Exception {
-
-        Long cardId = confirmedCard();
-        interviews.insertAnswered(cardId, 1, "S", "첫 답", "TYPED");
-        interviews.insertAnswered(cardId, 2, "T", "둘째 답", "TYPED");
-
-        ask(myUserId, MY_CARD.toString(), "A")
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("CARD_CONFIRMED"));
-
-        assertThat(AI.requests()).isEmpty();
-        assertThat(interviews.turnsOf(cardId)).hasSize(2);
-
-    }
-
-    @Test
-    @DisplayName("확정된 카드는 field 가 잘못돼도 400 이 아니라 409 CARD_CONFIRMED 이다")
-    void confirmedCardWithBadFieldIsStillConflict() throws Exception {
-
-        confirmedCard();
-
-        ask(myUserId, MY_CARD.toString(), "X")
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("CARD_CONFIRMED"));
-
-    }
-
-    @Test
-    @DisplayName("확정된 카드에 답하지 않은 질문이 남아 있어도 그 질문이 아니라 409 CARD_CONFIRMED 이다")
-    void confirmedCardWithOpenTurnIsStillConflict() throws Exception {
-
-        Long cardId = confirmedCard();
-        fixtures.insertInterviewTurn(cardId, 1, "S");
-
-        ask(myUserId, MY_CARD.toString(), "T")
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("CARD_CONFIRMED"));
 
     }
 
@@ -676,7 +638,7 @@ class InterviewAskApiTest {
                 .andExpect(jsonPath(post + ".responses['401'].description").value(containsString("로그인 세션 없음")))
                 .andExpect(jsonPath(post + ".responses['403'].description").value(containsString("CSRF")))
                 .andExpect(jsonPath(post + ".responses['404'].description").value(containsString("본인 카드 없음")))
-                .andExpect(jsonPath(post + ".responses['409'].description").value(containsString("CARD_CONFIRMED")))
+                .andExpect(jsonPath(post + ".responses['409'].description").value(containsString("INVALID_STATE")))
                 .andExpect(jsonPath(post + ".responses['409'].description").value(containsString("INTERVIEW_CAP")))
                 .andExpect(jsonPath(post + ".responses['503'].description").value(containsString("AI_UNAVAILABLE")));
 
@@ -847,7 +809,7 @@ class InterviewAskApiTest {
     }
 
     @Test
-    @DisplayName("되묻기가 끝나면 그 글로 카드 상태를 정해, 네 칸이 확인 필요 없이 모두 찬 카드는 확정하고 빈 칸이 있는 카드는 작성 중으로 둔다")
+    @DisplayName("되묻기가 끝나면 그 글로 카드 상태를 정해, 상황·행동이 차고 확인 필요가 없는 카드는 확정하고 행동이 빈 카드는 작성 중으로 둔다")
     void interviewEndConfirmsOnlyCompleteCard() throws Exception {
 
         Long complete = fixtures.insertCard(MY_CARD, myUserId);
@@ -1065,6 +1027,20 @@ class InterviewAskApiTest {
 
         draft("3초에서 0.4초").andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
+
+    }
+
+    @Test
+    @DisplayName("확정된 카드도 수치 문장 미리 보기를 받는다")
+    void confirmedCardGetsMeasuredDraft() throws Exception {
+
+        Long cardId = measureTurn();
+        fixtures.confirmCard(cardId);
+        AI.replyWith(request -> sentence(cardId, "조회 시간을 3초에서 0.4초로 줄였다."));
+
+        draft("3초 걸리던 게 0.4초 정도")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sentence").value("조회 시간을 3초에서 0.4초로 줄였다."));
 
     }
 

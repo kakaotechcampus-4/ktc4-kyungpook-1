@@ -51,13 +51,13 @@ test('되묻기 — AI 가 고른 칸과 다시 묻는 이유가 AI 판단으로
 
   // 마지막 칸을 채우면 서버가 카드를 확정한다. AI 가 끝낸 것이 아니므로 끝낸 이유를 지어내지 않는다
   await answerWith(page, '테스트를 먼저 붙이고 고쳤다');
-  await expect(page.getByText('경험 카드가 확정됐어요')).toBeVisible();
+  await expect(page.getByText('카드를 확정했어요')).toBeVisible();
   await expect(panel(page).locator('.ai-judgement')).toHaveCount(0);
   // 저장하는 동안만 보이는 대기 문장(AiWait)이 사라진 뒤에는 낭독 영역이 이 한 곳뿐이고, 확정 안내가 그 안에 있다
   const live = panel(page).locator('[aria-live]');
   await expect(live).toHaveCount(1);
   await expect(live).toHaveAttribute('aria-live', 'polite');
-  await expect(live).toContainText('경험 카드가 확정됐어요');
+  await expect(live).toContainText('카드를 확정했어요');
 });
 
 test('되묻기 — AI 가 끝내며 남긴 이유가 AI 판단으로 보이고, 화면을 다시 열어도 같은 끝 화면이다', async ({ page }) => {

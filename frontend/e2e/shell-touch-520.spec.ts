@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { loginAsDemo, openRepoSearch } from './helpers';
+import { loginAsDemo } from './helpers';
 
 /**
  * #520 — 모바일 셸의 누르는 자리와 글자 크기.
@@ -50,25 +50,6 @@ test('데스크톱 사이드바와 레포 화면의 이름이 같다 (레포)', 
   await expect(page.getByRole('heading', { level: 1 })).not.toContainText('고르기');
   await expect(page).toHaveTitle('레포 · Gitory');
 });
-
-for (const width of [1440, 390]) {
-  test(`${width}px 홈 검색 상자는 위아래 여백을 눌러도 입력에 초점이 간다`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 });
-    await loginAsDemo(page); await page.goto('/');
-    await openRepoSearch(page); // 검색칸은 '레포 검색하기' 를 눌러야 열린다
-    const input = page.getByRole('combobox', { name: '레포 검색' });
-    await expect(input).toBeVisible();
-    expect((await input.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    // 카드 타일이 커지면(다른 PR) 검색 상자가 화면 아래 메뉴에 가려질 수 있어, 화면 가운데로 가져온 뒤 잰다
-    await page.locator('.prompt__row').evaluate((el) => el.scrollIntoView({ block: 'center' }));
-    const row = (await page.locator('.prompt__row').boundingBox())!;
-    await page.mouse.click(row.x + row.width / 2, row.y + 4); // 글자 줄 바깥, 상자 안쪽 위
-    await expect(input).toBeFocused();
-    await input.blur();
-    await page.mouse.click(row.x + row.width / 2, row.y + row.height - 4);
-    await expect(input).toBeFocused();
-  });
-}
 
 for (const width of [320, 390]) {
   test(`${width}px 일부만 정리한 결과의 버튼은 한 줄이고 가로로 넘치지 않는다`, async ({ page }) => {

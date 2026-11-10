@@ -36,6 +36,14 @@
 		root * /srv
 		# SPA 라우팅: 없는 경로는 index.html 로 (vercel.json rewrites 와 같은 동작)
 		try_files {path} /index.html
+		# index.html 은 매번 서버에 새 버전이 있는지 묻게 한다(ETag 로 바뀌지 않았으면 304). 해시 파일은 위에서 오래 캐시한다
+		header Cache-Control "no-cache"
 		file_server
 	}
+}
+
+# 주소를 바꾼 뒤에도 이미 공유한 링크가 열리도록 옛 주소를 새 주소로 넘긴다
+# 옛 주소가 없는 환경에서는 인증서를 공개로 받지 않는 로컬 이름으로 두어 아무 일도 하지 않는다
+{$LEGACY_SITE_ADDRESS:legacy.localhost} {
+	redir https://{$SITE_ADDRESS}{uri} permanent
 }

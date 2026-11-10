@@ -38,14 +38,16 @@ const pass = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync
 const typedOf = (field: string) => document.querySelector(`.live-slot[data-field="${field}"] [data-live-text]`)?.textContent ?? '';
 /** 전역 알림(JobWatcher)처럼 화면의 Job 조회와 상관없이 카드를 다시 읽게 한다 */
 const refetchCard = () => act(async () => { await client.invalidateQueries({ queryKey: keys.card('card_01') }); });
-const generationScreen = () => screen.queryByRole('heading', { name: '고른 후보의 카드 초안을 쓰고 있어요' });
+const generationScreen = () => screen.queryByRole('heading', { name: '카드 초안을 쓰고 있어요' });
 
 function mount() {
   vi.spyOn(endpoints, 'card').mockImplementation(async (id: string) => id === 'card_01' ? serverCard : Card.parse(raw(id)));
   vi.spyOn(endpoints, 'job').mockImplementation(async () => serverJob);
   vi.spyOn(endpoints, 'cards').mockResolvedValue([]);
   client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  const router = createMemoryRouter([{ path: '/cards/:cardId', element: <CardPage /> }, { path: '/cards/repo/:repoId', element: <p>레포 카드 폴더</p> }], { initialEntries: ['/cards/card_01'] });
+  const router = createMemoryRouter([
+    { path: '/cards/:cardId', element: <CardPage /> }, { path: '/cards/repo/:repoId', element: <p>레포 카드 폴더</p> }, { path: '/cards/repo/:repoId/match', element: <p>기업 고르는 화면</p> },
+  ], { initialEntries: ['/cards/card_01'] });
   render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
   return router;
 }
@@ -66,6 +68,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
   Reflect.deleteProperty(window, 'matchMedia');
 });
@@ -262,7 +265,22 @@ describe('#617 초안 생성 중 화면의 카드 쓰기', () => {
     expect(screen.getByText('결제 롤백 대응 경험')).toBeInTheDocument();
   });
 
-  it('여러 장을 쓰는 화면을 보다가 다 써지면 그 레포의 카드 폴더로 옮긴다 (#704)', async () => {
+  it('초안 여러 장을 다 쓰면 폴더가 아니라 기업 고르는 화면으로 간다 (#704)', async () => {
+    stubReducedMotion(true);
+    serverCard = generating();
+    serverJob = job('RUNNING', [draft('a', 'WRITING', four(40)), draft('b', 'WAITING')]);
+    const router = mount();
+    await pass(100);
+    serverCard = finished();
+    serverJob = job('SUCCEEDED', [draft('a', 'DONE', four(40)), draft('b', 'DONE', four(40))], { result: { repoId: 'r_auth', cardIds: ['card_01', 'card_02'] } });
+    await pass(1100);
+
+    expect(screen.getByText('기업 고르는 화면')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/cards/repo/${encodeURIComponent(serverCard.repo!.id)}/match`);
+  });
+
+  it('매칭이 꺼져 있으면 여러 장을 다 써도 지금처럼 그 레포의 카드 폴더로 간다 (#704)', async () => {
+    vi.stubEnv('VITE_API_MOCK', 'false');
     stubReducedMotion(true);
     serverCard = generating();
     serverJob = job('RUNNING', [draft('a', 'WRITING', four(40)), draft('b', 'WAITING')]);

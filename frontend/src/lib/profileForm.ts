@@ -5,7 +5,7 @@
  * 여기 값은 개인정보라 지표·로그·URL 에 넣지 않는다.
  */
 import {
-  CAREER_TYPES, EDUCATION_LEVELS, EDUCATION_STATUSES, GPA_MAXES, INTERESTS, LANGUAGE_TESTS, PROFILE_LIMITS, ProfileInput, issuesOf,
+  CAREER_TYPES, EDUCATION_LEVELS, EDUCATION_STATUSES, GPA_MAXES, INTERESTS, LANGUAGE_TESTS, PROFILE_LIMITS, ProfileInput, issuesOf, mailIssue,
   type CareerType, type EducationLevel, type EducationStatus, type Interest, type LanguageTest, type Profile, type ProfileIssue, type ProfileIssueCode,
 } from '@/api/profile';
 
@@ -18,7 +18,7 @@ export type CareerRow = Keyed & { company: string; type: CareerType | ''; role: 
 /** `testName` 은 시험이 '기타'일 때만 보내고 저장한다 */
 export type LanguageRow = Keyed & { test: LanguageTest | ''; testName: string; score: string; acquiredMonth: string };
 export type CertificationRow = Keyed & { name: string; issuer: string; acquiredMonth: string };
-export type ProfileForm = { educations: EducationRow[]; careers: CareerRow[]; languages: LanguageRow[]; certifications: CertificationRow[]; interests: Interest[] };
+export type ProfileForm = { educations: EducationRow[]; careers: CareerRow[]; languages: LanguageRow[]; certifications: CertificationRow[]; interests: Interest[]; email: string; mailOptIn: boolean };
 
 let seq = 0;
 /** 줄을 구분하는 화면용 키. 값에서 만들지 않는다(개인정보가 DOM id 에 새지 않게) */
@@ -41,6 +41,7 @@ export const toForm = (profile: Profile): ProfileForm => ({
   languages: profile.languages.map((r) => ({ key: newRowKey(), test: r.test, testName: text(r.testName), score: r.score, acquiredMonth: text(r.acquiredMonth) })),
   certifications: profile.certifications.map((r) => ({ key: newRowKey(), name: r.name, issuer: text(r.issuer), acquiredMonth: text(r.acquiredMonth) })),
   interests: [...profile.interests],
+  email: text(profile.email), mailOptIn: profile.mailOptIn,
 });
 
 /** 저장 응답으로 폼을 맞출 때 줄 키를 그대로 이어 쓴다 — 입력칸이 다시 만들어져 초점을 잃지 않게 */
@@ -49,7 +50,7 @@ export function reconcile(saved: ProfileForm, previous: ProfileForm): ProfileFor
   return {
     educations: keep(saved.educations, previous.educations), careers: keep(saved.careers, previous.careers),
     languages: keep(saved.languages, previous.languages), certifications: keep(saved.certifications, previous.certifications),
-    interests: saved.interests,
+    interests: saved.interests, email: saved.email, mailOptIn: saved.mailOptIn,
   };
 }
 
@@ -82,12 +83,18 @@ export const toDraft = (form: ProfileForm) => ({
   languages: form.languages.map((r) => ({ test: r.test, testName: r.test === 'OTHER' ? r.testName : null, score: r.score, acquiredMonth: nullIfBlank(r.acquiredMonth) })),
   certifications: form.certifications.map((r) => ({ name: r.name, issuer: nullIfBlank(r.issuer), acquiredMonth: nullIfBlank(r.acquiredMonth) })),
   interests: form.interests,
+  email: form.email, mailOptIn: form.mailOptIn, // 비워도 항상 보낸다 — 안 보내면 서버가 저장된 주소를 그대로 둔다
 });
 
 export type Validation = { ok: true; input: ProfileInput } | { ok: false; issues: ProfileIssue[] };
 export function validateForm(form: ProfileForm): Validation {
   const parsed = ProfileInput.safeParse(toDraft(form));
-  return parsed.success ? { ok: true, input: parsed.data } : { ok: false, issues: issuesOf(parsed.error) };
+  if (parsed.success) return { ok: true, input: parsed.data };
+  const issues = issuesOf(parsed.error);
+  // 다른 칸이 막혀 있어도 메일 칸 오류는 함께 보인다
+  const mail = mailIssue(form.email, form.mailOptIn);
+  if (mail && !issues.some((i) => i.path === 'email')) issues.push({ path: 'email', code: mail });
+  return { ok: false, issues };
 }
 
 /** 오류 위치 키: `educations[0].school` → `educations.0.school` (칸 id 와 같은 모양) */
@@ -114,6 +121,7 @@ export function attachableErrors(issues: ProfileIssue[], form: ProfileForm): Rec
   for (const { path, code } of issues) {
     const key = fieldKey(path);
     const [section, index, field, ...rest] = key.split('.');
+    if (section === 'email') { if (index === undefined) out[key] ??= issueMessage(key, code); continue; }
     if (section === 'interests') { if (index === undefined) out[key] ??= issueMessage(key, code); continue; } // 관심 분야는 목록 전체의 오류만 붙는다
     if (!(Object.keys(FIELDS) as string[]).includes(section) || rest.length > 0) continue;
     const name = section as SectionKey;
@@ -179,6 +187,7 @@ export function issueMessage(key: string, code: ProfileIssueCode): string {
     return code === 'TOO_MANY' ? `관심 분야는 ${PROFILE_LIMITS.INTERESTS}개까지 고를 수 있어요`
       : code === 'REQUIRED' ? '관심 분야를 1개 이상 골라 주세요' : '관심 분야는 목록에서 골라 주세요';
   }
+  if (field === 'email') return code === 'REQUIRED' ? '메일 주소를 적어 주세요' : '메일 주소를 다시 확인해 주세요';
   switch (code) {
     case 'REQUIRED': return REQUIRED_TEXT[field] ?? '꼭 필요한 항목이에요';
     case 'TOO_LONG': return `${MAX_BY_FIELD[field] ?? PROFILE_LIMITS.TEXT}자 이하로 입력해 주세요`;

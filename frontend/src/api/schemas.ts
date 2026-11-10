@@ -169,6 +169,9 @@ export const RepoSummary = z.object({
   candidateCount: z.number().nullable(),
   cardCount: z.number(),
   recommended: z.boolean(),
+  /** 폴더 타일에 보일 프로젝트 설명 한 줄. 사용자가 쓴 설명, GitHub 저장소 설명, README 에서 고른 문장 순이고 모두 없으면 null. README 에서 문장을 못 골라 분석 때 자동으로 요약해 둔 문장은 출처가 AI 다. 생략된 응답은 없는 것으로 본다 */
+  description: z.string().nullish(),
+  descriptionSource: z.enum(['USER', 'GITHUB', 'README', 'AI']).nullish(),
 });
 export type RepoSummary = z.infer<typeof RepoSummary>;
 
@@ -179,6 +182,17 @@ export const RepoDisclosure = z.object({
 });
 export const RepoDetail = RepoSummary.extend({ disclosure: RepoDisclosure });
 export type RepoDetail = z.infer<typeof RepoDetail>;
+
+/** 서버가 스스로 다시 읽은 레포 한 줄(레포마다 하나, 최근 순)이고, 사용자가 보면 목록에서 빠진다 */
+export const RepoUpdate = z.object({
+  repoId: z.string(),
+  repoName: z.string(),
+  cardCount: z.number().int().nonnegative(),
+  finishedAt: z.string(),
+});
+export type RepoUpdate = z.infer<typeof RepoUpdate>;
+/** 새 활동 확인 — queued 는 새 push 가 있어 다시 읽기를 시작한 레포 수 */
+export const RepoUpdateCheck = z.object({ queued: z.number().int().nonnegative() });
 
 // ───────────────────────────── Job ─────────────────────────────
 export const JobStep = z.object({
@@ -475,6 +489,8 @@ export const CardSummary = z.object({
   period: z.string().nullish(),
   evidenceCount: z.number().nonnegative().nullish(),
   userStatedCount: z.number().nonnegative().nullish(),
+  /** #773: 현재 버전 결과 칸의 글이고, 없음(undefined)은 이전 서버라 모름, null 은 결과가 아직 비어 있음 */
+  preview: z.string().nullish(),
   /** #457: 어느 레포에서 나온 카드인지. 없음(undefined) = 이전 서버라 모름, null = 직접 작성처럼 레포가 없음 */
   repo: z.object({ id: z.string(), owner: z.string(), name: z.string() }).nullish(),
   /** #477: 카드 상세와 같은 값. 없음(undefined) = 이전 서버라 모름, null = 활동 밖 카드 */

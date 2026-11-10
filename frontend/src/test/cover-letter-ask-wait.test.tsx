@@ -30,8 +30,8 @@ afterEach(cleanup);
 describe('자소서 질문을 고르는 동안(ASKING)', () => {
   it('②와 같은 종이에 문항마다 쓰는 카드 한 줄과 상태 한 줄을 두고, 카드를 바꾸는 버튼은 없다', () => {
     mount(asking([question()]));
-    expect(screen.getByRole('heading', { name: '더 물어볼 것을 고르고 있어요' })).toBeInTheDocument();
-    expect(screen.getByText('보통 1~2분 걸려요 · 떠나도 돼요')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '카드에 없는 재료를 확인하고 있어요' })).toBeInTheDocument();
+    expect(screen.getByText('보통 1~2분 걸려요')).toBeInTheDocument();
     expect(screen.getByText('팀원과 토큰 저장 위치로 갈린 경험 카드로 써요')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('물어볼 것을 고르는 중');
     expect(screen.queryByRole('button', { name: /카드 바꾸기/ })).not.toBeInTheDocument();

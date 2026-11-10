@@ -13,12 +13,15 @@ import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -52,6 +55,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -231,7 +235,7 @@ class RepoApiTest {
     }
 
     @Test
-    @DisplayName("값이 비어 있어도 프론트가 요구하는 키 13개와 countedAt 은 모두 내려간다")
+    @DisplayName("값이 비어 있어도 프론트가 요구하는 키 13개와 countedAt·description·descriptionSource 는 모두 내려간다")
     void keepsEveryContractKey() throws Exception {
 
         githubReturns(repo(100L, "grow22", "gitory"));
@@ -240,7 +244,8 @@ class RepoApiTest {
 
         assertThat(repo).containsOnlyKeys(
                 "id", "owner", "name", "contribution", "prCount", "reviewCount", "language",
-                "activeFrom", "activeTo", "lastAnalyzedAt", "countedAt", "candidateCount", "cardCount", "recommended");
+                "activeFrom", "activeTo", "lastAnalyzedAt", "countedAt", "candidateCount", "cardCount", "recommended",
+                "description", "descriptionSource");
 
     }
 
@@ -335,7 +340,7 @@ class RepoApiTest {
     void activeToFallsBackToCreatedAt() throws Exception {
 
         githubReturns(new GithubRepositoryResponse(100L, "gitory", new GithubOwnerResponse("grow22"),
-                false, "Java", "main", CREATED, null));
+                false, "Java", "main", CREATED, null, null));
 
         repos(myUserId)
                 .andExpect(jsonPath("$.data[0].activeFrom").value("2026-09-10T03:00:00Z"))
@@ -443,7 +448,8 @@ class RepoApiTest {
 
         assertThat(repo).containsOnlyKeys(
                 "id", "owner", "name", "contribution", "prCount", "reviewCount", "language",
-                "activeFrom", "activeTo", "lastAnalyzedAt", "countedAt", "candidateCount", "cardCount", "recommended");
+                "activeFrom", "activeTo", "lastAnalyzedAt", "countedAt", "candidateCount", "cardCount", "recommended",
+                "description", "descriptionSource");
         savedRepos()
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[*].name", contains("gitory", "board")))
@@ -489,7 +495,7 @@ class RepoApiTest {
         assertThat(repo).containsOnlyKeys(
                 "id", "owner", "name", "contribution", "prCount", "reviewCount", "language",
                 "activeFrom", "activeTo", "lastAnalyzedAt", "countedAt", "candidateCount", "cardCount", "recommended",
-                "disclosure");
+                "description", "descriptionSource", "disclosure");
         detail(id)
                 .andExpect(jsonPath("$.data.id").value(id.toString()))
                 .andExpect(jsonPath("$.data.contribution.mine").value(43))
@@ -559,6 +565,161 @@ class RepoApiTest {
 
     }
 
+    @Test
+    @DisplayName("GitHub 저장소 설명은 앞뒤 공백을 떼고 목록·저장된 목록·상세에 description 과 GITHUB 출처로 내려온다")
+    void showsGithubDescription() throws Exception {
+
+        githubReturns(new GithubRepositoryResponse(100L, "gitory", new GithubOwnerResponse("grow22"),
+                false, "Java", "main", CREATED, PUSHED, "  커밋을 경험 카드로 바꿔 줘요  "));
+
+        repos(myUserId)
+                .andExpect(jsonPath("$.data[0].description").value("커밋을 경험 카드로 바꿔 줘요"))
+                .andExpect(jsonPath("$.data[0].descriptionSource").value("GITHUB"));
+        savedRepos()
+                .andExpect(jsonPath("$.data[0].description").value("커밋을 경험 카드로 바꿔 줘요"))
+                .andExpect(jsonPath("$.data[0].descriptionSource").value("GITHUB"));
+        detail(publicIdOf(myUserId))
+                .andExpect(jsonPath("$.data.description").value("커밋을 경험 카드로 바꿔 줘요"))
+                .andExpect(jsonPath("$.data.descriptionSource").value("GITHUB"));
+
+    }
+
+    @Test
+    @DisplayName("설명은 사용자가 쓴 것, GitHub 설명, README 문장 순으로 고르고 셋 다 없으면 description 과 출처가 null 이다")
+    void descriptionFollowsPriority() throws Exception {
+
+        UUID id = connectCounted(100L, "gitory");
+        jdbc.update("""
+                UPDATE user_repository SET description = '사용자 설명', github_description = 'GitHub 설명',
+                       readme_summary = 'README 문장' WHERE public_id = ?
+                """, id);
+        detail(id).andExpect(jsonPath("$.data.description").value("사용자 설명"))
+                .andExpect(jsonPath("$.data.descriptionSource").value("USER"));
+
+        jdbc.update("UPDATE user_repository SET description = NULL WHERE public_id = ?", id);
+        detail(id).andExpect(jsonPath("$.data.description").value("GitHub 설명"))
+                .andExpect(jsonPath("$.data.descriptionSource").value("GITHUB"));
+
+        jdbc.update("UPDATE user_repository SET github_description = NULL WHERE public_id = ?", id);
+        detail(id).andExpect(jsonPath("$.data.description").value("README 문장"))
+                .andExpect(jsonPath("$.data.descriptionSource").value("README"));
+
+        jdbc.update("UPDATE user_repository SET readme_summary = NULL WHERE public_id = ?", id);
+        detail(id).andExpect(jsonPath("$.data.description").value(nullValue()))
+                .andExpect(jsonPath("$.data.descriptionSource").value(nullValue()));
+
+    }
+
+    @Test
+    @DisplayName("출처가 AI 인 소개 문장은 저장된 목록과 상세에 description 과 AI 출처로 내려온다")
+    void showsAiSentenceWithAiSource() throws Exception {
+
+        UUID id = connectCounted(100L, "gitory");
+        jdbc.update("UPDATE user_repository SET readme_summary = 'AI 가 만든 문장', readme_summary_source = 'AI' WHERE public_id = ?",
+                id);
+
+        savedRepos()
+                .andExpect(jsonPath("$.data[0].description").value("AI 가 만든 문장"))
+                .andExpect(jsonPath("$.data[0].descriptionSource").value("AI"));
+        detail(id)
+                .andExpect(jsonPath("$.data.description").value("AI 가 만든 문장"))
+                .andExpect(jsonPath("$.data.descriptionSource").value("AI"));
+
+    }
+
+    @Test
+    @DisplayName("폴더 설명을 저장하면 앞뒤 공백을 떼어 USER 출처의 목록 한 줄로 돌려주고, 목록에도 그 설명이 나온다")
+    void savesFolderDescription() throws Exception {
+
+        UUID id = connectCounted(100L, "gitory");
+
+        patchDescription(id, """
+                {"description": "  내가 쓴 설명  "}""")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(id.toString()))
+                .andExpect(jsonPath("$.data.name").value("gitory"))
+                .andExpect(jsonPath("$.data.description").value("내가 쓴 설명"))
+                .andExpect(jsonPath("$.data.descriptionSource").value("USER"));
+        savedRepos().andExpect(jsonPath("$.data[0].description").value("내가 쓴 설명"));
+        assertThat(storedDescription(id)).isEqualTo("내가 쓴 설명");
+
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"{\"description\": null}", "{\"description\": \"\"}", "{\"description\": \"   \"}", "{}"})
+    @DisplayName("설명을 비우거나 공백만 보내거나 null 로 보내면 지워서 GitHub 설명으로 돌아간다")
+    void clearsFolderDescription(String body) throws Exception {
+
+        UUID id = connectCounted(100L, "gitory");
+        jdbc.update("UPDATE user_repository SET description = '내가 쓴 설명', github_description = 'GitHub 설명' WHERE public_id = ?", id);
+
+        patchDescription(id, body)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.description").value("GitHub 설명"))
+                .andExpect(jsonPath("$.data.descriptionSource").value("GITHUB"));
+        assertThat(storedDescription(id)).isNull();
+
+    }
+
+    @Test
+    @DisplayName("폴더 설명은 120자까지 저장하고 121자부터는 400 INVALID_REQUEST 로 거절해 저장된 설명을 그대로 둔다")
+    void limitsFolderDescriptionToHundredTwentyCharacters() throws Exception {
+
+        UUID id = connectCounted(100L, "gitory");
+
+        patchDescription(id, "{\"description\": \"" + "가".repeat(120) + "\"}").andExpect(status().isOk());
+        patchDescription(id, "{\"description\": \"" + "가".repeat(121) + "\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        assertThat(storedDescription(id)).isEqualTo("가".repeat(120));
+
+    }
+
+    @Test
+    @DisplayName("남의 저장소·없는 저장소·UUID 가 아닌 id 의 폴더 설명 수정은 모두 404 NOT_FOUND 이고, 남의 저장소만 거절 기록을 남기며 설명은 저장하지 않는다")
+    void editingUnknownRepositoryIsNotFound() throws Exception {
+
+        Long otherUserId = fixtures.insertUser(2L, "taehun0208");
+        UUID othersId = UUID.randomUUID();
+        Long othersConnection = fixtures.insertUserRepository(othersId, otherUserId,
+                fixtures.insertRepository(300L, "team", "team-repo"));
+
+        for (String id : List.of(othersId.toString(), UUID.randomUUID().toString(), "not-a-uuid")) {
+            patchDescription(id, """
+                    {"description": "가로채기"}""")
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+        }
+
+        assertThat(auditRows()).containsExactly(myUserId + " EDIT_REPO " + othersConnection + " DENIED");
+        assertThat(storedDescription(othersId)).isNull();
+
+    }
+
+    @Test
+    @DisplayName("로그인하지 않고 폴더 설명을 고치려 하면 401 이다")
+    void editingRequiresLogin() throws Exception {
+
+        mvc.perform(patch("/api/repos/{id}", UUID.randomUUID()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isUnauthorized());
+
+    }
+
+    private ResultActions patchDescription(Object id, String body) throws Exception {
+
+        return mvc.perform(patch("/api/repos/{id}", id).with(loggedInAs(myUserId)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content(body));
+
+    }
+
+    private String storedDescription(UUID id) {
+
+        return jdbc.queryForObject("SELECT description FROM user_repository WHERE public_id = ?", String.class, id);
+
+    }
+
     private UUID connectCounted(long githubRepoId, String name) {
 
         return connectCounted(githubRepoId, "grow22", name);
@@ -588,7 +749,7 @@ class RepoApiTest {
 
         return LongStream.rangeClosed(1, days)
                 .mapToObj(day -> new GithubRepositoryResponse(day, "repo-" + day, new GithubOwnerResponse("grow22"),
-                        false, "Java", "main", CREATED, CREATED.plus(Duration.ofDays(day))))
+                        false, "Java", "main", CREATED, CREATED.plus(Duration.ofDays(day)), null))
                 .toArray(GithubRepositoryResponse[]::new);
 
     }
@@ -605,7 +766,7 @@ class RepoApiTest {
     private static GithubRepositoryResponse repo(long githubRepoId, String owner, String name) {
 
         return new GithubRepositoryResponse(githubRepoId, name, new GithubOwnerResponse(owner),
-                false, "Java", "main", CREATED, PUSHED);
+                false, "Java", "main", CREATED, PUSHED, null);
 
     }
 

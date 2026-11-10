@@ -16,6 +16,7 @@ vi.mock('@/api/queries', () => ({
   useMe: () => ({ data: { login: 'sample', github: { connected: true } } }),
   useRepos: () => ({ data: [], isSuccess: true }),
   useDisconnectGithub: () => ({ mutateAsync: vi.fn() }),
+  useLeaveAccount: () => ({ mutateAsync: vi.fn(), isPending: false, isError: false, error: null, reset: vi.fn() }),
 }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); mocks.submit.mockReset(); mocks.demo = true; });
 const mount = (element: React.ReactNode) => {
@@ -114,6 +115,5 @@ describe('recall drafts and honest settings', () => {
     expect(screen.queryByText('합의된 3원칙')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '탈퇴 진행' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: '마이페이지로 돌아가기' })).toHaveAttribute('href', '/settings');
-    expect(screen.getByRole('link', { name: '카드 목록' })).toHaveAttribute('href', '/cards');
   });
 });

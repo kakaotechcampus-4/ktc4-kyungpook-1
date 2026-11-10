@@ -118,7 +118,9 @@ ktc4-kyungpook-1/
 │     │  ├─ job/                    분석 오케스트레이터 (비동기)
 │     │  ├─ audit/                  정책·감사
 │     │  ├─ usage/                  화면 사용 지표
-│     │  └─ matching/               기업 채용 공고·조건 저장과 매칭 (조건 뽑기는 agent)
+│     │  ├─ matching/               기업 채용 공고·조건 저장과 매칭 (조건 뽑기는 agent)
+│     │  ├─ notice/                 서버가 남기는 알림 한 줄의 저장과 읽음 표시
+│     │  └─ mail/                   확인 메일·새 공고 메일 보내기 (Gmail 접속은 infra)
 │     ├─ main/resources/
 │     │  ├─ application.yml
 │     │  └─ db/migration/
@@ -206,6 +208,8 @@ BUILD SUCCESSFUL
 그게 뚫리면 분석 흐름을 바꿀 때마다 전 모듈이 흔들린다.
 읽기 전용 조회는 허용한다 — `card` 는 `ingest`·`recommend` 를 그 모듈 `domain` 의 조회 메서드로 읽기만 하고,
 다른 모듈의 표를 SQL 로 직접 읽지 않는다. `matching` 도 `card` 의 확정 문장 조회 서비스(`ConfirmedStatementReader`)로 읽기만 한다. Job 을 만드는 요청(후보로 카드 만들기·칸 다시 생성)은 `job.api` 에 둔다.
+끝난 Job 을 알림으로 남기는 일은 `job` 이 `notice` 를 부르는 한 방향이고, `notice` 의 `domain`·`infra` 는 다른 업무 모듈을 참조하지 않는다(`common` 만). 매칭 같은 모듈도 `job` 을 거치지 않고 `notice` 로 알림을 남길 수 있게 하려는 것이다.
+메일은 `profile`(확인 메일)과 `matching`(새 공고 메일)이 `mail` 을 부르는 한 방향이고, `mail` 은 다른 업무 모듈을 참조하지 않는다(`common` 만). 받는 주소는 `matching` 이 `profile` 에서 읽어 넘긴다.
 
 ## 비동기 — 왜 Job 인가
 
@@ -282,6 +286,8 @@ ERD 를 그대로 따랐고, 스펙이 요구하는데 없던 것만 더했다.
 | `audit` | `audit_event` |
 | `usage` | `usage_event` |
 | `matching` | `job_posting` · `job_posting_criterion` · `job_posting_source` |
+| `notice` | `notification` |
+| `mail` | — (받는 주소는 `profile` 이 가진다. 보낸 기록은 남기지 않는다) |
 | `agent` | — (경계 모듈. 테이블이 없는 게 존재 이유다) |
 | `common` | — |
 

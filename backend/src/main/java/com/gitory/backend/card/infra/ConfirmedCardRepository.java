@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -36,12 +37,17 @@ public interface ConfirmedCardRepository extends Repository<Card, Long> {
 
     @Query(value = """
             SELECT id FROM card
-            WHERE user_id = :userId AND user_repository_id = :userRepositoryId AND status = 'CONFIRMED'
-              AND deleted_at IS NULL
+            WHERE user_id = :userId AND user_repository_id = :userRepositoryId AND deleted_at IS NULL
             ORDER BY id
             """, nativeQuery = true)
-    List<Long> findLiveConfirmedIdsOfRepository(@Param("userId") Long userId,
-                                                @Param("userRepositoryId") Long userRepositoryId);
+    List<Long> findLiveIdsOfRepository(@Param("userId") Long userId,
+                                       @Param("userRepositoryId") Long userRepositoryId);
+
+    @Query(value = """
+            SELECT EXISTS (SELECT 1 FROM card
+                           WHERE user_id = :userId AND user_repository_id = :userRepositoryId AND deleted_at IS NULL)
+            """, nativeQuery = true)
+    boolean existsLiveOfRepository(@Param("userId") Long userId, @Param("userRepositoryId") Long userRepositoryId);
 
     @Query(value = """
             SELECT id FROM card
@@ -49,6 +55,15 @@ public interface ConfirmedCardRepository extends Repository<Card, Long> {
             ORDER BY id
             """, nativeQuery = true)
     List<Long> findLiveConfirmedIdsOfUser(@Param("userId") Long userId);
+
+    @Query(value = """
+            SELECT user_id FROM card
+            WHERE deleted_at IS NULL
+            GROUP BY user_id
+            HAVING bool_or(status = 'CONFIRMED') AND max(updated_at) >= :since
+            ORDER BY user_id
+            """, nativeQuery = true)
+    List<Long> findUserIdsWithConfirmedAndEditedSince(@Param("since") Instant since);
 
     @Query(value = """
             SELECT id FROM card

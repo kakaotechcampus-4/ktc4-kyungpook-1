@@ -3,6 +3,7 @@ package com.gitory.backend.ingest.infra;
 import com.gitory.backend.ingest.domain.ConnectedRepository;
 import com.gitory.backend.ingest.domain.ConnectedRepositoryReference;
 import com.gitory.backend.ingest.domain.ContributionTarget;
+import com.gitory.backend.ingest.domain.RepositoryPushedAfterAnalysis;
 import com.gitory.backend.ingest.domain.RepositoryReference;
 import com.gitory.backend.ingest.domain.RepositorySummary;
 import org.springframework.data.domain.Limit;
@@ -47,13 +48,25 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
             """, nativeQuery = true)
     void connectIfAbsent(@Param("userId") Long userId, @Param("githubRepoId") long githubRepoId);
 
+    // 목록을 읽을 때마다 부르므로 값이 같으면 행을 고치지 않아, 같은 행을 쓰는 개수 저장·분석 저장과 부딪히지 않는다
+    @Modifying
+    @Query(value = """
+            UPDATE user_repository SET github_description = :description
+            WHERE user_id = :userId
+              AND repository_id = (SELECT id FROM repository WHERE github_repo_id = :githubRepoId)
+              AND github_description IS DISTINCT FROM :description
+            """, nativeQuery = true)
+    void updateGithubDescription(@Param("userId") Long userId, @Param("githubRepoId") long githubRepoId,
+                                 @Param("description") String description);
+
     // 두 목록 쿼리 모두 커밋이 없는 빈 저장소와 내 프로필 README 저장소(login/login)는 카드로 만들 경험이 없어 뺀다
     // 아직 못 센 저장소는 빈 저장소인지 알 수 없어 그대로 보여 준다
     @Query("""
             SELECT new com.gitory.backend.ingest.domain.RepositorySummary(
                 c.id, c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
                 r.githubCreatedAt, COALESCE(r.githubPushedAt, r.githubCreatedAt), c.lastAnalyzedAt, c.countedAt,
-                c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount)
+                c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount,
+                c.description, c.githubDescription, c.readmeSummary, c.readmeSummarySource)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
             WHERE c.userId = :userId AND r.githubRepoId IN :githubRepoIds
               AND (c.countedAt IS NULL OR c.commitCount > 0)
@@ -68,7 +81,8 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
             SELECT new com.gitory.backend.ingest.domain.RepositorySummary(
                 c.id, c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
                 r.githubCreatedAt, COALESCE(r.githubPushedAt, r.githubCreatedAt), c.lastAnalyzedAt, c.countedAt,
-                c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount)
+                c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount,
+                c.description, c.githubDescription, c.readmeSummary, c.readmeSummarySource)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
             WHERE c.userId = :userId
               AND (c.countedAt IS NULL OR c.commitCount > 0)
@@ -95,7 +109,8 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
             SELECT new com.gitory.backend.ingest.domain.RepositorySummary(
                 c.id, c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
                 r.githubCreatedAt, COALESCE(r.githubPushedAt, r.githubCreatedAt), c.lastAnalyzedAt, c.countedAt,
-                c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount)
+                c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount,
+                c.description, c.githubDescription, c.readmeSummary, c.readmeSummarySource)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
             WHERE c.publicId = :publicId AND c.userId = :userId
             """)
@@ -112,6 +127,15 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
             """)
     List<ContributionTarget> findUncounted(@Param("userId") Long userId,
                                            @Param("githubRepoIds") Collection<Long> githubRepoIds);
+
+    // 분석한 적이 있는 저장소만 보고, 마지막 push 가 최근인 순서로 둔다
+    @Query("""
+            SELECT new com.gitory.backend.ingest.domain.RepositoryPushedAfterAnalysis(c.id, c.lastAnalyzedAt)
+            FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
+            WHERE c.userId = :userId AND c.lastAnalyzedAt IS NOT NULL AND r.githubPushedAt > c.lastAnalyzedAt
+            ORDER BY r.githubPushedAt DESC, c.id
+            """)
+    List<RepositoryPushedAfterAnalysis> findPushedAfterAnalysis(@Param("userId") Long userId);
 
     interface ReferenceRow {
 

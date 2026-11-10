@@ -37,7 +37,7 @@ public class OverallRecommendationQueryService {
 
         return recommendations.findByUserId(userId)
                 .map(saved -> view(userId, saved))
-                .orElse(new OverallRecommendationView(null, null, false, null, List.of()));
+                .orElse(new OverallRecommendationView(null, null, false, null, 0, List.of()));
 
     }
 
@@ -58,10 +58,11 @@ public class OverallRecommendationQueryService {
                 .map(company -> company(company, byId.get(company.postingId()), now))
                 .filter(Objects::nonNull)
                 .toList();
+        // 확인한 공고 수는 계산이 끝나도 남아 있어(다시 시작할 때만 0) 화면이 '몇 곳을 확인했는지' 에 쓴다
         return new OverallRecommendationView(status, saved.getComputedAt(), stale,
                 computing ? new OverallRecommendationView.Progress(saved.getProgressDone(), saved.getProgressTotal())
                         : null,
-                shown);
+                saved.getProgressTotal(), shown);
 
     }
 
@@ -74,7 +75,8 @@ public class OverallRecommendationQueryService {
                 companies.of(posting.getCompanyKey(), posting.getCompanyName()).logoUrl(),
                 new RepoRecommendationView.Posting(posting.getPublicId(), posting.getTitle(), posting.getExpiresAt(),
                         posting.isClosedAt(now)),
-                company.requiredMet(), company.requiredTotal(), company.preferredMet(), company.preferredTotal());
+                company.requiredMet(), company.requiredTotal(), company.preferredMet(), company.preferredTotal(),
+                company.met(), company.missing());
 
     }
 }

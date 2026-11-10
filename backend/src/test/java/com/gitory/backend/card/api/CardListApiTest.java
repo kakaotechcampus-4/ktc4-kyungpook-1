@@ -221,6 +221,30 @@ class CardListApiTest {
     }
 
     @Test
+    @DisplayName("요약의 preview 는 현재 버전 결과 칸 글을 앞뒤 공백만 떼어 싣고, 결과가 비었거나 공백뿐이면 null 이다")
+    void sendsCurrentResultAsPreview() throws Exception {
+
+        Long edited = fixtures.insertCard(UUID.randomUUID(), myUserId);
+        fixtures.insertStatement(edited, 1, "R", "옛 결과", "COMMIT", "HIGH");
+        fixtures.insertCardVersion(edited, 2, "USER_EDIT", false);
+        fixtures.insertStatement(edited, 2, "R", "  배포 시간이 절반으로 줄었다.\n", "USER_STATED", null);
+        updatedAt(edited, "2026-03-01T00:00:00Z");
+        Long withoutResult = fixtures.insertCard(UUID.randomUUID(), myUserId);
+        fixtures.insertStatement(withoutResult, 1, "A", "행동", "COMMIT", "HIGH");
+        updatedAt(withoutResult, "2026-02-01T00:00:00Z");
+        Long blankResult = fixtures.insertCard(UUID.randomUUID(), myUserId);
+        fixtures.insertStatement(blankResult, 1, "R", " \n ", "COMMIT", "HIGH");
+        updatedAt(blankResult, "2026-01-01T00:00:00Z");
+
+        String body = bodyOf(getCards());
+
+        assertThat((Map<String, Object>) JsonPath.read(body, "$.data[0]")).containsEntry("preview", "배포 시간이 절반으로 줄었다.");
+        assertThat((Map<String, Object>) JsonPath.read(body, "$.data[1]")).containsEntry("preview", null);
+        assertThat((Map<String, Object>) JsonPath.read(body, "$.data[2]")).containsEntry("preview", null);
+
+    }
+
+    @Test
     @DisplayName("카드마다 저장된 분야·기술·문항 유형 태그를 순서대로 싣는다")
     void sendsTags() throws Exception {
 
@@ -393,7 +417,7 @@ class CardListApiTest {
     }
 
     @Test
-    @DisplayName("목록 한 줄은 계약의 열다섯 키에 현재 버전 번호·기간(없으면 null)·카드를 고친 시각을 ISO 문자열로 담는다")
+    @DisplayName("목록 한 줄은 계약의 열여섯 키에 현재 버전 번호·기간(없으면 null)·카드를 고친 시각을 ISO 문자열로 담는다")
     void carriesVersionPeriodAndUpdatedAt() throws Exception {
 
         UUID publicId = UUID.randomUUID();
@@ -408,8 +432,8 @@ class CardListApiTest {
         Map<String, Object> card = JsonPath.read(body, "$.data[0]");
 
         assertThat(card).containsOnlyKeys("id", "kind", "status", "title", "areas", "techs", "themes", "versionNo", "star",
-                "updatedAt", "sourceLabel", "sourceType", "period", "evidenceCount", "userStatedCount", "repo",
-                "activity");
+                "updatedAt", "sourceLabel", "sourceType", "period", "evidenceCount", "userStatedCount", "preview",
+                "repo", "activity");
         assertThat(card).containsEntry("id", publicId.toString())
                 .containsEntry("kind", "QUALITATIVE")
                 .containsEntry("status", "DRAFT")

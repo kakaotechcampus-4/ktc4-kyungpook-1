@@ -130,7 +130,7 @@ class CandidateContext(StrictRequestModel):
 
 
 class ActivityContext(StrictRequestModel):
-    """활동 안 경험 카드가 속한 활동으로, 기록이 없어 질문과 빈칸 틀의 단서가 된다."""
+    """활동 안 경험 카드가 속한 활동으로, 기록이 없어 질문의 단서가 된다."""
 
     name: NonBlankText = Field(..., max_length=50)
     type: ActivityType

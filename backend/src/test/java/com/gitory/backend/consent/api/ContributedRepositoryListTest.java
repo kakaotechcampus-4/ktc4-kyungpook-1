@@ -82,10 +82,10 @@ class ContributedRepositoryListTest {
     void contributedOrganizationRepositoryCanBeAnalyzed() throws Exception {
 
         given(githubRepositories.fetchRepositories(anyString())).willReturn(List.of(new GithubRepositoryResponse(
-                100L, "gitory-notes", new GithubOwnerResponse("grow22"), false, "Java", "main", null, null)));
+                100L, "gitory-notes", new GithubOwnerResponse("grow22"), false, "Java", "main", null, null, null)));
         given(githubRepositories.fetchContributedRepositories(anyString())).willReturn(List.of(new GithubRepositoryResponse(
                 TEAM_REPO_ID, "ktc4-kyungpook-1", new GithubOwnerResponse("kakaotechcampus-4"), false, "Java", "develop",
-                Instant.parse("2026-09-10T03:00:00Z"), Instant.parse("2026-10-17T10:12:00Z"))));
+                Instant.parse("2026-09-10T03:00:00Z"), Instant.parse("2026-10-17T10:12:00Z"), null)));
 
         String body = mvc.perform(get("/api/repos").with(loggedIn()))
                 .andExpect(status().isOk())

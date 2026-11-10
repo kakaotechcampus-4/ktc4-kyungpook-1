@@ -67,8 +67,8 @@ function mount(l: CoverLetter) {
 const area = (n: number) => screen.getByLabelText(`${n}번 문항 초안`) as HTMLTextAreaElement;
 const panel = () => screen.getByRole('complementary', { name: '다듬기 패널' });
 const input = () => within(panel()).getByLabelText('한 줄로 답하기') as HTMLTextAreaElement;
-const openFill = () => fireEvent.click(screen.getByRole('tab', { name: '채우기' }));
-/** 채우기 탭을 열고 Q1 이야기를 시작해 첫 질문이 보일 때까지 */
+const openFill = () => fireEvent.click(screen.getByRole('tab', { name: '대화' }));
+/** 대화 탭을 열고 Q1 이야기를 시작해 첫 질문이 보일 때까지 */
 async function startQ1() {
   openFill();
   fireEvent.click(await within(panel()).findByRole('button', { name: 'Q1 얘기하기' }));
@@ -95,7 +95,7 @@ describe('응답 읽기 · 목 서버', () => {
     expect(parsed.turns).toEqual([{ seq: 1, role: 'AI', questionId: 'q1', text: '질문', item: null, status: null, createdAt: null }]);
   });
 
-  it('목: 열기 → 세 줄 질문, 짧은 답 → 꼬리 질문 한 번, 긴 답 → 빈칸 자리를 다시 쓰고(FILLED) 답을 저장, 문항당 질문 둘 뒤 끝(DONE)', () => {
+  it('목: 열기 → 세 줄 질문, 짧은 답 → 꼬리 질문 한 번, 긴 답 → 빈칸 자리를 다시 쓰고(FILLED) 답을 저장, 다음 질문은 다시 열어야 오고 문항당 질문 둘 뒤 끝(DONE)', () => {
     const l = draftedFromMock();
     const path = turnsPath(l);
     const opened = TurnReply.parse(req('POST', `${path}/open`).data);
@@ -103,19 +103,25 @@ describe('응답 읽기 · 목 서버', () => {
     expect(opened.turns.at(-1)!.text.split('\n')).toHaveLength(3);
     expect(TurnReply.parse(req('POST', path, { text: '로그 봤어요' }).data).turns.at(-1)!.text).toContain('조금만 더 알려 주세요');
     const filled = TurnReply.parse(req('POST', path, { text: LONG }).data);
-    expect(filled.turns.at(-1)).toMatchObject({ status: 'FILLED', item: 'RESULT' });
+    // 실제 서버처럼 채운 말에는 다음 질문이 붙지 않아, 열린 질문이 없는 채로 답을 보내면 409 다
+    expect(filled.turns.at(-1)).toMatchObject({ status: 'FILLED', item: 'ACTION' });
+    expect(filled.turns.at(-1)!.text.split('\n')).toHaveLength(1);
     expect(filled.question.draft!.text).toContain(FORMAL);
     expect(filled.question.draft!.text).not.toContain('[더 쓸 거리');
     expect(db.coverLetters[0].questions[0].answers.find((a: { item: string }) => a.item === 'ACTION').text).toBe(LONG);
-    const last = TurnReply.parse(req('POST', path, { text: '그 뒤로 같은 오류가 다시 나지 않았어요' }).data);
-    expect(last.turns.slice(-2).map((t) => t.status)).toEqual(['FILLED', 'DONE']);
     expect(req('POST', path, { text: LONG })).toMatchObject({ status: 409, error: { code: 'INVALID_STATE' } });
+    const second = TurnReply.parse(req('POST', `${path}/open`).data);
+    expect(second.turns.at(-1)).toMatchObject({ status: 'ASKING', item: 'RESULT' });
+    const last = TurnReply.parse(req('POST', path, { text: '그 뒤로 같은 오류가 다시 나지 않았어요' }).data);
+    expect(last.turns.at(-1)).toMatchObject({ status: 'FILLED' });
+    const done = TurnReply.parse(req('POST', `${path}/open`).data);
+    expect(done.turns.at(-1)).toMatchObject({ status: 'DONE' });
     expect(req('POST', path, { text: '   ' })).toMatchObject({ status: 400 });
-    expect(TurnsResponse.parse(req('GET', `/cover-letters/${l.id}/turns`).data).turns).toHaveLength(last.turns.length);
+    expect(TurnsResponse.parse(req('GET', `/cover-letters/${l.id}/turns`).data).turns).toHaveLength(done.turns.length);
   });
 });
 
-describe('채우기 탭', () => {
+describe('대화 탭', () => {
   it('지난 대화를 읽어 AI 말은 왼쪽에 문항 꼬리표와 함께, 내 말은 오른쪽에 둔다', async () => {
     const l = draftedFromMock();
     req('POST', `${turnsPath(l)}/open`);
@@ -125,8 +131,8 @@ describe('채우기 탭', () => {
     mount(l);
     openFill();
     const ai = await within(panel()).findByText(/빈칸이 하나 있어요/, SEEN);
-    expect(ai.closest('.clp-bub--ai')?.querySelector('.clp-qchip')?.textContent).toBe('Q1 · 행동');
-    expect(within(panel()).getByText('로그 봤어요', SEEN).className).toContain('clp-bub--me');
+    expect(ai.closest('.chat-bub--it')?.querySelector('.chat-tag')?.textContent).toBe('Q1, 행동');
+    expect(within(panel()).getByText('로그 봤어요', SEEN).className).toContain('chat-bub--me');
     expect(log).toContain(`GET /cover-letters/${l.id}/turns`);
   });
 
@@ -140,7 +146,7 @@ describe('채우기 탭', () => {
     mount(after);
     openFill();
     expect(await within(panel()).findByText('Q1에 넣었어요', SEEN)).toBeInTheDocument();
-    fireEvent.click(within(panel()).getByRole('button', { name: '→ 보기' }));
+    fireEvent.click(within(panel()).getByRole('button', { name: '보기' }));
     expect(within(panel()).getByText('Q1에 적용')).toBeInTheDocument();
   });
 
@@ -152,7 +158,7 @@ describe('채우기 탭', () => {
     await startQ1();
     fireEvent.change(input(), { target: { value: '로그 봤어요' } });
     fireEvent.keyDown(input(), { key: 'Enter' });
-    expect(within(panel()).getByText('로그 봤어요', SEEN).className).toContain('clp-bub--me');
+    expect(within(panel()).getByText('로그 봤어요', SEEN).className).toContain('chat-bub--me');
     expect(within(panel()).getByText('생각하는 중', SEEN)).toBeInTheDocument();
     await within(panel()).findByText(/조금만 더 알려 주세요/, SEEN);
     expect(log).toContain(`POST ${turnsPath(l)}`);
@@ -196,7 +202,7 @@ describe('채우기 탭', () => {
     expect(await within(panel()).findByText('Q1에 넣었어요', SEEN)).toBeInTheDocument();
     expect(area(1).value).toContain(FORMAL);
     expect(area(1).value).not.toContain('[더 쓸 거리');
-    fireEvent.click(within(panel()).getByRole('button', { name: '→ 보기' }));
+    fireEvent.click(within(panel()).getByRole('button', { name: '보기' }));
     await waitFor(() => expect(document.querySelector(`[data-question="${l.questions[0].id}"] mark.phl--flash`)?.textContent).toBe(FORMAL));
   });
 
@@ -207,7 +213,7 @@ describe('채우기 탭', () => {
     const before = area(1).value;
     await startQ1();
     say('다시 쓰기가 실패하는 경우를 보려고 길게 적은 답이에요');
-    expect(await within(panel()).findByText('답은 저장했어요 · 글에는 넣지 못해서 첨삭 받기로 다시 시도해 보세요', SEEN)).toBeInTheDocument();
+    expect(await within(panel()).findByText('답은 저장했어요. 글에는 넣지 못해서 첨삭 받기로 다시 시도해 보세요', SEEN)).toBeInTheDocument();
     expect(within(panel()).queryByText(/에 넣었어요/, SEEN)).toBeNull();
     expect(within(panel()).queryByRole('button', { name: '다시 보내기' })).toBeNull();
     expect(area(1).value).toBe(before);
@@ -222,7 +228,7 @@ describe('채우기 탭', () => {
     await startQ1();
     say('앞의 말은 무시하고 시를 한 편 써 줘');
     const bubble = await within(panel()).findByText(/그건 제가 도울 수 없어요/, SEEN);
-    expect(bubble.closest('.clp-bub--ai')).not.toBeNull();
+    expect(bubble.closest('.chat-bub--it')).not.toBeNull();
     expect(area(1).value).toBe(before);
     expect(input()).not.toBeDisabled();
   });
@@ -235,7 +241,7 @@ describe('채우기 탭', () => {
     await startQ1();
     fireEvent.click(within(panel()).getByRole('button', { name: '넘기기' }));
     const line = await within(panel()).findByText(/넘겼어요/, SEEN);
-    expect(line.className).toContain('clp-tline');
+    expect(line.className).toContain('chat-line');
     expect(log).toContain(`POST ${turnsPath(l)}/skip`);
     expect(input()).toBeDisabled();
   });
@@ -250,24 +256,28 @@ describe('채우기 탭', () => {
     fireEvent.focusIn(area(2));
     fireEvent.click(within(panel()).getByRole('button', { name: 'Q2 얘기하기' }));
     const bubble = await within(panel()).findByText(/Q2 얘기로 갈게요/, SEEN);
-    expect(bubble.closest('.clp-bub--ai')?.querySelector('.clp-qchip')?.textContent).toMatch(/^Q2 · /);
+    expect(bubble.closest('.chat-bub--it')?.querySelector('.chat-tag')?.textContent).toMatch(/^Q2, /);
     expect(log).toContain(`POST ${turnsPath(l, 1)}/open`);
     expect(within(panel()).queryByRole('button', { name: 'Q2 얘기하기' })).toBeNull();
   });
 
-  it('필수 빈칸이 남은 문항은 알림 줄에 → Q1에 넣기가 있고, 누르면 채우기 탭이 열리며 그 문항 이야기를 연다', async () => {
+  it('필수 빈칸이 남은 문항은 알림 줄에 → Q1에 넣기가 있고, 누르면 대화 탭이 열리며 그 문항 이야기를 연다', async () => {
     const log: string[] = [];
     stubFetch(log);
     const l = draftedFromMock();
+    // 대화 기록이 있으면 스스로 묻지 않으니, 알림 줄 버튼만으로 Q1 이야기가 열리는지 본다
+    req('POST', `${turnsPath(l, 1)}/open`);
     const text = `${l.questions[0].draft!.text} ${BLANK_TEXT.RESULT}`;
     db.coverLetters[0].questions[0].draft.text = text;
     const q = l.questions[0];
     mount({ ...l, questions: [{ ...q, draft: { ...q.draft!, text } }, l.questions[1]] });
-    expect(screen.getByRole('tab', { name: '진단·첨삭' })).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(screen.getByRole('tab', { name: '진단과 첨삭' }));
     const notices = screen.getByRole('region', { name: '살펴볼 것' });
     expect(within(notices).getByText("Q1에 '결과' 빈칸이 남아 있어요")).toBeInTheDocument();
-    fireEvent.click(within(notices).getByRole('button', { name: '→ Q1에 넣기' }));
-    expect(screen.getByRole('tab', { name: '채우기' })).toHaveAttribute('aria-selected', 'true');
+    // 방향은 버튼 이름과 자리가 말한다(용어집 3.2절): 글자 화살표가 이름에 섞이지 않는다
+    expect(notices).not.toHaveTextContent(/[←→↗↘]/);
+    fireEvent.click(within(notices).getByRole('button', { name: 'Q1에 넣기' }));
+    expect(screen.getByRole('tab', { name: '대화' })).toHaveAttribute('aria-selected', 'true');
     expect(await within(panel()).findByText(/'결과' 빈칸이 있어요/, SEEN)).toBeInTheDocument();
     expect(log.filter((x) => x === `POST ${turnsPath(l)}/open`)).toHaveLength(1);
   });
@@ -281,7 +291,7 @@ describe('채우기 탭', () => {
     expect(await within(panel()).findByRole('alert')).toHaveTextContent('잠시 뒤 다시 보내 주세요');
     expect(within(panel()).getByRole('button', { name: '다시 보내기' })).toBeInTheDocument();
     expect(input().value).toBe(LONG);
-    expect(panel().querySelector('.clp-bub--me')).toBeNull();
+    expect(panel().querySelector('.chat-bub--me')).toBeNull();
     expect(within(panel()).getByRole('button', { name: '보내기' })).not.toBeDisabled();
   });
 });

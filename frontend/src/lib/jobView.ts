@@ -50,3 +50,22 @@ export const pollInterval = (job: Job | undefined, floorMs = 500): number | fals
   if (!job || isTerminal(job.state)) return false;
   return Math.max(floorMs, job.pollAfterMs);
 };
+
+export type TimelineView = 'done' | 'now' | 'wait' | 'skip' | 'halt' | 'cap';
+
+/**
+ * 타임라인 점 하나의 모양(#789). 멈춘 작업(FAILED · CANCELED)에서 읽던 단계는 halt 이고 뒤 단계는 그냥 wait 다.
+ * 일부 결과(SUCCEEDED + partial)에서 총량보다 적게 읽고 끝난 단계와 서버가 RUNNING 으로 남긴 단계는 cap(상한에서 멈춘 자리) —
+ * 끝난 화면에 진행 중인 점이 남지 않게. 정상 완료에서는 done 과 total 이 달라도 cap 으로 보지 않는다.
+ */
+export const timelineView = (s: JobStep, j?: Pick<Job, 'state' | 'partial'>): TimelineView => {
+  if (isHalted(j)) {
+    if (s.state === 'RUNNING') return 'halt';
+    if (s.state === 'QUEUED') return 'wait';
+  }
+  const partial = j?.state === 'SUCCEEDED' && j.partial;
+  if (partial && s.state === 'RUNNING') return 'cap';
+  if (s.state === 'SKIPPED') return 'skip';
+  if (s.state === 'DONE') return partial && s.total != null && s.done < s.total ? 'cap' : 'done';
+  return s.state === 'RUNNING' ? 'now' : 'wait';
+};

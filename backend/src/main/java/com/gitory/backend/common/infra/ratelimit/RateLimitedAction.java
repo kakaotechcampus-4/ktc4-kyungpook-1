@@ -10,7 +10,9 @@ public enum RateLimitedAction {
     COVER_LETTER_TURN("cover-letter-turn"),
     MATCH_JUDGEMENT("match-judgement"),
     MATCH_OVERALL("match-overall"),
-    MATCH_GAP_FILL("match-gap-fill");
+    MATCH_GAP_FILL("match-gap-fill"),
+    ASSISTANT("assistant"),
+    FEEDBACK("feedback");
 
     private final String key;
 

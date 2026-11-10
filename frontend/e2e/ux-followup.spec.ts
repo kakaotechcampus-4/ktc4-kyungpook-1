@@ -44,18 +44,6 @@ test('mobile landing shows the output before another screen and expands complete
   await expect(page.locator('.github-snapshot__commits li')).toHaveCount(3);
 });
 
-test('returning home shows drafts and keeps one entry for each new-card action', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await loginAsDemo(page); await page.goto('/');
-  await expect(page.locator('.home-resume')).toBeVisible();
-  const main = page.locator('main');
-  await expect(main.getByRole('link', { name: '레포 연결하기', exact: true })).toHaveCount(1);
-  await expect(main.getByRole('button', { name: '레포 검색하기', exact: true })).toHaveCount(1);
-  await main.getByRole('button', { name: '레포 검색하기', exact: true }).click();
-  await expect(main.getByRole('link', { name: '직접 작성', exact: true })).toHaveCount(1);
-  await expect(main.getByRole('link', { name: '모든 레포 보기', exact: true })).toHaveCount(1);
-});
-
 test('settings prioritizes controls and keeps storage details available on demand', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await loginAsDemo(page); await page.goto('/settings');

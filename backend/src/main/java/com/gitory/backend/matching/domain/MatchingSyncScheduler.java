@@ -3,6 +3,7 @@ package com.gitory.backend.matching.domain;
 import com.gitory.backend.matching.infra.JobPostingSourceRepository;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -24,6 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 하루 한 번 새벽에 공고 가져오기를 시작하고, 서버가 꺼져 있어 놓쳤으면 뜰 때 곧바로 한 번 한다
  * 가져오기는 회사마다 1초씩 띄워 요청해 오래 걸리므로 스케줄러 스레드를 붙잡지 않게 전용 스레드 하나에 넘기고
  * 이미 돌고 있거나 대기 중이면 새로 넘기지 않아 연달아 두 번 돌지 않게 한다
+ * 새 공고 알림이 켜져 있으면 가져오기가 끝난 뒤 같은 스레드에서 이어서 확인한다
  */
 @Slf4j
 @Component
@@ -37,19 +39,22 @@ public class MatchingSyncScheduler {
     private final JobPostingSourceRepository sources;
     private final Clock clock;
     private final Executor executor;
+    private final NewPostingAlertService alerts;
     private final AtomicBoolean pending = new AtomicBoolean();
 
     @Autowired
-    public MatchingSyncScheduler(JobPostingSyncService sync, JobPostingSourceRepository sources, Clock clock) {
-        this(sync, sources, clock, Executors.newSingleThreadExecutor());
+    public MatchingSyncScheduler(JobPostingSyncService sync, JobPostingSourceRepository sources, Clock clock,
+                                 ObjectProvider<NewPostingAlertService> alerts) {
+        this(sync, sources, clock, Executors.newSingleThreadExecutor(), alerts.getIfAvailable());
     }
 
     MatchingSyncScheduler(JobPostingSyncService sync, JobPostingSourceRepository sources, Clock clock,
-                          Executor executor) {
+                          Executor executor, NewPostingAlertService alerts) {
         this.sync = sync;
         this.sources = sources;
         this.clock = clock;
         this.executor = executor;
+        this.alerts = alerts;
     }
 
     @Scheduled(cron = "0 0 5 * * *", zone = "Asia/Seoul")
@@ -77,6 +82,9 @@ public class MatchingSyncScheduler {
         executor.execute(() -> {
             try {
                 sync.sync();
+                if (alerts != null) {
+                    alerts.run();
+                }
             } catch (RuntimeException e) {
                 log.error("공고 가져오기가 예상 못 한 오류로 끝났다", e);
             } finally {

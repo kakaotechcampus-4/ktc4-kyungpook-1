@@ -16,14 +16,14 @@ export function InferenceTab({ items, confirmingKey, note, onShow, onConfirm, on
   const shown = more ? items : items.slice(0, 3);
   return (
     <>
-      <p className="clp-sub">확인해 주세요 · 안 해도 글은 완성이에요</p>
+      <p className="clp-sub">확인해 주세요. 안 해도 글은 완성이에요</p>
       {note && <p className="clp-note" role="status">{note}</p>}
       {items.length === 0 ? <p className="clp-muted">확인할 문장이 없어요</p> : (
         <ul className="clp-infs">
           {shown.map((i) => (
             <li key={i.key} className="clp-inf">
               <button type="button" className="clp-inf__go" onClick={() => onShow(i)}>
-                <span className="clp-inf__lab">Q{i.questionSeq} · 짐작해서 쓴 문장이에요</span>
+                <span className="clp-inf__lab">Q{i.questionSeq}, 확인이 필요한 문장이에요</span>
                 <span className="clp-inf__t"><mark>{i.sentence}</mark></span>
               </button>
               <div className="clp-inf__acts" role="group" aria-label={`Q${i.questionSeq} 짐작 문장`}>

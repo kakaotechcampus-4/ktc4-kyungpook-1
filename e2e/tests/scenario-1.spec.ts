@@ -14,7 +14,7 @@ async function dataOf(res: APIResponse) {
   return (await res.json()).data;
 }
 
-test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
+test.describe('시나리오 1: 로그인부터 카드 자동 확정과 되묻기까지', () => {
   // 시험마다 새 사용자라 이전 실행이 남긴 저장소·카드와 섞이지 않는다
   let login: string;
   let token: string;
@@ -26,7 +26,7 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
     expect((await request.post(`${FAKE}/__control/next-user`, { data: { login } })).ok()).toBeTruthy();
   });
 
-  test('GitHub 로그인 → 분석 → 후보 → 카드 작성 → 되묻기 → 확정', async ({ page, request }) => {
+  test('GitHub 로그인 → 분석 → 후보 → 카드 작성(자동 확정) → 확정 카드에서 되묻기', async ({ page, request }) => {
     await test.step('1. 로그인', async () => {
       await page.goto('/');
       await expect(page).toHaveURL(/\/login/);
@@ -42,11 +42,11 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
 
     await test.step('1-1. 처음 입력 창', async () => {
       const setup = page.getByRole('dialog');
-      await expect(setup).toContainText('1/5 단계');
+      await expect(setup).toHaveAccessibleName('관심 분야'); // 제목은 지금 단계 이름(#802)
       await setup.getByRole('checkbox', { name: '백엔드', exact: true }).check();
       await setup.getByRole('button', { name: '다음', exact: true }).click();
       await setup.getByRole('button', { name: '경력 없음', exact: true }).click();
-      await setup.getByRole('radio', { name: '학사', exact: true }).check();
+      await setup.getByRole('radio', { name: '대학교', exact: true }).check(); // 4년제가 먼저 골라진다(#802)
       await setup.getByRole('button', { name: '다음', exact: true }).click();
       await setup.getByRole('radio', { name: '졸업', exact: true }).check();
       await setup.getByRole('button', { name: '다음', exact: true }).click();
@@ -64,7 +64,8 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
       const row = page.getByRole('radio', { name: new RegExp(`${login} / sample-app`) });
       await row.click();
       await expect(row).toContainText('PR 2개를 올린 레포예요');
-      await expect(row).toContainText('먼저 정리해 보기 좋아요');
+      // 추천 레포는 줄 안의 글 대신 묶음 제목으로 드러난다(#778)
+      await expect(page.getByRole('region', { name: '내 기여가 많은 레포' }).getByRole('radio', { name: new RegExp(`${login} / sample-app`) })).toBeVisible();
 
       const repos = await dataOf(await page.request.get('/api/repos'));
       expect(repos).toHaveLength(1);
@@ -92,7 +93,14 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
       await expect(page).toHaveURL(/\/repos\/[^/]+\/run\?job=/);
     });
 
-    await test.step('4. 후보 보드', async () => {
+    let cardId: string;
+    await test.step('4. 정리가 끝나면 추천 후보로 카드 초안을 이어서 만듦', async () => {
+      const repoId = new URL(page.url()).pathname.split('/')[2];
+      // 정리를 지켜본 화면이 추천 후보로 카드 만들기를 스스로 요청한다(후보 보드에서 고르는 단계가 없다)
+      const created = page.waitForResponse(
+        (r) => /\/api\/repos\/[^/]+\/cards$/.test(r.url()) && r.request().method() === 'POST',
+        { timeout: SLOW },
+      );
       // 화면이 넘어가기만 기다리면 Job 이 FAILED 로 끝나도 원인 코드가 안 남아 상태를 직접 본다
       await expect
         .poll(
@@ -103,37 +111,37 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
           { timeout: SLOW },
         )
         .toEqual({ state: 'SUCCEEDED', partial: false, errorCode: null });
-      await expect(page).toHaveURL(/\/candidates/, { timeout: SLOW });
-      await expect(page.getByRole('heading', { name: /에서 찾은 일$/ })).toBeVisible();
-      // 가짜 LLM 이 만든 제목이 보이면 LLM 경로를 탄 것이다
-      await expect(page.getByText(CANDIDATE).first()).toBeVisible();
+      // 가짜 LLM 이 만든 제목이 후보에 있으면 LLM 경로를 탄 것이다
+      expect(JSON.stringify(await dataOf(await page.request.get(`/api/repos/${repoId}/candidates`)))).toContain(CANDIDATE);
+      const made = await dataOf(await created);
+      expect(made.cardIds.length).toBeGreaterThan(0);
+      cardId = made.cardIds[0];
     });
 
-    let cardId: string;
-    await test.step('5. 후보 하나로 카드 만들기', async () => {
-      // 후보 순서는 AI 점수에 기대므로 이름으로 고른다
-      // 처음엔 추천 5개만 보이므로 접힌 쪽에 있으면 먼저 편다. 타일 전체가 고르기 버튼이라 이름이 들어간 버튼을 누른다
-      const more = page.getByRole('button', { name: /^나머지 \d+개 더 보기$/ });
-      if (await more.isVisible()) await more.click();
-      await page.getByRole('button', { name: CANDIDATE }).click();
-      await expect(page.getByText('1개 골랐어요')).toBeVisible();
-      await page.getByRole('button', { name: '카드 만들기', exact: true }).click();
-      await expect(page).toHaveURL(/\/cards\/[^/?]+$/, { timeout: SLOW });
-      cardId = new URL(page.url()).pathname.split('/').pop()!;
+    await test.step('5. 초안을 다 쓰면 그 레포의 카드로 맞는 기업을 고르는 화면으로', async () => {
+      await expect(page).toHaveURL(/\/cards\/repo\/[^/]+\/match$/, { timeout: SLOW });
+      await page.goto(`/cards/${cardId}`);
+      await expect(page).toHaveURL(/\/cards\/[^/?]+$/);
     });
 
-    await test.step('6. 상황·행동 직접 쓰기', async () => {
-      // 과제는 비워 둬서 되묻기에 쓴다
+    await test.step('6. 상황·행동 직접 쓰기 → 서버가 스스로 확정', async () => {
+      // 과제는 비워 둬서 되묻기에 쓴다. 상황과 행동만 차 있어도 확인 필요 칸이 없으면 저장하는 순간 서버가 카드를 확정한다
       // 하단 "직접 수정"은 없앴다(#452). 칸마다 있는 버튼으로 편집에 들어간다 — 상황이 채워져 있으면 "상황 수정", 비어 있으면 "상황 직접 작성"
       await page.getByRole('button', { name: /^상황 (수정|직접 작성)$/ }).click();
       await page.getByRole('textbox', { name: '상황', exact: true }).fill(SITUATION);
       await page.getByRole('textbox', { name: '행동', exact: true }).fill(ACTION);
       await expect(page.getByText('저장됨', { exact: true })).toBeVisible({ timeout: 15_000 });
       await page.getByRole('button', { name: '저장하고 닫기' }).click();
+
+      await expect
+        .poll(async () => (await dataOf(await page.request.get(`/api/cards/${cardId}`))).status, { timeout: 15_000 })
+        .toBe('CONFIRMED');
     });
 
-    await test.step('7. 되묻기', async () => {
-      await page.getByRole('button', { name: '과제 답변하기' }).first().click();
+    await test.step('7. 확정된 카드에서 비어 있는 과제 칸 되묻기', async () => {
+      // 확정 카드에 과제·결과가 비어 있다고 알리고, 질문 받기는 첫 빈 칸(과제)부터 묻는다
+      await expect(page.getByText('과제, 결과 칸이 비어 있어요. 한두 가지만 알려 주면 채울 수 있어요')).toBeVisible();
+      await page.getByRole('button', { name: '질문 받기', exact: true }).click();
       await expect(page).toHaveURL(/\/interview\?field=T/);
       await expect(page.getByRole('heading', { name: /^Q1\. \S/ })).toBeVisible({ timeout: SLOW });
       await page.getByRole('textbox', { name: '답변' }).fill(ANSWER);
@@ -141,14 +149,12 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
       await expect(page.getByText('내 답변, 저장됨')).toBeVisible({ timeout: 15_000 });
       // 질문이 끝나면 "카드로" 링크를 두지 않아서(AI 가 더 묻지 않기로 하면 열린 질문이 없다) 카드 주소로 바로 간다
       await page.goto(`/cards/${cardId}`);
-      await expect(page.getByRole('region', { name: '과제', exact: true })).toContainText(ANSWER);
+      // 확정된 카드는 칸이 읽기 줄이라 칸 이름 영역 대신 글로 찾는다. 과제를 채웠으니 안내는 결과 칸만 남는다
+      await expect(page.getByText(ANSWER)).toBeVisible();
+      await expect(page.getByText('결과 칸이 비어 있어요. 한두 가지만 알려 주면 채울 수 있어요')).toBeVisible();
     });
 
-    await test.step('8. 확정', async () => {
-      await page.getByRole('button', { name: '확정', exact: true }).click();
-      await page.getByRole('dialog').getByRole('button', { name: '확정하기' }).click();
-      await expect(page.getByText('확정됨').first()).toBeVisible({ timeout: 15_000 });
-
+    await test.step('8. 답한 뒤에도 확정 그대로', async () => {
       const card = await dataOf(await page.request.get(`/api/cards/${cardId}`));
       expect(card.status).toBe('CONFIRMED');
       expect(card.version.versionNo).toBeGreaterThan(1);

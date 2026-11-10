@@ -7,18 +7,8 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { profileSupported } from '@/api/capabilities';
 import { ProfileSettingsRow } from '@/features/profile/ProfileSettingsRow';
-
-const COLLECTED = [
-  ['GitHub 아이디와 프로필 사진', '로그인 식별', '보관'],
-  ['공개 레포 원본 (커밋, PR, 리뷰)', '재현성과 근거 검증', '보관'],
-  ['확정한 경험 카드와 버전', '서비스 핵심 데이터', '보관'],
-  ['질문 답변 원문', '카드의 근거', '보관'],
-  ['활동 이름, 종류, 기간, 역할', '레포 밖 경험을 카드로 묶기', '보관'],
-  ['GitHub 액세스 토큰', '수집에만 사용', '탈퇴 시 즉시 파기'],
-] as const;
-
-/** 인적사항은 서버 지원이 열린 환경에서만 수집한다 — 안 받는 정보를 받는다고 적지 않는다 */
-const PROFILE_COLLECTED = [['인적사항 (학력, 경력, 어학, 자격증)', '공고 매칭의 지원 자격 비교, 자소서 AI 참고', '보관']] as const;
+import { COLLECTED, COVER_LETTER_COLLECTED, PROFILE_COLLECTED } from '@/lib/legal';
+import { LegalLinks } from '@/features/legal/LegalLinks';
 
 /** F2 마이페이지 — 수집 항목 투명 공개. 지표·크레딧 UI 없음 (과금 단위 미정). */
 export function MyPage() {
@@ -54,10 +44,10 @@ export function MyPage() {
           <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 14 }}>GitHub 연결 관리</span><span className="t-12 c-2">권한 확인, 다시 연결, 연결 해제</span></div>
           <span className="c-3" style={{ fontSize: 16 }}>›</span>
         </Link>
-        {/* 아직 없는 기능은 눌러지는 것처럼 보이지 않게 — 화살표 없이 흐리게 */}
-        <div className="kv" style={{ padding: '14px 0' }} aria-disabled="true">
-          <div className="stack grow" style={{ gap: 3 }}><span className="w-600 c-3" style={{ fontSize: 14 }}>탈퇴와 데이터 삭제</span><span className="t-12 c-3">준비 중이에요</span></div>
-        </div>
+        <Link to="/settings/leave" className="kv" style={{ padding: '14px 0' }}>
+          <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 14 }}>탈퇴와 데이터 삭제</span><span className="t-12 c-2">탈퇴하고 정보 지우기</span></div>
+          <span className="c-3" style={{ fontSize: 16 }}>›</span>
+        </Link>
         <div className="row" style={{ padding: '16px 0 6px' }}><Button variant="text" loading={logout.isPending} onClick={async () => { await logout.mutateAsync(); nav('/login'); }}>로그아웃</Button></div>
       </section>
       <section className="settings-section stat-grid">
@@ -68,7 +58,7 @@ export function MyPage() {
       <details className="settings-section settings-storage">
         <summary>저장과 보관 정보</summary>
         <div className="stack" style={{ gap: 12, marginTop: 16 }}>
-          {[...COLLECTED, ...(profileSupported() ? PROFILE_COLLECTED : [])].map(([name, why, keep]) => (
+          {[...COLLECTED, ...COVER_LETTER_COLLECTED, ...(profileSupported() ? PROFILE_COLLECTED : [])].map(([name, why, keep]) => (
             <div key={name} className="kv settings-data-row">
               <div className="settings-data-copy"><span className="w-500">{name}</span><span className="t-12 c-2">{why}</span></div>
               <Badge kind={keep === '보관' ? 'NEUTRAL' : 'CAUTION'}>{keep}</Badge>
@@ -76,6 +66,7 @@ export function MyPage() {
           ))}
         </div>
       </details>
+      <LegalLinks report />
     </main>
   );
 }

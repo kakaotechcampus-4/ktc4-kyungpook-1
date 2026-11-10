@@ -22,7 +22,7 @@ class RepoRecommendationTest {
         RepoRecommendation failedMeanwhile = RepoRecommendation.ready(1L, 8L, List.of(), NOW);
         ReflectionTestUtils.setField(failedMeanwhile, "staleSince", NOW);
 
-        changedMeanwhile.refresh(List.of(), NOW.plusSeconds(30));
+        changedMeanwhile.refresh(List.of(), null, NOW.plusSeconds(30));
         failedMeanwhile.fail(NOW.plusSeconds(30));
 
         assertThat(changedMeanwhile.getStatus()).isEqualTo(RepoRecommendationStatus.COMPUTING);

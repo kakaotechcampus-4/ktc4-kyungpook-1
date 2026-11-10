@@ -1,10 +1,9 @@
-import { recordCareerActivity } from '@/lib/careerActivity';
 import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 import { endpoints } from './endpoints';
 import { keys } from './keys';
 import { ApiError, AuthError } from './client';
-import { isTerminal, type Card, type CardSummary, type DraftFields, type Job, type StarField, type EvidenceType, type CandidateStatus, type CandidateBoard } from './schemas';
+import { isTerminal, type Card, type CardSummary, type DraftFields, type Job, type StarField, type EvidenceType, type CandidateStatus, type CandidateBoard, type RepoDetail, type RepoSummary } from './schemas';
 import { createAnalysisRequest } from './analysisRequest';
 import { pollInterval } from '@/lib/jobView';
 import { CONFIG } from '@/lib/config';
@@ -12,15 +11,40 @@ import { cacheCardMetadata } from '@/lib/cacheCardMetadata';
 import { matchKeys } from './matching';
 
 // ───────────────────────────── 조회 ─────────────────────────────
+const meQuery = {
+  queryKey: keys.me,
+  queryFn: () => endpoints.me(),
+  retry: (count: number, err: unknown) => !(err instanceof AuthError) && count < 2,
+  staleTime: 5 * 60_000,
+};
 export function useMe() {
+  return useQuery(meQuery);
+}
+/**
+ * 확정 카드 수. 서버가 카드를 스스로 확정하므로(자동 확정) 카드 화면을 벗어난 뒤에도 수가 늘 수 있다.
+ * 내 정보는 5분 동안 새로 읽지 않아서, 0 으로 남은 값이 "확정한 카드가 없어요"를 잘못 말했다(새로고침하면 풀림).
+ * 그래서 0 으로 캐시돼 있으면 들어올 때마다 다시 읽고, 첫 요청이 오가는 동안의 0 은 "아직 모름"(undefined)으로 돌려준다.
+ * 요청이 실패해 다시 시도하는 중(failureCount > 0)이면 더 기다리지 않고 캐시된 값을 그대로 쓴다.
+ */
+export function useConfirmedCardCount(): number | undefined {
+  const me = useQuery({ ...meQuery, refetchOnMount: (query) => (query.state.data?.stats.confirmedCards === 0 ? 'always' : true) });
+  const count = me.data?.stats.confirmedCards;
+  return count === 0 && me.isFetching && me.failureCount === 0 ? undefined : count;
+}
+/**
+ * 최신 목록(/repos)은 GitHub 동기화를 기다려 1~2초 걸린다. 그동안 저장 목록(/repos/saved, 수십 ms)을 자리표시로 먼저 보여 준다.
+ * 저장 목록이 비었거나 실패하면 자리표시 없이 지금처럼 최신 목록을 기다린다.
+ */
+export function useRepos() {
+  const saved = useQuery({ queryKey: keys.savedRepos, queryFn: endpoints.savedRepos, staleTime: 60_000, retry: false });
   return useQuery({
-    queryKey: keys.me,
-    queryFn: endpoints.me,
-    retry: (count, err) => !(err instanceof AuthError) && count < 2,
-    staleTime: 5 * 60_000,
+    queryKey: keys.repos, queryFn: endpoints.repos, staleTime: 60_000,
+    placeholderData: saved.data && saved.data.length > 0 ? saved.data : undefined,
   });
 }
-export const useRepos = () => useQuery({ queryKey: keys.repos, queryFn: endpoints.repos, staleTime: 60_000 });
+/** GitHub 을 부르지 않는 저장 목록만 읽는다 — 폴더 타일의 설명처럼 최신일 필요가 없는 곳에서 쓴다 */
+export const useSavedRepos = (enabled = true) =>
+  useQuery({ queryKey: keys.savedRepos, queryFn: endpoints.savedRepos, staleTime: 60_000, retry: false, enabled });
 export const useRepo = (id: string | undefined) =>
   useQuery({ queryKey: keys.repo(id ?? ''), queryFn: () => endpoints.repo(id!), enabled: !!id });
 export const useCandidates = (repoId: string | undefined) =>
@@ -105,6 +129,18 @@ export function useCard(id: string | undefined) {
   useEffect(() => {
     if (done && jobId && id) void qc.invalidateQueries({ queryKey: keys.card(id) });
   }, [done, jobId, id, qc]);
+  // 이 화면에 있는 동안 카드가 확정으로 바뀌거나(서버 자동 확정 포함) 상황·행동이 비어 작성 중으로 돌아가면 확정 카드 수와 공고 매칭이 새 값을 읽게 한다.
+  // 확정 버튼(useConfirm)은 이미 하던 일이라, 자동 확정에서도 같게 맞춘 것이다. 처음 읽어 온 값은 바뀐 것이 아니라서 건너뛴다.
+  const status = card.data?.status;
+  const lastStatus = useRef(status);
+  useEffect(() => {
+    const before = lastStatus.current;
+    lastStatus.current = status;
+    if (!status || !before || before === status) return;
+    void qc.invalidateQueries({ queryKey: keys.me });
+    void qc.invalidateQueries({ queryKey: keys.cards });
+    void qc.resetQueries({ queryKey: matchKeys.all });
+  }, [status, qc]);
   return { card, job };
 }
 
@@ -138,6 +174,24 @@ export function useSaveDraft(cardId: string) {
   });
 }
 
+/**
+ * 폴더 설명을 고친다. 서버가 돌려준 목록 한 줄로 레포 목록과 상세 캐시를 바꿔 타일과 폴더 머리에 바로 보인다.
+ * 아직 오는 중인 읽기가 고치기 전의 설명으로 캐시를 덮지 않게 먼저 멈추고, 레포 목록은 다시 불러오지 않는다 — 실서버의 목록은 부를 때마다 GitHub 에서 받아 오기 때문이다.
+ * 실패는 대화창이 보여 주므로 전역 알림은 띄우지 않는다.
+ */
+export function useUpdateRepoDescription(repoId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    meta: { errorPresentation: 'inline' },
+    mutationFn: (description: string | null) => endpoints.updateRepoDescription(repoId, description),
+    onSuccess: async (updated) => {
+      await Promise.all([keys.repos, keys.savedRepos, keys.repo(repoId)].map((queryKey) => qc.cancelQueries({ queryKey, exact: true })));
+      for (const queryKey of [keys.repos, keys.savedRepos]) qc.setQueryData<RepoSummary[]>(queryKey, (repos) => repos?.map((repo) => repo.id === updated.id ? updated : repo));
+      qc.setQueryData<RepoDetail>(keys.repo(repoId), (detail) => detail && { ...detail, ...updated });
+    },
+  });
+}
+
 export function useCancelJob() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: endpoints.cancelJob, onSuccess: (job) => {
@@ -150,11 +204,7 @@ export function useCreateManualDraft() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ input, idempotencyKey }: { input: Parameters<typeof endpoints.createManualDraft>[0]; idempotencyKey: string }) => endpoints.createManualDraft(input, idempotencyKey),
-    onSuccess: (card) => {
-      const user = qc.getQueryData<{ id: string }>(keys.me);
-      if (user?.id) recordCareerActivity(user.id, 'card', card.id);
-      qc.setQueryData(keys.card(card.id), card); void qc.invalidateQueries({ queryKey: keys.cards });
-    },
+    onSuccess: (card) => { qc.setQueryData(keys.card(card.id), card); void qc.invalidateQueries({ queryKey: keys.cards }); },
   });
 }
 
@@ -205,9 +255,7 @@ export function useCreateCards(repoId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (candidateIds: string[]) => endpoints.createCardsFromCandidates(repoId, candidateIds),
-    onSuccess: (result) => {
-      const user = qc.getQueryData<{ id: string }>(keys.me);
-      if (user?.id) result.cardIds.forEach(id => recordCareerActivity(user.id, 'card', id));
+    onSuccess: () => {
       void qc.invalidateQueries({ queryKey: keys.candidates(repoId) });
       void qc.invalidateQueries({ queryKey: keys.cards });
     },
@@ -318,6 +366,11 @@ export function useConfirm(cardId: string) {
 export function useDisconnectGithub() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: endpoints.disconnectGithub, onSuccess: () => void qc.invalidateQueries({ queryKey: keys.me }) });
+}
+/** 탈퇴 실패는 화면이 직접 보여 준다 — 전역 알림으로 또 알리지 않는다 */
+export function useLeaveAccount() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: endpoints.leaveAccount, retry: false, meta: { errorPresentation: 'inline' }, onSuccess: () => qc.clear() });
 }
 export function useLogout() {
   const qc = useQueryClient();

@@ -370,6 +370,25 @@ class MigrationUpgradeTest {
 
     }
 
+    @Test
+    @DisplayName("V51 은 이미 저장된 README 소개 문장의 출처를 RULE 로 채우고, 문장이 없는 행은 출처도 비워 둔다")
+    void v51MarksStoredReadmeSummariesAsRule() {
+
+        migrateTo("50");
+        Long userId = fixtures.insertUser(1L, "grow22");
+        Long withSummary = fixtures.insertUserRepository(userId, fixtures.insertRepository(1L, "grow22", "gitory"));
+        Long withoutSummary = fixtures.insertUserRepository(userId, fixtures.insertRepository(2L, "grow22", "docs"));
+        jdbc.update("UPDATE user_repository SET readme_summary = '커밋 기록으로 경험 카드를 만드는 서비스예요.' WHERE id = ?", withSummary);
+
+        migrateTo("51");
+
+        assertThat(jdbc.queryForObject("SELECT readme_summary_source FROM user_repository WHERE id = ?", String.class,
+                withSummary)).isEqualTo("RULE");
+        assertThat(jdbc.queryForObject("SELECT readme_summary_source FROM user_repository WHERE id = ?", String.class,
+                withoutSummary)).isNull();
+
+    }
+
     private void insertTurn(Long cardId, int seq, String outcome, String answerText, String answerSource) {
 
         jdbc.update(

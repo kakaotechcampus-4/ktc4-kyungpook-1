@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -28,10 +29,19 @@ public class MatchingCardReader {
     private final CardRepository cards;
     private final CardStatementRepository statements;
 
+    /** 그 레포의 지우지 않은 작성 중 카드와 확정 카드를 카드 id 순으로 모두 읽는다 */
     @Transactional(readOnly = true)
-    public List<MatchingCard> confirmedOf(Long userId, Long userRepositoryId) {
+    public List<MatchingCard> allOf(Long userId, Long userRepositoryId) {
 
-        return cardsOf(confirmedCards.findLiveConfirmedIdsOfRepository(userId, userRepositoryId));
+        return cardsOf(confirmedCards.findLiveIdsOfRepository(userId, userRepositoryId));
+
+    }
+
+    /** 그 레포에 지우지 않은 카드가 작성 중이든 확정이든 한 장이라도 있는지 묻는다 */
+    @Transactional(readOnly = true)
+    public boolean existsOf(Long userId, Long userRepositoryId) {
+
+        return confirmedCards.existsLiveOfRepository(userId, userRepositoryId);
 
     }
 
@@ -40,6 +50,14 @@ public class MatchingCardReader {
     public List<MatchingCard> confirmedOf(Long userId) {
 
         return cardsOf(confirmedCards.findLiveConfirmedIdsOfUser(userId));
+
+    }
+
+    /** 지우지 않은 확정 카드가 있고, 작성 중까지 포함한 카드를 since 이후에 만들거나 고친 사용자를 id 순으로 읽는다 */
+    @Transactional(readOnly = true)
+    public List<Long> activeUserIds(Instant since) {
+
+        return confirmedCards.findUserIdsWithConfirmedAndEditedSince(since);
 
     }
 

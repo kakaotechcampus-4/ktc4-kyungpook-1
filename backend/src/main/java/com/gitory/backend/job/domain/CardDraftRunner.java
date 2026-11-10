@@ -26,11 +26,13 @@ import com.gitory.backend.ingest.domain.StoredPullRequest;
 import com.gitory.backend.ingest.port.DiffEvidenceRequest;
 import com.gitory.backend.ingest.port.RepositoryActivityPort;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
+import com.gitory.backend.job.infra.RepoRefreshRepository;
 import com.gitory.backend.matching.domain.RepoRecommendationTrigger;
 import com.gitory.backend.recommend.domain.CandidateDraftSource;
 import com.gitory.backend.recommend.domain.CandidateDraftSourceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -55,6 +57,7 @@ public class CardDraftRunner {
     private static final int COMMIT_LIMIT = 50;
 
     private final AnalysisJobRepository jobs;
+    private final RepoRefreshRepository refreshes;
     private final TransactionTemplate transaction;
     private final GeneratedCardQueryService generatedCards;
     private final CandidateDraftSourceService candidateSources;
@@ -66,6 +69,7 @@ public class CardDraftRunner {
     private final CommitSummaryService commitSummaries;
     private final RepoRecommendationTrigger recommendations;
     private final CardDraftLiveLog live;
+    private final ApplicationEventPublisher events;
 
     public void run(AnalysisJob job) {
 
@@ -248,8 +252,11 @@ public class CardDraftRunner {
         AnalysisJob job = jobs.findWithLockById(jobId).orElseThrow();
         if (job.getState() == JobState.RUNNING) {
             job.finishDraft(results);
-            // 카드마다 알리지 않고 다 만든 뒤 한 번에 그 레포 추천을 다시 계산한다
-            recommendations.requestNow(job.getUserId(), job.getUserRepositoryId());
+            events.publishEvent(job.getState() == JobState.FAILED ? JobFailed.of(job) : new JobEnded(jobId));
+            // 카드마다 알리지 않고 다 만든 뒤 한 번에 그 레포 추천을 다시 계산하되, 스스로 다시 읽기는 사용자가 알림을 누를 때 다시 고른다
+            if (!refreshes.existsByDraftJobId(jobId)) {
+                recommendations.requestNow(job.getUserId(), job.getUserRepositoryId());
+            }
         }
 
     }

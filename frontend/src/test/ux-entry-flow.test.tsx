@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { keys } from '@/api/keys';
 import { HomePage } from '@/features/home/HomePage';
@@ -14,9 +14,10 @@ const auth = vi.hoisted(() => ({ isDemo: true }));
 vi.mock('@/features/auth/useLogin', () => ({ useLogin: () => ({ isDemo: auth.isDemo, start: vi.fn(), pending: false, failure: null, label: auth.isDemo ? '샘플로 체험하기' : 'GitHub로 시작' }) }));
 beforeEach(() => { resetDb(); auth.isDemo = true; });
 afterEach(() => { cleanup(); vi.unstubAllEnvs(); });
-function mount(element: React.ReactElement, path = '/') {
+// 랜딩은 로그인한 사람을 홈으로 보내므로, 로그아웃 상태를 보려면 내 정보를 미리 채우지 않는다(signedIn=false)
+function mount(element: React.ReactElement, path = '/', signedIn = true) {
   const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
-  for (const [key, route] of [[keys.repos, '/repos'], [keys.cards, '/cards'], [keys.me, '/me'], [keys.activeJobs, '/jobs?active=true']] as const) {
+  for (const [key, route] of [[keys.repos, '/repos'], [keys.cards, '/cards'], ...(signedIn ? [[keys.me, '/me']] as const : []), [keys.activeJobs, '/jobs?active=true']] as const) {
     const [pathname, search] = route.split('?');
     client.setQueryData(key, handle('GET', pathname, new URLSearchParams(search), {}, true).data);
   }
@@ -27,19 +28,12 @@ it('keeps recent card tiles off the home dashboard', () => {
   expect(document.querySelectorAll('.experience-item')).toHaveLength(0);
   expect(screen.queryByRole('link', { name: /모든 카드 보기/ })).not.toBeInTheDocument();
 });
-it('keeps the full card count in the home overview', () => {
-  mount(<HomePage />);
-  const total = (handle('GET', '/cards', new URLSearchParams(), {}, true).data as unknown[]).length;
-  expect(total).toBeGreaterThan(3);
-  const tile = screen.getByText('작성한 경험 카드').closest('.overview-tile')!;
-  expect(tile.querySelector('strong')).toHaveTextContent(String(total));
-});
 it('explains search misses without claiming a private-repository permission problem', () => {
   mount(<ReposPage />, '/repos');
   fireEvent.change(screen.getByRole('textbox', { name: '레포 이름 검색' }), { target: { value: 'no-such-repo' } });
   expect(screen.getByText('검색 결과가 없어요')).toBeInTheDocument();
   expect(screen.queryByText(/권한부터 요청하지/)).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: '검색과 필터 초기화' }));
+  fireEvent.click(screen.getByRole('button', { name: '검색 초기화' }));
   expect(screen.getAllByRole('radio').length).toBeGreaterThan(0);
 });
 it('does not equate a small commit share with exaggerating experience', () => {
@@ -49,11 +43,16 @@ it('does not equate a small commit share with exaggerating experience', () => {
 });
 it('does not tell sample visitors their actual login expired', () => {
   vi.stubEnv('VITE_API_MOCK', 'true');
-  mount(<LandingPage />, '/login?reason=expired');
+  mount(<LandingPage />, '/login?reason=expired', false);
   expect(screen.queryByText(/로그인이 만료/)).not.toBeInTheDocument();
 });
 it('keeps the actual expired-session notice in real API mode', () => {
   auth.isDemo = false;
-  mount(<LandingPage />, '/login?reason=expired');
+  mount(<LandingPage />, '/login?reason=expired', false);
   expect(screen.getByText('로그인이 만료됐어요. 다시 시작해 주세요.')).toBeInTheDocument();
+});
+it('sends an already signed-in visitor from /login to home instead of showing the login screen', () => {
+  mount(<Routes><Route path="/login" element={<LandingPage />} /><Route path="/" element={<p>홈 화면</p>} /></Routes>, '/login');
+  expect(screen.getByText('홈 화면')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /GitHub로 시작|샘플로 체험하기/ })).not.toBeInTheDocument();
 });

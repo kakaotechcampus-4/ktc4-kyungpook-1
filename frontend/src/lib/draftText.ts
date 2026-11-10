@@ -30,6 +30,3 @@ export const blanksIn = (text: string): MaterialItem[] =>
 /** AI 가 넣은 '더 쓸 거리' — 무엇을 쓰면 되는지 문구만 */
 export const moreToWrite = (text: string): string[] =>
   [...text.matchAll(MORE)].map((m) => m[0].slice('[더 쓸 거리: '.length, -1));
-
-/** 사용자가 채울 곳(___)이 있는 답 틀 */
-export const TEMPLATE_GAP = '___';

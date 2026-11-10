@@ -105,6 +105,19 @@ class ProfileApiTest {
     }
 
     @Test
+    @DisplayName("메일 주소와 수신 여부를 저장한 뒤 다시 읽으면 같은 값이 나온다")
+    void mailAddressAndOptInSurviveTheDatabaseRoundTrip() throws Exception {
+
+        save(myUserId, EMPTY.replace("\"certifications\":[]}", "\"certifications\":[],\"email\":\" me@example.com \",\"mailOptIn\":true}"))
+                .andExpect(status().isOk());
+
+        profile(myUserId)
+                .andExpect(jsonPath("$.data.email").value("me@example.com"))
+                .andExpect(jsonPath("$.data.mailOptIn").value(true));
+
+    }
+
+    @Test
     @DisplayName("저장하면 보낸 순서대로 남고, 글은 앞뒤 공백을 지우며 빈 글은 null, 목록에 있는 시험의 이름 칸은 버린다")
     void savesWhatWasSentAndReadsItBack() throws Exception {
 

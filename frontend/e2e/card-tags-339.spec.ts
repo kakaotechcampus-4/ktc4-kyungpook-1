@@ -22,7 +22,7 @@ for (const width of [320, 390, 768, 1440]) for (const theme of ['light', 'dark']
     const taggedCard = java.locator('.experience-item').first();
     const tagBox = await taggedCard.locator('.card-tags').boundingBox();
     const titleBox = await taggedCard.locator('.gcard__title').boundingBox();
-    expect(tagBox!.y + tagBox!.height).toBeLessThanOrEqual(titleBox!.y);
+    expect(titleBox!.y + titleBox!.height).toBeLessThanOrEqual(tagBox!.y);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.screenshot({ path: `docs/screenshots/2026-10-21-tags/list-${width}-${theme}.png`, fullPage: true });
     await taggedCard.click();

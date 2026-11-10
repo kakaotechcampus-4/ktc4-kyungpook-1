@@ -14,6 +14,8 @@ ENV VITE_CARD_METADATA_ENABLED=true
 ENV VITE_MATCH_ENABLED=true
 # 인적사항 API(#552)가 서버에 들어가 실서버에서도 인적사항 화면을 연다.
 ENV VITE_PROFILE_ENABLED=true
+# 홈 한 줄 명령 API(#837)와 대화 화면(#836)이 들어가 홈 입력 칸을 연다. 서버의 ASSISTANT_ENABLED 도 함께 켠다.
+ENV VITE_ASSISTANT_ENABLED=true
 ARG VITE_SITE_URL
 ENV VITE_SITE_URL=$VITE_SITE_URL
 RUN npm run build

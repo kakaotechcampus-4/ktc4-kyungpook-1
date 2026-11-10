@@ -58,7 +58,6 @@ function mount(path: string, seed?: (client: QueryClient) => void) {
 
 const jobInput = () => screen.getByPlaceholderText('예: 백엔드 개발');
 const fillQuestion = () => {
-  fireEvent.change(screen.getByLabelText('지원 이유'), { target: { value: input.memo } });
   fireEvent.change(screen.getByLabelText('1번 문항'), { target: { value: input.questions[0].text } });
 };
 
@@ -73,7 +72,7 @@ describe('① 공고에서 시작한 입력 화면', () => {
     expect(screen.getByRole('region', { name: '지원 공고' })).toHaveTextContent('가온소프트');
     expect(screen.getByRole('link', { name: /공고 보기/ })).toHaveAttribute('href', `/match/${POSTING.id}`);
     fillQuestion();
-    fireEvent.click(screen.getByRole('button', { name: '카드 고르기' }));
+    fireEvent.click(screen.getByRole('button', { name: '초안 쓰기' }));
     await waitFor(() => expect(db.coverLetters).toHaveLength(1));
     expect(db.coverLetters[0].posting).toEqual(POSTING);
   });
@@ -92,7 +91,7 @@ describe('① 공고에서 시작한 입력 화면', () => {
     mount(`/cover-letters/new?postingId=${POSTING.id}`);
     await waitFor(() => expect(jobInput()).toHaveValue(POSTING.title));
     fillQuestion();
-    fireEvent.click(screen.getByRole('button', { name: '카드 고르기' }));
+    fireEvent.click(screen.getByRole('button', { name: '초안 쓰기' }));
     await screen.findByText('공고를 찾을 수 없어요');
     expect(db.coverLetters).toHaveLength(0);
     // 같은 화면으로 돌아오므로 적어 둔 문항은 남고, 공고 때문에 난 실패 안내는 사라진다
@@ -126,12 +125,12 @@ describe('자소서 화면과 목록', () => {
     ]));
     const rows = screen.getAllByRole('listitem');
     expect(within(rows[0]).getByText('가온소프트')).toBeInTheDocument();
-    expect(within(rows[1]).getByText('가온소프트 · 백엔드 엔지니어 (Java·Spring)')).toBeInTheDocument();
+    expect(within(rows[1]).getByText('가온소프트, 백엔드 엔지니어 (Java·Spring)')).toBeInTheDocument();
     expect(within(rows[2]).queryByText(/가온소프트/)).not.toBeInTheDocument();
   });
 
   it('자소서 화면은 단계 제목 위에 공고 줄과 공고 보기 링크를 두고, 공고 없는 자소서에는 두지 않는다', () => {
-    const base = { id: 'cl_1', stage: 'ASSIGNED', jobRole: '백엔드 개발', createdAt: 't', updatedAt: 't', questions: [] };
+    const base = { id: 'cl_1', stage: 'ASSIGNING', jobRole: '백엔드 개발', createdAt: 't', updatedAt: 't', questions: [] };
     mount('/cover-letters/cl_1', (c) => c.setQueryData(coverLetterKeys.one('cl_1'), CoverLetter.parse({ ...base, posting: POSTING })));
     expect(screen.getByText('지원 공고')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '공고 보기' })).toHaveAttribute('href', `/match/${POSTING.id}`);

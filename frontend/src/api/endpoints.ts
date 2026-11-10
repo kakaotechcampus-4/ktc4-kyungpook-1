@@ -9,13 +9,20 @@ import { reportSkipped } from '@/lib/skippedItems';
 export const endpoints = {
   // 사용자 · 연동
   me: () => api(S.Me, '/me'),
+  sendFeedback: (body: { message: string; path: string }) => api(z.unknown(), '/feedback', { method: 'POST', body, allowNullData: true }),
   logout: () => api(z.object({ ok: z.boolean() }), '/auth/logout', { method: 'POST' }),
+  leaveAccount: () => api(z.unknown(), '/me', { method: 'DELETE', allowNullData: true }),
   disconnectGithub: () => api(z.object({ ok: z.boolean() }), '/github/disconnect', { method: 'POST' }),
   githubStartUrl: () => `${import.meta.env.VITE_API_BASE ?? '/api'}/auth/github/start`,
 
   // 레포
   repos: () => api(z.array(S.RepoSummary), '/repos'),
+  // GitHub 을 부르지 않는 저장 목록(BE RepoController). 최신 목록을 기다리는 동안 먼저 보여 준다
+  savedRepos: () => api(z.array(S.RepoSummary), '/repos/saved'),
   repo: (id: string) => api(S.RepoDetail, `/repos/${id}`),
+  /** 폴더 설명 고치기. 비우거나 null 이면 사용자가 쓴 설명을 지워 GitHub 설명이나 README 문장을 다시 보여 준다 */
+  updateRepoDescription: (id: string, description: string | null) =>
+    api(S.RepoSummary, `/repos/${id}`, { method: 'PATCH', body: { description } }),
   /**
    * 분석 시작. Idempotency-Key 를 붙이므로 같은 키의 재요청은 새 Job 을 만들지 않고 기존 Job 을 돌려준다.
    * 같은 저장소의 중복 요청은 기존 Job 반환. 같은 키를 다른 저장소에 사용하면 409.

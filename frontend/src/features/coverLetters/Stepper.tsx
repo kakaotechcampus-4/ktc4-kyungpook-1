@@ -3,7 +3,7 @@ import { FLOW_STEPS, type FlowStep } from '@/lib/coverLetterCopy';
 
 /**
  * 자소서 흐름 네 단계 중 지금 어디인지 — 이동 경로 바로 아래에 둔다(#745).
- * 좁은 화면에서는 '2/4 카드' 알약만 보이고, 단계 목록은 화면 읽기 프로그램에 그대로 남는다.
+ * 좁은 화면에서는 '2/4 카드 고르기' 알약만 보이고, 단계 목록은 화면 읽기 프로그램에 그대로 남는다.
  */
 export function Stepper({ current }: { current: FlowStep }) {
   return (

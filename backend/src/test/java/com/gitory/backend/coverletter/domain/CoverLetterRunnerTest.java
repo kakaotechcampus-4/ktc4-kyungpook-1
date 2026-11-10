@@ -320,6 +320,50 @@ class CoverLetterRunnerTest {
     }
 
     @Test
+    @DisplayName("지원 이유가 없는 자소서도 카드 고르기·질문 만들기·초안 쓰기 세 단계를 지나 초안이 나오고, AI 에는 지원 이유를 null 로 보낸다")
+    void sendsNullMemoToAllThreeStepsWhenLetterHasNoMemo() {
+
+        Long card = confirmedCard("배포 시간 단축", "A");
+        CoverLetter letter = waitingLetter("협업 경험을 쓰세요");
+        AtomicReference<CoverLetterAssignmentRequest> assigned = new AtomicReference<>();
+        given(assignment.assign(any(), any())).willAnswer(invocation -> {
+            assigned.set(invocation.getArgument(0));
+            return new CoverLetterAssignment(List.of(new CoverLetterAssignment.Question(1, "COLLABORATION", card, null,
+                    "함께 고친 경험", List.of(), "SUB_AGENT")), List.of());
+        });
+        runner.run(runner.claimNext().orElseThrow());
+
+        CoverLetter toAsk = letters.findById(letter.getId()).orElseThrow();
+        toAsk.startAsking();
+        letters.save(toAsk);
+        AtomicReference<CoverLetterQuestionsRequest> asked = new AtomicReference<>();
+        given(questionsPort.ask(any())).willAnswer(invocation -> {
+            asked.set(invocation.getArgument(0));
+            return new CoverLetterQuestions(false, null, List.of(new CoverLetterQuestions.Question(1, List.of(),
+                    List.of(new CoverLetterQuestions.Ask("RESULT", "배포가 얼마나 빨라졌나요?", List.of())))));
+        });
+        runner.run(runner.claimNext().orElseThrow());
+
+        CoverLetter toDraft = letters.findById(letter.getId()).orElseThrow();
+        toDraft.startDrafting();
+        letters.save(toDraft);
+        AtomicReference<CoverLetterDraftsRequest> drafted = new AtomicReference<>();
+        given(draftsPort.write(any(), any())).willAnswer(invocation -> {
+            drafted.set(invocation.getArgument(0));
+            return new CoverLetterDrafts(List.of(new CoverLetterDrafts.Draft(1, "배포를 고쳤다.",
+                    List.of(new CoverLetterDrafts.Sentence(1, "배포를 고쳤다.")), 8, 0, List.of(), List.of(), "LLM")),
+                    List.of());
+        });
+        runner.run(runner.claimNext().orElseThrow());
+
+        assertThat(assigned.get().memo()).isNull();
+        assertThat(asked.get().memo()).isNull();
+        assertThat(drafted.get().memo()).isNull();
+        assertThat(letters.findById(letter.getId()).orElseThrow().getStage()).isEqualTo(CoverLetterStage.DRAFTED);
+
+    }
+
+    @Test
     @DisplayName("질문 만들기 AI 호출이 실패하면 질문 단계 실패로 끝낸다")
     void failsAskStepWhenAiFails() {
 

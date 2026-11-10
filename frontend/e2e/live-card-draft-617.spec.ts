@@ -9,7 +9,7 @@ import { loginAsDemo } from './helpers';
 const slot = (page: Page, field: 'S' | 'T' | 'A' | 'R') => page.locator(`.live-card .live-slot[data-field="${field}"]`);
 const typedLength = (page: Page) => page.locator('.live-card [data-live-text]').evaluateAll((nodes) => nodes.reduce((sum, node) => sum + Array.from(node.textContent ?? '').length, 0));
 const overflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-const generationHeading = (page: Page) => page.getByRole('heading', { name: '고른 후보의 카드 초안을 쓰고 있어요' });
+const generationHeading = (page: Page) => page.getByRole('heading', { name: '카드 초안을 쓰고 있어요' });
 
 async function startCards(page: Page, count: number) {
   await loginAsDemo(page);
@@ -75,12 +75,12 @@ test('카드가 차례로 채워지고, 읽는 동안은 커서만, 글은 일�
 
   // Job 이 끝나도 마지막 카드를 다 펼친 뒤에야 완성된 카드로 넘어간다
   await expect(slot(page, 'R')).toHaveAttribute('data-phase', 'DONE', { timeout: 30_000 });
-  await expect(page.locator('.live-card__state')).toHaveText('다 썼어요');
+  await expect(page.locator('.live-card__state')).toHaveText('다 썼어요', { timeout: 15_000 }); // 서버가 끝났다고 알린 뒤에야 바뀌므로 R 칸이 다 보인 뒤에도 몇 초 걸린다
   await expect(page.getByText('카드 초안 2 / 2장')).toBeVisible();
   await expect(generationHeading(page)).toBeVisible(); // 다 쓴 모습을 잠깐 보여 준다
   await expect(generationHeading(page)).toHaveCount(0, { timeout: 10_000 });
-  // 여러 장을 다 쓰면 그 레포의 카드 폴더로 옮겨 여러 장을 한눈에 본다 (#704)
-  await expect(page).toHaveURL(/\/cards\/repo\/r_auth$/);
+  // 여러 장을 다 쓰면 그 레포 카드로 맞는 기업을 고르는 화면으로 옮겨 간다 (#704)
+  await expect(page).toHaveURL(/\/cards\/repo\/r_auth\/match$/);
   await expect(page.locator('.live-draft')).toHaveCount(0);
 });
 

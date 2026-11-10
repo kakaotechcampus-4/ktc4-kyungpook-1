@@ -1,13 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRepo, useRepos, useStartAnalysis } from '@/api/queries';
 import type { RepoSummary } from '@/api/schemas';
 import { FolderGit2 } from 'lucide-react';
-import { Badge, Button, IconBox, Radio, PageTitle, Skeleton, StickyFooter, Note, EmptyState } from '@/components/ui';
+import { Badge, Button, IconBox, Radio, PageTitle, SectionHead, Skeleton, StickyFooter, Note, EmptyState } from '@/components/ui';
 import { AiWait } from '@/components/ui/AiWait';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGrid } from '@/features/auth/LandingPage';
 import { COUNTING, isCounting } from '@/lib/repoCounts';
+import { groupRepos } from '@/lib/repoGroups';
 import { repoMeta, repoSentence } from '@/lib/repoSentence';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
@@ -16,9 +17,7 @@ import { SearchField } from '@/components/ui/SearchField';
 import { Select } from '@/components/ui/Select';
 
 type Sort = 'activity' | 'recent' | 'name';
-type Filter = 'all' | 'pr' | 'nopr' | 'fresh';
 const SORT_LABEL: Record<Sort, string> = { activity: '활동량 순', recent: '최근 활동 순', name: '이름 순' };
-const FILTER_LABEL: Record<Filter, string> = { all: '전체', pr: 'PR 있는 레포', nopr: 'PR 0건', fresh: '아직 정리 안 함' };
 /** 이만큼 지나도 목록이 안 오면 "GitHub 가 느리다"고 덧붙인다 — 빠른 응답(1~2초)에는 한 줄만 보이게 */
 const REPOS_SLOW_MS = 3_000;
 
@@ -31,28 +30,28 @@ export function ReposPage() {
   const disclose = sp.get('disclose') === '1';
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<Sort>('activity');
-  const [filter, setFilter] = useState<Filter>(() => (['all', 'pr', 'nopr', 'fresh'].includes(sp.get('filter') ?? '') ? (sp.get('filter') as Filter) : 'all'));
   const nav = useNavigate();
   const start = useStartAnalysis();
 
-  const list = useMemo(() => {
-    let xs = (repos.data ?? []).filter((r) => `${r.owner}/${r.name}`.toLowerCase().includes(q.toLowerCase()));
-    if (filter === 'pr') xs = xs.filter((r) => !isCounting(r) && r.prCount > 0);
-    if (filter === 'nopr') xs = xs.filter((r) => !isCounting(r) && r.prCount === 0);
-    if (filter === 'fresh') xs = xs.filter((r) => !r.lastAnalyzedAt);
+  // 정렬은 묶음 안에서만 한다 — 묶음 순서(추천 → 아직 안 정리 → 정리 완료)는 정렬을 바꿔도 그대로다
+  const groups = useMemo(() => {
     const score = (r: RepoSummary) => r.contribution.mine + r.prCount * 3 + r.reviewCount;
-    // 활동량 순에서는 먼저 정리해 보기 좋은 레포(추천이면서 아직 안 정리한 레포)를 맨 위에 모은다 — 사용자가 고른 이름·최근 순은 그대로 둔다
-    const first = (r: RepoSummary) => (sort === 'activity' && isFirstPick(r) ? 0 : 1);
-    return xs.sort((a, b) => first(a) - first(b) || (sort === 'name' ? a.name.localeCompare(b.name) : sort === 'recent' ? b.activeTo.localeCompare(a.activeTo) : score(b) - score(a)));
-  }, [repos.data, q, sort, filter]);
+    const order = (a: RepoSummary, b: RepoSummary) => (sort === 'name' ? a.name.localeCompare(b.name) : sort === 'recent' ? b.activeTo.localeCompare(a.activeTo) : score(b) - score(a));
+    const { recommended, fresh, done } = groupRepos((repos.data ?? []).filter((r) => `${r.owner}/${r.name}`.toLowerCase().includes(q.toLowerCase())));
+    return { recommended: recommended.sort(order), fresh: fresh.sort(order), done: done.sort(order) };
+  }, [repos.data, q, sort]);
+  const picking = groups.recommended.length + groups.fresh.length;
+  const shown = picking + groups.done.length;
   const selected = (repos.data ?? []).find((r) => r.id === selectedId) ?? null;
   const detail = useRepo(disclose ? selectedId ?? undefined : undefined);
 
-  // setSp({...}) 는 쿼리스트링 전체를 교체한다 — filter 처럼 URL 에만 남아 있던 값이 select/disclose 조작 한 번에 사라져,
-  // 그 상태에서 새로고침하면 필터가 조용히 '전체'로 되돌아간다. 기존 파라미터를 남기고 필요한 키만 바꾼다.
+  // setSp({...}) 는 쿼리스트링 전체를 교체한다 — URL 에만 남아 있던 다른 값이 select/disclose 조작 한 번에 사라지지 않게
+  // 기존 파라미터를 남기고 필요한 키만 바꾼다.
   const select = (id: string) => { setSp((current) => { current.set('select', id); return current; }); track('repo_selected', { repoId: id }); };
+  const pick = (r: RepoSummary) => <RepoRow key={r.id} r={r} selected={r.id === selectedId} onSelect={() => select(r.id)} />;
   const openDisclose = () => selectedId && setSp((current) => { current.set('select', selectedId); current.set('disclose', '1'); return current; });
-  const closeDisclose = () => selectedId && setSp((current) => { current.set('select', selectedId); current.delete('disclose'); return current; });
+  // 정리한 레포는 고르는 줄이 없어서 창만 닫으면 아래 막대에만 '골랐어요'가 남는다 — 취소하면 고른 상태도 푼다
+  const closeDisclose = () => selectedId && setSp((current) => { current.delete('disclose'); if (selected?.lastAnalyzedAt) current.delete('select'); else current.set('select', selectedId); return current; });
   const begin = async () => {
     if (!selected) return;
     try {
@@ -66,11 +65,10 @@ export function ReposPage() {
     <main className="main main--footer main--tight">
       <div className="list-head">
         {/* 아직 못 받았으면 개수를 모른다 — 0 으로 보이면 "레포가 없다"로 읽힌다 */}
-        <PageTitle lead="레포를 선택하고 커밋과 PR에서 나의 경험을 찾아보세요.">레포 {repos.data && <span className="c-3 t-14">{repos.data.length}</span>}</PageTitle>
+        <PageTitle>레포 {repos.data && <span className="c-3 t-14">{repos.data.length}</span>}</PageTitle>
         <div className="right">
           <SearchField className="list-search" value={q} onChange={setQ} placeholder="레포 이름 검색" />
           <Select value={sort} onChange={setSort} label="정렬" options={(Object.keys(SORT_LABEL) as Sort[]).map((value) => ({ value, label: SORT_LABEL[value] }))} />
-          <Select value={filter} onChange={setFilter} label="필터" options={(Object.keys(FILTER_LABEL) as Filter[]).map((value) => ({ value, label: FILTER_LABEL[value] }))} />
         </div>
       </div>
       <ol className="wizard__steps repo-picker__steps" aria-label="진행 단계">
@@ -87,13 +85,21 @@ export function ReposPage() {
           longLabel={repos.failureCount > 0 ? 'GitHub 응답이 없어 다시 시도하는 중이에요. 잠시만 기다려 주세요.' : 'GitHub 응답이 평소보다 느려요. 이 화면에서 잠시만 기다려 주세요.'} />
         <div className="stack" style={{ gap: 8 }}>{[0, 1, 2].map((i) => <Skeleton key={i} h={72} />)}</div>
       </>}
-      {repos.isSuccess && list.length === 0 && <div className="stack" style={{ gap: 12, alignItems: 'center' }}>
-        <EmptyState title={q.trim() ? '검색 결과가 없어요' : filter !== 'all' ? '조건에 맞는 레포가 없어요' : '아직 불러온 레포가 없어요'} desc={q.trim() ? '이름을 확인하거나 검색과 필터를 초기화해 주세요.' : filter !== 'all' ? '필터를 바꿔 다른 레포를 확인해 보세요.' : '비공개 레포, 커밋이 없는 레포와 내 프로필 README 레포는 목록에서 제외돼요. GitHub 연결 상태도 확인해 주세요.'} />
-        {(q || filter !== 'all') ? <Button variant="outline" onClick={() => { setQ(''); setFilter('all'); }}>검색과 필터 초기화</Button> : <Link to="/settings/github" className="btn btn--outline">GitHub 연결 확인</Link>}
+      {repos.isSuccess && shown === 0 && <div className="stack" style={{ gap: 12, alignItems: 'center' }}>
+        <EmptyState title={q.trim() ? '검색 결과가 없어요' : '아직 불러온 레포가 없어요'} desc={q.trim() ? '이름을 확인하거나 검색을 초기화해 주세요.' : '비공개 레포, 커밋이 없는 레포와 내 프로필 README 레포는 목록에서 제외돼요. GitHub 연결 상태도 확인해 주세요.'} />
+        {q ? <Button variant="outline" onClick={() => setQ('')}>검색 초기화</Button> : <Link to="/settings/github" className="btn btn--outline">GitHub 연결 확인</Link>}
       </div>}
-      <div className="record-list" role="radiogroup" aria-label="레포 선택">
-        {list.map((r) => <RepoRow key={r.id} r={r} selected={r.id === selectedId} onSelect={() => select(r.id)} />)}
-      </div>
+      {shown > 0 && (
+        <div className="repo-groups">
+          {picking > 0 && (
+            <div className="repo-groups__pick" role="radiogroup" aria-label="레포 선택">
+              {groups.recommended.length > 0 && <Group label="내 기여가 많은 레포" count={groups.recommended.length}><div className="record-list">{groups.recommended.map(pick)}</div></Group>}
+              {groups.fresh.length > 0 && <Group label="아직 정리하지 않은 레포" count={groups.fresh.length}><div className="record-list">{groups.fresh.map(pick)}</div></Group>}
+            </div>
+          )}
+          {groups.done.length > 0 && <Group label="이미 정리한 레포" count={groups.done.length}><ul className="record-list repo-done">{groups.done.map((r) => <DoneRow key={r.id} r={r} />)}</ul></Group>}
+        </div>
+      )}
 
       <StickyFooter strong={selected ? `${selected.name} 을 골랐어요` : '레포를 하나 골라 주세요'} sub={selected ? '다음은 읽는 범위 확인이에요' : undefined}>
         <Link to="/" className="btn btn--outline">취소</Link>
@@ -115,7 +121,8 @@ export function ReposPage() {
               </div>
               {detail.isPending ? <Skeleton h={160} /> : detail.data && <PermissionGrid compact reads={detail.data.disclosure.reads} skips={detail.data.disclosure.skips} />}
               {detail.isError && <QueryFailure error={detail.error} retry={() => detail.refetch()} pending={detail.isFetching} />}
-              {selected.lastAnalyzedAt && <Note strong="전에 정리한 레포예요" tone="inset">다시 정리해 새 기록을 확인할 수 있어요.</Note>}
+              <p className="t-14 c-2">정리한 뒤에 새 커밋이 생기면 Gitory가 다시 읽어 카드 초안을 써 둬요</p>
+              {selected.lastAnalyzedAt && <Note strong="전에 정리한 레포예요" tone="inset">다시 정리해 새 기록을 확인할 수 있어요. 지난 결과만 보려면 <Link to={`/repos/${selected.id}/candidates`}>지난 후보 보기</Link></Note>}
             </div>
         </Modal>
       )}
@@ -123,7 +130,19 @@ export function ReposPage() {
   );
 }
 
-const isFirstPick = (r: RepoSummary) => r.recommended && !r.lastAnalyzedAt;
+function Group({ label, count, children }: { label: string; count: number; children: ReactNode }) {
+  return (
+    <section className="repo-group" aria-label={label}>
+      <SectionHead label={label} count={count} />
+      {children}
+    </section>
+  );
+}
+
+/** 읽는 이름은 'owner / name' 그대로 둔다 — 레포를 이름으로 찾는 시험·보조기기가 이 모양에 기댄다 */
+function RepoTitle({ r }: { r: RepoSummary }) {
+  return <span className="repo-row__title"><span className="repo-row__owner">{r.owner}</span><span className="sr-only"> / </span><span className="repo-row__name">{r.name}</span></span>;
+}
 
 function RepoRow({ r, selected, onSelect }: { r: RepoSummary; selected: boolean; onSelect: () => void }) {
   const line = repoSentence(r);
@@ -134,18 +153,33 @@ function RepoRow({ r, selected, onSelect }: { r: RepoSummary; selected: boolean;
       <Radio checked={selected} />
       <IconBox icon={FolderGit2} size={34} />
       <div className="stack grow repo-row__body">
-        {isFirstPick(r) && <span className="repo-row__pick">먼저 정리해 보기 좋아요</span>}
-        {/* 읽는 이름은 'owner / name' 그대로 둔다 — 레포를 이름으로 찾는 시험·보조기기가 이 모양에 기댄다 */}
-        <span className="repo-row__title"><span className="repo-row__owner">{r.owner}</span><span className="sr-only"> / </span><span className="repo-row__name">{r.name}</span></span>
+        <RepoTitle r={r} />
+        {r.description && <span className="repo-row__desc">{r.description}</span>}
         <span className="repo-row__line">
           {line.before}{line.caution && <span className="repo-row__caution">{line.caution}</span>}{line.after}
           {line.hint && <>{'. '}<span className="repo-row__hint">{line.hint}</span></>}
         </span>
-        {(meta || r.lastAnalyzedAt) && <span className="repo-row__foot">
-          {meta && <span className="repo-row__meta">{meta}</span>}
-          {r.lastAnalyzedAt && <Badge kind="NEUTRAL">정리 완료 · 카드 {r.cardCount}장</Badge>}
-        </span>}
+        {meta && <span className="repo-row__foot"><span className="repo-row__meta">{meta}</span></span>}
       </div>
     </button>
+  );
+}
+
+/** 정리한 레포는 고르는 줄이 아니라 이어서 할 일로 보내는 줄이다 — 다시 정리는 홈에서 오는 것과 같은 select·disclose 주소로 읽는 범위 확인 창을 연다 */
+function DoneRow({ r }: { r: RepoSummary }) {
+  const id = encodeURIComponent(r.id);
+  return (
+    <li className="repo-done__row">
+      <IconBox icon={FolderGit2} size={34} />
+      <div className="stack grow repo-row__body">
+        <RepoTitle r={r} />
+        {r.description && <span className="repo-row__desc">{r.description}</span>}
+      </div>
+      <div className="repo-done__side">
+        <span className="repo-done__cards">카드 {r.cardCount}장</span>
+        <Link className="repo-done__link" to={`/repos/${id}/candidates`}>후보 보기</Link>
+        <Link className="repo-done__link" to={`/repos?select=${id}&disclose=1`}>다시 정리</Link>
+      </div>
+    </li>
   );
 }

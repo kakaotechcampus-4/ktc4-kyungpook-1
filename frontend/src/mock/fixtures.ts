@@ -13,6 +13,7 @@ export const seedUser = {
 export const seedRepos = [
   {
     id: 'r_auth', owner: 'hong-dev', name: 'auth-service',
+    description: '로그인과 세션 인증을 맡는 Spring Boot 서비스', descriptionSource: 'GITHUB',
     contribution: { mine: 214, team: 402, ratio: 0.347, level: 'SHARED' },
     prCount: 31, reviewCount: 88, language: 'Java', activeFrom: '2024-03-02', activeTo: '2024-08-30',
     lastAnalyzedAt: daysAgo(1), countedAt: daysAgo(1), candidateCount: 20, cardCount: 2, recommended: true,
@@ -24,6 +25,7 @@ export const seedRepos = [
   },
   {
     id: 'r_web', owner: 'hong-dev', name: 'web-client',
+    description: '인증 서비스와 붙는 React 웹 클라이언트예요.', descriptionSource: 'README',
     contribution: { mine: 96, team: 140, ratio: 0.407, level: 'SHARED' },
     prCount: 24, reviewCount: 31, language: 'TypeScript', activeFrom: '2024-01-10', activeTo: '2024-05-22',
     lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: true,
@@ -36,6 +38,7 @@ export const seedRepos = [
   {
     // 케이스 5 실물 — 실측 프로토타입에서 가져온 진짜 숫자 (TaeHuiKKIM/free-tier-sleep)
     id: 'r_fts', owner: 'TaeHuiKKIM', name: 'free-tier-sleep',
+    description: '무료 요금제로 바꾼 뒤 광고가 쏟아지는 상황을 풍자하는 Unity 게임이에요. 인트로 씬과 광고 연출을 맡았어요.', descriptionSource: 'AI',
     contribution: { mine: 21, team: 118, ratio: 0.151, level: 'PARTIAL' },
     prCount: 1, reviewCount: 0, language: 'C#', activeFrom: '2026-05-20', activeTo: '2026-06-02',
     lastAnalyzedAt: daysAgo(2), countedAt: daysAgo(1), candidateCount: 4, cardCount: 1, recommended: false,
@@ -48,6 +51,7 @@ export const seedRepos = [
   {
     // 후보 0개 (verdict EMPTY) 시나리오
     id: 'r_board', owner: 'kbu-capstone', name: 'team-board',
+    description: '캡스톤 팀 게시판', descriptionSource: 'GITHUB',
     contribution: { mine: 3, team: 183, ratio: 0.016, level: 'PARTIAL' },
     prCount: 0, reviewCount: 2, language: 'Python', activeFrom: '2023-09-04', activeTo: '2023-12-15',
     lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: false,
@@ -60,6 +64,7 @@ export const seedRepos = [
   {
     // PR 0건 · 개인 레포 (커밋 묶음 경로)
     id: 'r_algo', owner: 'hong-dev', name: 'algorithm-study',
+    description: null, descriptionSource: null,
     contribution: { mine: 41, team: 0, ratio: 1, level: 'MAJOR' },
     prCount: 0, reviewCount: 0, language: 'Java', activeFrom: '2023-03-01', activeTo: '2023-07-20',
     lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: true,
@@ -72,6 +77,7 @@ export const seedRepos = [
   {
     // E-1 수집 실패 시나리오
     id: 'r_fail', owner: 'hong-dev', name: 'legacy-monolith',
+    description: 'PHP 로 만든 오래된 모놀리스', descriptionSource: 'GITHUB',
     contribution: { mine: 12, team: 340, ratio: 0.034, level: 'PARTIAL' },
     prCount: 4, reviewCount: 1, language: 'PHP', activeFrom: '2022-06-01', activeTo: '2022-11-30',
     lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: false,
@@ -80,6 +86,7 @@ export const seedRepos = [
   {
     // E-2 rate limit · partial 시나리오
     id: 'r_ratelimit', owner: 'hong-dev', name: 'data-pipeline',
+    description: '매일 밤 로그를 모아 집계하는 데이터 파이프라인이에요.', descriptionSource: 'README',
     contribution: { mine: 158, team: 220, ratio: 0.418, level: 'SHARED' },
     prCount: 19, reviewCount: 12, language: 'Python', activeFrom: '2024-06-01', activeTo: '2024-08-15',
     lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: false,
@@ -88,6 +95,7 @@ export const seedRepos = [
   {
     // 개수를 아직 못 센 레포 — countedAt 이 null 이라 개수 0 은 실제 0 이 아니다 ("내 기여 0%"·"PR 0건"을 띄우면 안 된다)
     id: 'r_counting', owner: 'hong-dev', name: 'side-project-new',
+    description: null, descriptionSource: null,
     contribution: { mine: 0, team: 0, ratio: 0, level: 'NONE' },
     prCount: 0, reviewCount: 0, language: 'TypeScript', activeFrom: '2026-09-20', activeTo: '2026-10-08',
     lastAnalyzedAt: null, countedAt: null, candidateCount: null, cardCount: 0, recommended: false,
@@ -96,6 +104,7 @@ export const seedRepos = [
   {
     // 수집 상한에 걸리는 시나리오 — SUCCEEDED + partial + errorCode COLLECTION_CAPPED (재시도는 열지 않는다)
     id: 'r_capped', owner: 'hong-dev', name: 'big-monorepo',
+    description: '여러 서비스를 한 저장소에서 관리하는 모노레포', descriptionSource: 'GITHUB',
     contribution: { mine: 480, team: 910, ratio: 0.527, level: 'MAJOR' },
     prCount: 62, reviewCount: 140, language: 'Java', activeFrom: '2023-01-10', activeTo: '2026-09-30',
     lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: true,

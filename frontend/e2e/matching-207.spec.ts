@@ -44,14 +44,13 @@ for (const width of [320, 390, 768, 1440]) {
     await expect(
       page.getByRole("heading", { name: "서버 개발자 (신입)", exact: true }),
     ).toBeVisible();
-    // 맞춰 보기 전에는 공고 원문(자격 요건 절)만 보이고, 주 버튼은 '이 공고와 맞춰 보기' 다
+    // 공고 원문(자격 요건 절)이 보이고, 확정 카드가 있어서 열자마자 스스로 맞춰 보기를 시작한다
     await expect(
       page.getByRole("heading", { name: "자격 요건", exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "이 공고와 맞춰 보기" }),
+      page.getByRole("list", { name: "AI 가 한 일" }),
     ).toBeVisible();
-    await expect(page.locator(".posting-condition__evidence a")).toHaveCount(0);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -62,8 +61,7 @@ for (const width of [320, 390, 768, 1440]) {
     await expect(backend).toHaveAttribute("aria-pressed", "true");
     if (width === 390) {
       await page.locator(".match-card").click();
-      // 맞춰 보면 결과가 차례로 펼쳐진 뒤(6초쯤) 조건 아래 근거 카드 링크가 생긴다
-      await page.getByRole("button", { name: "이 공고와 맞춰 보기" }).click();
+      // 열면 스스로 맞춰 본 결과가 조건 아래 근거 카드 링크로 나온다(처음 맞춰 보는 중이면 차례로 펼치느라 6초쯤 걸린다)
       await page.locator(".posting-condition__evidence a").first().click({ timeout: 20_000 });
       await expect(page).toHaveURL(/\/cards\//);
     }

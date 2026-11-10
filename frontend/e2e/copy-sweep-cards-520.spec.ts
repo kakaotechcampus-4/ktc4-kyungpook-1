@@ -30,7 +30,7 @@ test('파일 보며 찾기의 펼치기와 접기 토글은 44px 이상이다 (R
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('카드 삭제 진입 버튼은 회색 글자이고, 빨강은 확인 창의 마지막 삭제에만 쓴다 (CD-07, #751)', async ({ page }) => {
+test('카드 삭제 진입 버튼은 빨간 글자이고, 확인 창의 마지막 삭제도 빨강이다 (CD-07, 멘토 의견)', async ({ page }) => {
   await loginAsDemo(page);
   await page.goto('/cards/card_03');
   const trigger = page.getByRole('button', { name: '카드 삭제', exact: true });
@@ -43,7 +43,7 @@ test('카드 삭제 진입 버튼은 회색 글자이고, 빨강은 확인 창�
     probe.remove();
     return color;
   }, name);
-  expect(await trigger.evaluate((element) => getComputedStyle(element).color)).toBe(await tokenColor('--text-secondary'));
+  expect(await trigger.evaluate((element) => getComputedStyle(element).color)).toBe(await tokenColor('--state-failed-text'));
   // 색만으로 구분하지 않는다: 글자가 이름이고, 누르면 취소할 수 있는 확인 창이 먼저 열린다
   await trigger.click();
   const dialog = page.getByRole('dialog', { name: '카드를 삭제할까요?' });

@@ -4,16 +4,12 @@
  * 용어와 말투 기준은 docs/2026-10-29-TERMINOLOGY.md.
  * 로직은 절대 여기 문자열을 비교하지 않는다 — 문구를 다듬어도 로직이 깨지지 않게.
  */
-import type { AuthoredBy, CandidateType, CardKind, CardStatus, DropReason, EvidenceType, JobErrorCode, JobState, JobType, JobStepKey, StarField, StarFieldState, VersionSource } from '@/api/schemas';
-
-export const jobStateLabel: Record<JobState, string> = { QUEUED: '대기 중', RUNNING: '진행 중', SUCCEEDED: '완료', FAILED: '실패', CANCELED: '취소됨' };
-export const jobTypeLabel: Record<JobType, string> = { ANALYZE: '레포 정리', DRAFT: '카드 초안 생성' };
+import type { AuthoredBy, CandidateType, CardKind, CardStatus, DropReason, EvidenceType, JobErrorCode, JobStepKey, StarField, StarFieldState, VersionSource } from '@/api/schemas';
 
 export const candidateTypeLabel: Record<CandidateType, string> = { PR: 'PR', ISSUE: '이슈', COMMIT_CLUSTER: '커밋 묶음', MANUAL: '직접 추가' };
 // 직접 쓴 정성 카드의 화면 이름은 '경험 카드'다 — 계약(2026-10-28-EXPERIENCE_CARDS.md)과 10/29 폴더 시안이 기술 카드와 짝으로 그렇게 부른다(#522).
 // 메뉴 이름 '경험 카드'(카드 전체)와 같은 말이지만 폴더 안 두 구역(기술 카드, 경험 카드)과 타일 이름이 한 화면에서 어긋나지 않게 맞췄다.
 export const cardKindLabel: Record<CardKind, string> = { TECH: '기술 카드', QUALITATIVE: '경험 카드' };
-export const cardKindShort: Record<CardKind, string> = { TECH: '기술', QUALITATIVE: '경험' };
 export const cardStatusLabel: Record<CardStatus, string> = { DRAFT: '작성 중', CONFIRMED: '확정됨' };
 export const versionSourceLabel: Record<VersionSource, string> = {
   AI_DRAFT: '첫 초안', USER_EDIT: '직접 수정', INTERVIEW: '답변 반영', MASK: '정보 가리기', RESTORE: '이전 내용 복원',

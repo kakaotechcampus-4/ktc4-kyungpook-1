@@ -148,12 +148,11 @@ describe('카드 목록 — 카드 한 장에 모르는 값이 섞여도 나머�
     expect(screen.queryByText(/장을 표시하지 못했어요/)).not.toBeInTheDocument();
   });
 
-  it('홈도 같은 안내를 보이고, 읽은 카드는 그대로 둔다', async () => {
+  it('홈도 같은 안내를 보인다', async () => {
     serve({ '/cards': withUnknownKind(0) });
     mount(<HomePage />, '/');
     expect(await screen.findByText('카드 1장을 표시하지 못했어요')).toBeInTheDocument();
     expect(screen.queryByText(cards()[0].title)).not.toBeInTheDocument();
-    expect(screen.getAllByText(cards()[2].title).length).toBeGreaterThan(0);
   });
 });
 
@@ -180,10 +179,11 @@ describe('그 밖의 화면 — 모르는 값 하나로 앱이 막히지 않는�
   });
 
   it('레포의 기여 구분을 몰라도 레포 목록이 열린다', async () => {
-    const repos = (mock('/repos').data as Json[]).map((r, i) => (i === 0 ? { ...r, contribution: { ...r.contribution, level: 'TRIVIAL' } } : r));
+    // 정리한 레포(첫 번째)는 문장 없이 링크 줄로 그려져 기여 구분을 읽지 않는다 — 문장을 쓰는 아직 정리하지 않은 레포(두 번째)로 본다
+    const repos = (mock('/repos').data as Json[]).map((r, i) => (i === 1 ? { ...r, contribution: { ...r.contribution, level: 'TRIVIAL' } } : r));
     serve({ '/repos': repos });
     mount(<ReposPage />, '/repos');
-    expect((await screen.findAllByText(new RegExp(repos[0].name))).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(new RegExp(repos[1].name))).length).toBeGreaterThan(0);
     expect(screen.queryByText('응답을 확인하지 못했어요')).not.toBeInTheDocument();
   });
 

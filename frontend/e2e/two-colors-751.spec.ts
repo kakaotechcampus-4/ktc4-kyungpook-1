@@ -3,6 +3,7 @@ import { loginAsDemo } from './helpers';
 
 /**
  * #751 — 색은 파랑(지금·선택)과 호박(확인 필요) 둘만 뜻을 갖고, 지우기·로그아웃 진입은 회색 글자 버튼 하나로 맞춘다.
+ * (11/04 멘토 의견으로 삭제를 여는 버튼만 빨간 글자로 바꿨다. 로그아웃 진입은 회색 글자 그대로다.)
  * 작은 화면에서 손가락으로 누르는 곳(캘린더 날짜·공고 카드·진행 중 체크)은 44px 이상이다.
  */
 const tokenColor = (page: Page, token: string, property: 'color' | 'backgroundColor' = 'color') => page.evaluate(([name, prop]) => {
@@ -36,10 +37,10 @@ test('공고 목록: 기업 글자 표시는 모두 같은 회색이고, 마감 
   expect(badge).toEqual({ color: await tokenColor(page, '--state-open-text'), background: await tokenColor(page, '--state-open-bg', 'backgroundColor') });
 });
 
-test('홈 캘린더(390px): 날짜 버튼은 44px 이상이고, 요일은 같은 글자색이며 고른 날은 파랑이다', async ({ page }) => {
+test('공고 매칭 캘린더(390px): 날짜 버튼은 44px 이상이고, 요일은 같은 글자색이며 고른 날은 파랑이다', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await loginAsDemo(page);
-  await page.goto('/');
+  await page.goto('/match');
   const days = page.locator('.job-calendar .calendar-day__number');
   await expect(days.first()).toBeVisible();
   for (const day of (await days.all()).slice(0, 7)) {
@@ -54,12 +55,13 @@ test('홈 캘린더(390px): 날짜 버튼은 44px 이상이고, 요일은 같은
   expect(await selected.evaluate((el) => getComputedStyle(el, '::before').backgroundColor)).toBe(await tokenColor(page, '--nav-active-bg', 'backgroundColor'));
 });
 
-test('지우기·로그아웃 진입 버튼은 회색 글자이고, 활동 삭제는 확인 창의 마지막 버튼만 빨강이다', async ({ page }) => {
+test('삭제를 여는 버튼과 확인 창의 삭제는 빨강이고, 로그아웃 진입 버튼은 회색 글자다', async ({ page }) => {
   await loginAsDemo(page);
   await page.goto('/activities');
   const remove = page.getByRole('button', { name: '교내 개발 동아리 삭제' });
   const quiet = await tokenColor(page, '--text-secondary');
-  expect(await remove.evaluate((el) => getComputedStyle(el).color)).toBe(quiet);
+  // 삭제를 여는 버튼은 빨간 글자다(멘토 의견: #751 의 '회색 글자'를 바꿨다)
+  expect(await remove.evaluate((el) => getComputedStyle(el).color)).toBe(await tokenColor(page, '--state-failed-text'));
   await remove.click();
   const confirm = page.getByRole('dialog').getByRole('button', { name: '삭제', exact: true });
   expect(await confirm.evaluate((el) => getComputedStyle(el).color)).toBe(await tokenColor(page, '--state-failed-text'));

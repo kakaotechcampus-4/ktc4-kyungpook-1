@@ -45,4 +45,16 @@ public interface GithubCollectionAccessPort {
 
     /** 연결이 없거나 GitHub 에 묻지 못하면 예외 없이 빈 값을 돌려준다 */
     Optional<Instant> rateLimitResetAt(Long userId);
+
+    /**
+     * 저장소의 README 앞부분을 원문 그대로 돌려주며, README 가 없거나 쓸 수 있는 GitHub 연결이 없으면 빈 값이다
+     * 그 밖의 GitHub 실패는 예외 그대로 나며 토큰은 거절당해도 연결을 해제로 남기지 않는다
+     */
+    Optional<String> readme(Long userId, String owner, String name);
+
+    /**
+     * 저장소 최상위의 파일·폴더 이름만 30개까지 돌려주며, 빈 저장소이거나 쓸 수 있는 GitHub 연결이 없거나 GitHub 에 묻지 못하면 예외 없이 빈 목록이다
+     * 토큰은 거절당해도 연결을 해제로 남기지 않는다
+     */
+    List<String> topLevelPaths(Long userId, String owner, String name);
 }

@@ -215,6 +215,20 @@
         },
         "type" : "object"
       },
+      "ApiResponseAssistantRunResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/AssistantRunResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseCandidateBoardResponse" : {
         "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
         "properties" : {
@@ -524,6 +538,23 @@
         },
         "type" : "object"
       },
+      "ApiResponseListNoticeResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "description" : "성공 응답 데이터. 오류 응답에서는 null",
+            "items" : {
+              "$ref" : "#/components/schemas/NoticeResponse"
+            },
+            "type" : "array"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseListRepoCommitResponse" : {
         "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
         "properties" : {
@@ -548,6 +579,23 @@
             "description" : "성공 응답 데이터. 오류 응답에서는 null",
             "items" : {
               "$ref" : "#/components/schemas/RepoSummaryResponse"
+            },
+            "type" : "array"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseListRepoUpdateResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "description" : "성공 응답 데이터. 오류 응답에서는 null",
+            "items" : {
+              "$ref" : "#/components/schemas/RepoUpdateResponse"
             },
             "type" : "array"
           },
@@ -622,6 +670,20 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/MeasuredDraftResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseNoticeOkResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/NoticeOkResponse",
             "description" : "성공 응답 데이터. 오류 응답에서는 null"
           },
           "error" : {
@@ -729,6 +791,48 @@
         },
         "type" : "object"
       },
+      "ApiResponseRepoSummaryResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/RepoSummaryResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseRepoUpdateCheckResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/RepoUpdateCheckResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseRepoUpdateSeenResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/RepoUpdateSeenResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseStartedResponse" : {
         "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
         "properties" : {
@@ -793,6 +897,211 @@
               "type" : "string"
             },
             "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "AssistantMessageRequest" : {
+        "description" : "사용자가 홈에서 적은 한 문장이나 물음에 대한 답",
+        "properties" : {
+          "text" : {
+            "description" : "앞뒤 공백을 뺀 1~500자",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AssistantRunFind" : {
+        "properties" : {
+          "company" : {
+            "type" : "string"
+          },
+          "keywords" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "AssistantRunItem" : {
+        "properties" : {
+          "askKind" : {
+            "description" : "ASK 만. QUESTIONS·CHOICE·FREE",
+            "type" : "string"
+          },
+          "coverLetterId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "error" : {
+            "description" : "실패한 걸음의 코드(NOT_FOUND·NO_CONFIRMED_CARDS·RATE_LIMITED·FAILED)",
+            "type" : "string"
+          },
+          "find" : {
+            "$ref" : "#/components/schemas/AssistantRunFind"
+          },
+          "jobId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "kind" : {
+            "enum" : [ "USER", "STEP", "ASK", "SAY" ],
+            "type" : "string"
+          },
+          "match" : {
+            "$ref" : "#/components/schemas/AssistantRunMatch"
+          },
+          "ok" : {
+            "description" : "STEP 만. 없으면 하는 중, true 면 끝, false 면 실패(error)",
+            "type" : "boolean"
+          },
+          "options" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "posting" : {
+            "$ref" : "#/components/schemas/AssistantRunPosting",
+            "description" : "MATCH_POSTING 이 맞춰 본 공고"
+          },
+          "postings" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AssistantRunPosting"
+            },
+            "type" : "array"
+          },
+          "questionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "repoId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "repoName" : {
+            "type" : "string"
+          },
+          "seq" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "text" : {
+            "description" : "USER 는 사용자의 말, ASK 와 SAY 는 AI 가 쓴 문장",
+            "type" : "string"
+          },
+          "tool" : {
+            "enum" : [ "FIND_POSTINGS", "MATCH_POSTING", "START_COVER_LETTER", "START_REPO_ANALYSIS" ],
+            "type" : "string"
+          },
+          "totalFound" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AssistantRunMatch" : {
+        "properties" : {
+          "met" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "missing" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "requiredMet" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "requiredTotal" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AssistantRunPosting" : {
+        "properties" : {
+          "company" : {
+            "type" : "string"
+          },
+          "daysLeft" : {
+            "description" : "마감까지 남은 날. 마감일이 없으면 null",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "postingId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "requiredMet" : {
+            "description" : "이미 맞춰 본 공고만 값이 있다",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "requiredTotal" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AssistantRunResponse" : {
+        "description" : "홈 한 줄 명령 실행 한 건과 지금까지 쌓인 줄",
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "errorCode" : {
+            "description" : "FAILED 일 때만 AI_UNAVAILABLE 또는 INTERNAL_ERROR, 아니면 null",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "items" : {
+            "description" : "seq 순서의 줄. 같은 걸음은 seq 를 바꾸지 않고 ok 와 결과 칸만 채워 같은 줄로 온다",
+            "items" : {
+              "$ref" : "#/components/schemas/AssistantRunItem"
+            },
+            "type" : "array"
+          },
+          "pollAfterMs" : {
+            "description" : "도는 동안(RUNNING)에만 다음 조회 간격(밀리초), 아니면 null",
+            "example" : 1000,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "state" : {
+            "enum" : [ "RUNNING", "WAITING_USER", "DONE", "FAILED" ],
+            "type" : "string"
+          },
+          "stepLimit" : {
+            "description" : "한 실행이 쓸 수 있는 도구 걸음 수 상한",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "stepsUsed" : {
+            "description" : "지금까지 실행한 도구 걸음 수",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -1364,6 +1673,10 @@
           "period" : {
             "type" : "string"
           },
+          "preview" : {
+            "description" : "현재 버전 결과(R) 칸의 글을 앞뒤 공백만 떼고 그대로 실은 값으로, 결과 칸이 비었거나 공백뿐이면 null",
+            "type" : "string"
+          },
           "repo" : {
             "$ref" : "#/components/schemas/CardRepoResponse",
             "description" : "카드를 만든 저장소로 카드 상세의 repo 와 같은 값이고, 저장소 없이 직접 쓴 카드는 null"
@@ -1537,6 +1850,10 @@
           },
           "companyName" : {
             "type" : "string"
+          },
+          "fresh" : {
+            "description" : "바로 앞 계산 결과에 없던 기업이면 true. 앞 계산 결과가 없으면 모두 false",
+            "type" : "boolean"
           },
           "logoUrl" : {
             "description" : "https 로고 주소. 없으면 null",
@@ -1760,7 +2077,7 @@
             "type" : "string"
           },
           "memoUsable" : {
-            "description" : "질문 단계가 지원 이유를 글에 쓸 수 있다고 봤으면 true, 쓰기 어렵다고 봤으면 false(이때 초안은 지원 이유를 빈칸으로 두고 대화에서 다시 묻는다). 판정 전이거나 지원 이유가 없는 옛 자소서면 null",
+            "description" : "질문 단계가 지원 이유를 글에 쓸 수 있다고 봤으면 true, 쓰기 어렵다고 봤으면 false(이때 초안은 지원 이유를 빈칸으로 두고 대화에서 다시 묻는다). 판정 전이거나 지원 이유가 없는 자소서면 null",
             "type" : "boolean"
           },
           "pollAfterMs" : {
@@ -1894,7 +2211,7 @@
             "type" : "string"
           },
           "memo" : {
-            "description" : "지원 이유, 필수. 공백 뺀 20자 이상 1,000자까지이고 한글이 있어야 하며, 같은 글자(또는 2~3자 조각) 5번 이상 이어 쓰기·URL·이메일·한글/영문/숫자/문장부호 밖의 글자는 받지 않는다",
+            "description" : "지원 이유, 선택. 없으면 null 이고, 적으면 공백 뺀 20자 이상 1,000자까지이고 한글이 있어야 하며, 같은 글자(또는 2~3자 조각) 5번 이상 이어 쓰기·URL·이메일·한글/영문/숫자/문장부호 밖의 글자는 받지 않는다",
             "type" : "string"
           },
           "postingId" : {
@@ -2171,6 +2488,23 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "FeedbackRequest" : {
+        "description" : "화면이 보내는 문제 신고 한 건",
+        "properties" : {
+          "message" : {
+            "description" : "무엇이 안 되는지 적은 글. 앞뒤 공백을 뺀 뒤 1~1000자",
+            "example" : "카드 초안이 만들어지지 않아요",
+            "type" : "string"
+          },
+          "path" : {
+            "description" : "신고한 화면 주소(쿼리 문자열 제외). 255자 이하",
+            "example" : "/repos",
+            "type" : "string"
+          }
+        },
+        "required" : [ "message" ],
         "type" : "object"
       },
       "GithubStatus" : {
@@ -2506,6 +2840,108 @@
             "type" : "string"
           },
           "testName" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "Live" : {
+        "properties" : {
+          "candidates" : {
+            "description" : "후보 회사. 1단계가 고른 순서이고 많아야 10곳",
+            "items" : {
+              "$ref" : "#/components/schemas/LiveCandidate"
+            },
+            "type" : "array"
+          },
+          "cardCount" : {
+            "description" : "계산에 쓴 카드 수. 네 칸이 모두 빈 카드는 세지 않는다",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "finished" : {
+            "description" : "추천 저장까지 마쳤으면 true",
+            "type" : "boolean"
+          },
+          "techs" : {
+            "description" : "카드에서 모은 기술 이름(카드 techs 와 같은 값), 많아야 12개",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "LiveCandidate" : {
+        "properties" : {
+          "companyId" : {
+            "type" : "string"
+          },
+          "companyName" : {
+            "type" : "string"
+          },
+          "failed" : {
+            "description" : "AI 판단을 받지 못했으면 true. 이때 state 는 DONE 이고 hits 는 빈 배열",
+            "type" : "boolean"
+          },
+          "hits" : {
+            "description" : "이 레포 카드가 채웠다고 AI 가 판단한 조건. 필수가 먼저이고 공고에 적힌 순서이며, 확인을 마치기 전에는 빈 배열",
+            "items" : {
+              "$ref" : "#/components/schemas/LiveHit"
+            },
+            "type" : "array"
+          },
+          "logoUrl" : {
+            "description" : "https 로고 주소. 없으면 null",
+            "type" : "string"
+          },
+          "overlap" : {
+            "description" : "대표 공고에서 이 레포 카드 기술과 겹친 필수·우대 조건 수. 0 이면 AI 에게 묻지 않고 건너뛴다",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "posting" : {
+            "$ref" : "#/components/schemas/LivePosting"
+          },
+          "state" : {
+            "description" : "WAITING 은 차례를 기다림, CHECKING 은 AI 가 확인 중, DONE 은 확인을 마침",
+            "enum" : [ "WAITING", "CHECKING", "DONE" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "LiveHit" : {
+        "properties" : {
+          "cardTitle" : {
+            "description" : "그 조건을 채운 카드 가운데 첫 카드의 제목. 가리기 전 제목이다",
+            "type" : "string"
+          },
+          "text" : {
+            "description" : "조건 글. 80자를 넘으면 80자에서 자른다",
+            "type" : "string"
+          },
+          "type" : {
+            "description" : "REQUIRED 는 필수 조건, PREFERRED 는 우대 조건",
+            "enum" : [ "REQUIRED", "PREFERRED" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "LivePosting" : {
+        "properties" : {
+          "deadline" : {
+            "description" : "마감 시각. 상시 채용이면 null",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "대표 공고 id, 매칭 상세 주소에 쓴다",
+            "type" : "string"
+          },
+          "title" : {
             "type" : "string"
           }
         },
@@ -2868,6 +3304,22 @@
         },
         "type" : "object"
       },
+      "MatchedCondition" : {
+        "properties" : {
+          "techs" : {
+            "description" : "조건의 기술 이름. 카드 techs 와 같은 값이며, 기술 이름이 없는 조건은 빈 배열",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "text" : {
+            "description" : "조건 글",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "MatchedPostingsResponse" : {
         "properties" : {
           "matchedPostings" : {
@@ -2923,8 +3375,95 @@
         },
         "type" : "object"
       },
+      "NoticeOkResponse" : {
+        "properties" : {
+          "ok" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "NoticePostingResponse" : {
+        "properties" : {
+          "companyName" : {
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "postingId" : {
+            "type" : "string"
+          },
+          "requiredMet" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "requiredTotal" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "NoticeResponse" : {
+        "properties" : {
+          "cardCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "cardTitles" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "errorCode" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "jobId" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "enum" : [ "CARDS_DRAFTED", "REPO_REFRESHED", "ANALYSIS_FAILED", "POSTINGS_MATCHED" ],
+            "type" : "string"
+          },
+          "postings" : {
+            "items" : {
+              "$ref" : "#/components/schemas/NoticePostingResponse"
+            },
+            "type" : "array"
+          },
+          "readAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "repoId" : {
+            "type" : "string"
+          },
+          "repoName" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "OverallRecommendationResponse" : {
         "properties" : {
+          "checked" : {
+            "description" : "계산할 때 확인한 공고 수(1단계로 고른 곳, 많아야 15). 계산 중이든 끝났든 싣고, 계산한 적 없으면 0",
+            "format" : "int32",
+            "type" : "integer"
+          },
           "companies" : {
             "description" : "추천 기업. 많아야 5곳이고 순위 순서이며, 계산 중이거나 실패해도 지난 결과를 담는다",
             "items" : {
@@ -3203,6 +3742,10 @@
             },
             "type" : "array"
           },
+          "email" : {
+            "description" : "새 공고 알림을 받을 메일 주소 — 254자까지, 공백 없이 @ 하나와 그 뒤의 점이 있어야 합니다. 빈 글이면 주소를 지우고, 안 보내면 저장된 값을 그대로 둡니다",
+            "type" : [ "string", "null" ]
+          },
           "interests" : {
             "description" : "관심 분야 — 공고 직무 분류 이름(BACKEND · FRONTEND · MOBILE · DEVOPS · DATA · AI_ML · SECURITY · QA · ETC) 3개까지, 겹치지 않게. 안 보내면 저장된 값을 그대로 둡니다",
             "items" : {
@@ -3216,6 +3759,10 @@
               "$ref" : "#/components/schemas/ProfileLanguageRequest"
             },
             "type" : "array"
+          },
+          "mailOptIn" : {
+            "description" : "메일 알림 수신 여부. true 이면 주소가 있어야 합니다. 안 보내면 저장된 값을 그대로 둡니다",
+            "type" : [ "boolean", "null" ]
           }
         },
         "type" : "object"
@@ -3241,6 +3788,10 @@
             },
             "type" : "array"
           },
+          "email" : {
+            "description" : "메일 알림을 받을 주소. 적지 않았으면 null",
+            "type" : [ "string", "null" ]
+          },
           "interests" : {
             "description" : "관심 분야 직무 분류 이름, 3개까지. 아직 고르지 않았으면 []",
             "items" : {
@@ -3254,6 +3805,10 @@
               "$ref" : "#/components/schemas/LanguageScore"
             },
             "type" : "array"
+          },
+          "mailOptIn" : {
+            "description" : "메일 알림 수신 여부. 한 번도 저장하지 않았으면 false",
+            "type" : "boolean"
           },
           "savedAt" : {
             "description" : "마지막으로 저장한 시각. 한 번도 저장하지 않았으면 null 이라, 화면은 처음 입력을 띄웁니다",
@@ -3445,6 +4000,20 @@
             "description" : "https 로고 주소. 없으면 null",
             "type" : "string"
           },
+          "met" : {
+            "description" : "채웠다고 판단한 필수 조건. 공고에 적힌 순서로 많아야 3개이며, 이 칸이 생기기 전에 계산한 결과는 빈 배열",
+            "items" : {
+              "$ref" : "#/components/schemas/MatchedCondition"
+            },
+            "type" : "array"
+          },
+          "missing" : {
+            "description" : "채우지 못한 필수 조건. 공고에 적힌 순서로 많아야 3개이며, 이 칸이 생기기 전에 계산한 결과는 빈 배열",
+            "items" : {
+              "$ref" : "#/components/schemas/MatchedCondition"
+            },
+            "type" : "array"
+          },
           "posting" : {
             "$ref" : "#/components/schemas/Posting"
           },
@@ -3604,6 +4173,16 @@
         },
         "type" : "object"
       },
+      "RepoDescriptionRequest" : {
+        "description" : "고칠 폴더 설명",
+        "properties" : {
+          "description" : {
+            "description" : "앞뒤 공백을 뗀 글이 120자까지이며, 비우거나 공백뿐이거나 null 이면 사용자가 쓴 설명을 지우고 GitHub 설명이나 README 문장을 보여 줌",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "RepoDetailResponse" : {
         "description" : "저장소 목록 한 줄과 같은 칸에 분석 전 안내(disclosure)를 더한 저장소 상세",
         "properties" : {
@@ -3633,6 +4212,15 @@
           "countedAt" : {
             "description" : "기여 개수를 센 시각. 아직 한 번도 못 셌으면 null 이라 개수가 0 이어도 실제 0 이 아니다",
             "format" : "date-time",
+            "type" : "string"
+          },
+          "description" : {
+            "description" : "저장소를 소개하는 한 줄. 사용자가 쓴 설명, GitHub 저장소 설명, README 에서 고른 문장(못 고르면 AI 가 요약한 문장) 순으로 처음 있는 것이고 모두 없으면 null",
+            "type" : "string"
+          },
+          "descriptionSource" : {
+            "description" : "description 을 어디서 가져왔는지. description 이 null 이면 null",
+            "enum" : [ "USER", "GITHUB", "README", "AI" ],
             "type" : "string"
           },
           "disclosure" : {
@@ -3758,8 +4346,16 @@
             "format" : "date-time",
             "type" : "string"
           },
+          "live" : {
+            "$ref" : "#/components/schemas/Live",
+            "description" : "가장 최근 계산에서 후보 회사를 하나씩 확인한 과정. 계산하는 중에는 서버 메모리의 진행이고, 서버 메모리에 없으면 마지막으로 끝난 계산의 진행을 저장해 둔 것이라 서버가 다시 떠도 남는다. 새 계산이 후보를 정하는 동안에는 지난 계산의 저장본이 오고, 저장본이 없는 옛 결과는 null"
+          },
+          "queued" : {
+            "description" : "카드가 바뀌어 다시 계산이 예약돼 있고 아직 시작하지 않았으면 true. 계산을 시작하면 false 가 되고, 계산하는 중에 카드가 또 바뀌면 다시 true",
+            "type" : "boolean"
+          },
           "status" : {
-            "description" : "COMPUTING 은 계산을 기다리거나 하는 중, NONE 은 아직 계산한 적 없음",
+            "description" : "COMPUTING 은 계산을 기다리거나 하는 중, NONE 은 계산한 적도 카드도 없음",
             "enum" : [ "COMPUTING", "READY", "FAILED", "NONE" ],
             "type" : "string"
           }
@@ -3797,6 +4393,15 @@
             "format" : "date-time",
             "type" : "string"
           },
+          "description" : {
+            "description" : "저장소를 소개하는 한 줄. 사용자가 쓴 설명, GitHub 저장소 설명, README 에서 고른 문장(못 고르면 AI 가 요약한 문장) 순으로 처음 있는 것이고 모두 없으면 null",
+            "type" : "string"
+          },
+          "descriptionSource" : {
+            "description" : "description 을 어디서 가져왔는지. description 이 null 이면 null",
+            "enum" : [ "USER", "GITHUB", "README", "AI" ],
+            "type" : "string"
+          },
           "id" : {
             "description" : "분석 요청 경로의 {id} 로 쓰는 저장소 id",
             "format" : "uuid",
@@ -3827,6 +4432,50 @@
             "description" : "내가 리뷰한 PR 수",
             "format" : "int32",
             "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "RepoUpdateCheckResponse" : {
+        "properties" : {
+          "queued" : {
+            "description" : "분석 Job 을 접수한 레포 수. 없으면 0",
+            "example" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "RepoUpdateResponse" : {
+        "properties" : {
+          "cardCount" : {
+            "description" : "새로 만든 카드 수. 보지 않은 알림이 여럿이면 합",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "finishedAt" : {
+            "description" : "가장 늦게 끝난 시각",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "repoId" : {
+            "description" : "레포 목록 응답의 id 와 같은 값",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "repoName" : {
+            "description" : "owner/name 모양",
+            "example" : "grow22/gitory",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "RepoUpdateSeenResponse" : {
+        "properties" : {
+          "ok" : {
+            "type" : "boolean"
           }
         },
         "type" : "object"
@@ -4435,6 +5084,206 @@
         "tags" : [ "Activities" ]
       }
     },
+    "/api/assistant/runs" : {
+      "post" : {
+        "description" : "사용자가 적은 한 문장으로 실행을 만들고 RUNNING 으로 바로 돌려줍니다. 일은 배경에서 하며 첫 줄은 사용자의 말입니다.\n화면은 pollAfterMs 마다 GET 으로 다시 읽어 걸음이 쌓이는 것을 보여 줍니다.\n호출 제한은 실행 만들기와 말 더하기를 합쳐 셉니다.\n",
+        "operationId" : "start_1",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AssistantMessageRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseAssistantRunResponse"
+                }
+              }
+            },
+            "description" : "만든 실행"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: 말이 앞뒤 공백을 뺀 1~500자가 아님, U+0000 이 있음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "RATE_LIMITED: 1분 5번, 하루 50번을 넘음"
+          }
+        },
+        "summary" : "홈 한 줄 명령 실행 만들기",
+        "tags" : [ "Assistant" ]
+      }
+    },
+    "/api/assistant/runs/{id}" : {
+      "get" : {
+        "description" : "지금까지 쌓인 줄 전체를 돌려줍니다. 도는 동안(RUNNING)에는 pollAfterMs 마다 다시 부릅니다.",
+        "operationId" : "get_2",
+        "parameters" : [ {
+          "description" : "실행 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseAssistantRunResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "NOT_FOUND: 잘못된 UUID, 없는 실행, 남의 실행"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          }
+        },
+        "summary" : "홈 한 줄 명령 실행 조회",
+        "tags" : [ "Assistant" ]
+      }
+    },
+    "/api/assistant/runs/{id}/messages" : {
+      "post" : {
+        "description" : "물음을 기다리는 실행(WAITING_USER)에만 사용자의 말을 더하고 다시 RUNNING 으로 돌려줍니다.\n한 실행에 사용자의 말은 처음 말을 포함해 10개까지입니다.\n",
+        "operationId" : "say",
+        "parameters" : [ {
+          "description" : "실행 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AssistantMessageRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: 말이 앞뒤 공백을 뺀 1~500자가 아님, U+0000 이 있음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "NOT_FOUND: 잘못된 UUID, 없는 실행, 남의 실행"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_STATE: 물음을 기다리는 실행이 아님(도는 중이거나 끝남), 사용자의 말이 이미 10개"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "RATE_LIMITED: 1분 5번, 하루 50번을 넘음"
+          }
+        },
+        "summary" : "홈 한 줄 명령의 물음에 답하기",
+        "tags" : [ "Assistant" ]
+      }
+    },
     "/api/candidates/{id}" : {
       "patch" : {
         "description" : "후보를 제외하거나 복원하고, 커밋 묶음 후보에서는 뺄 커밋을 정해 보드의 후보 한 줄과 같은 모양으로 돌려줍니다.\n이미 그 상태여도 200 이고, 성공한 수정은 모두 사용자가 손댄 후보로 표시합니다.\n남의 후보는 없는 후보와 똑같이 404 이고 거절 기록이 남으며, 카드로 쓴 후보는 409, 입력 검사는 그다음입니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
@@ -5004,7 +5853,7 @@
     },
     "/api/cards/{id}/draft" : {
       "patch" : {
-        "description" : "네 칸을 저장합니다. 확정본이 아닌 직접 수정(USER_EDIT) 현재 버전은 덮어쓰고, 그 밖의 버전 위에서는\n첫 저장 때 USER_EDIT 새 버전을 만듭니다. 네 칸이 현재 버전과 같으면 아무것도 바꾸지 않고 현재 버전 번호를 돌려줍니다.\n네 키를 모두 보내야 하고 비운 칸은 null 로 보냅니다. 칸마다 1,000자까지 저장합니다.\n확정한 카드도 다시 열지 않고 저장하고, 저장한 글로 상태를 다시 정합니다. 작성 중 카드는 네 칸이 확인 필요 없이 모두 차면 확정되고,\n확정한 카드는 상황이나 행동을 비우면 작성 중으로 돌아갑니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "description" : "네 칸을 저장합니다. 확정본이 아닌 직접 수정(USER_EDIT) 현재 버전은 덮어쓰고, 그 밖의 버전 위에서는\n첫 저장 때 USER_EDIT 새 버전을 만듭니다. 네 칸이 현재 버전과 같으면 아무것도 바꾸지 않고 현재 버전 번호를 돌려줍니다.\n네 키를 모두 보내야 하고 비운 칸은 null 로 보냅니다. 칸마다 1,000자까지 저장합니다.\n확정한 카드도 다시 열지 않고 저장하고, 저장한 글로 상태를 다시 정합니다. 작성 중 카드는 상황·행동이 차고 확인 필요 칸이 없으면 확정되고,\n확정한 카드는 상황이나 행동을 비우면 작성 중으로 돌아갑니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
         "operationId" : "save",
         "parameters" : [ {
           "description" : "카드 id",
@@ -5292,7 +6141,7 @@
         "tags" : [ "Cards" ]
       },
       "post" : {
-        "description" : "AI 에게 되묻기 질문을 받아 저장하고 그 질문을 돌려줍니다. field 를 주면 그 칸을, 비우면 고를 수 있는 칸 중 AI 가 고른 칸을 묻습니다.\n같은 칸은 두 번까지 묻고, 넘김·측정 안 함으로 끝난 칸은 다시 묻지 않습니다. 그런 칸을 field 로 주면 409 INTERVIEW_FIELD_CLOSED 입니다.\nfield 를 비웠는데 고를 칸이 없거나 AI 가 더 물을 것이 없다고 판단하면 질문을 만들지 않고 data 가 null 인 200 입니다.\n이렇게 되묻기가 끝나면 카드 글로 상태를 다시 정해, 네 칸이 확인 필요 없이 모두 찼으면 카드를 확정합니다.\n답을 기다리는 질문이 있으면 field 와 상관없이 새로 만들지 않고 그 질문을 그대로 돌려주며 AI 도 부르지 않습니다.\n후보로 만든 카드의 초안을 만드는 중이면 409 INVALID_STATE 이고 AI 도 부르지 않으며, 이 확인이 가장 먼저입니다.\n만든 질문 수가 상한에 닿았으면 409 INTERVIEW_CAP, 확정된 카드는 409 CARD_CONFIRMED 이고, 이 둘이 field 검사보다 먼저입니다.\n새 질문을 만들어야 하는데 field 가 S, T, A, R 이 아닌 값이면 400 BAD_FIELD 이고 AI 도 부르지 않습니다.\nAI 가 잠시 응답하지 못하면 503 AI_UNAVAILABLE 이고 질문은 만들어지지 않으니 다시 요청하면 됩니다.\n새 질문을 만들어야 하는데 사용자별 호출 한도를 넘었으면 위 확인을 모두 지난 뒤 429 RATE_LIMITED 이고 질문도 만들지 않고 AI 도 부르지 않습니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "description" : "AI 에게 되묻기 질문을 받아 저장하고 그 질문을 돌려줍니다. field 를 주면 그 칸을, 비우면 고를 수 있는 칸 중 AI 가 고른 칸을 묻습니다.\n같은 칸은 두 번까지 묻고, 넘김·측정 안 함으로 끝난 칸은 다시 묻지 않습니다. 그런 칸을 field 로 주면 409 INTERVIEW_FIELD_CLOSED 입니다.\nfield 를 비웠는데 고를 칸이 없거나 AI 가 더 물을 것이 없다고 판단하면 질문을 만들지 않고 data 가 null 인 200 입니다.\n이렇게 되묻기가 끝나면 카드 글로 상태를 다시 정해, 작성 중 카드는 상황·행동이 차고 확인 필요 칸이 없으면 확정합니다. 확정된 카드도 질문을 받을 수 있습니다.\n답을 기다리는 질문이 있으면 field 와 상관없이 새로 만들지 않고 그 질문을 그대로 돌려주며 AI 도 부르지 않습니다.\n후보로 만든 카드의 초안을 만드는 중이면 409 INVALID_STATE 이고 AI 도 부르지 않으며, 이 확인이 가장 먼저입니다.\n만든 질문 수가 상한에 닿았으면 409 INTERVIEW_CAP 이고, field 검사보다 먼저입니다.\n새 질문을 만들어야 하는데 field 가 S, T, A, R 이 아닌 값이면 400 BAD_FIELD 이고 AI 도 부르지 않습니다.\nAI 가 잠시 응답하지 못하면 503 AI_UNAVAILABLE 이고 질문은 만들어지지 않으니 다시 요청하면 됩니다.\n새 질문을 만들어야 하는데 사용자별 호출 한도를 넘었으면 위 확인을 모두 지난 뒤 429 RATE_LIMITED 이고 질문도 만들지 않고 AI 도 부르지 않습니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
         "operationId" : "ask",
         "parameters" : [ {
           "description" : "카드 id",
@@ -5373,7 +6222,7 @@
                 }
               }
             },
-            "description" : "INVALID_STATE: 초안을 만드는 중인 카드, CARD_CONFIRMED: 확정된 카드는 다시 열어야 질문할 수 있음, INTERVIEW_CAP: 만든 질문 수가 상한에 닿음, INTERVIEW_FIELD_CLOSED: 지정한 칸을 더 물을 수 없음"
+            "description" : "INVALID_STATE: 초안을 만드는 중인 카드, INTERVIEW_CAP: 만든 질문 수가 상한에 닿음, INTERVIEW_FIELD_CLOSED: 지정한 칸을 더 물을 수 없음"
           },
           "422" : {
             "content" : {
@@ -5412,7 +6261,7 @@
     },
     "/api/cards/{id}/interview/{turnNo}/answer" : {
       "post" : {
-        "description" : "kind 가 TEXT(없으면 TEXT)면 답을 가공 없이 그 질문의 칸 글로 저장하고, 그 칸만 바꾼 INTERVIEW 새 버전을 현재 버전으로 삼아 카드 전체를 돌려줍니다.\n답한 칸은 옛 글의 근거 커밋과 확인 필요 표시를 잃고, 직접 쓴 답(USER_STATED)이나 보기를 그대로 고른 답(USER_SELECTED)이 되며, 나머지 세 칸은 그대로입니다.\nMEASURED·NOT_MEASURED 는 R 수치 질문(answerMode MEASURE)에만 받습니다. MEASURED 는 확정한 문장으로 TEXT 와 같이 R 칸을 바꿉니다.\nNOT_MEASURED 는 text 가 없으면 칸을 바꾸지 않고, text 가 있어도 R 이 커밋으로 확인된 문장이면 칸을 바꾸지 않고 답만 기록하며, 빈 R·확인 필요 R 일 때만 R 칸을 바꿉니다.\nkind 가 SKIP 이면 카드 칸을 바꾸지 않고 질문만 넘김(SKIPPED)으로 남기며 text·source 는 보지 않습니다. 넘긴 질문도 질문 상한에 세고, 그 칸은 다시 묻지 않습니다.\n이미 결과가 정해진 질문에 같은 요청(같은 종류에 같은 답)이 오면 아무것도 바꾸지 않고 지금 카드를 200 으로 돌려주고, 다른 요청이면 409 INVALID_STATE 입니다.\n확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 이미 한 답(200·409), 확정된 카드(409 CARD_CONFIRMED), 답의 모양(400) 입니다.\n답의 글은 1,000자까지이고 앞뒤 공백도 그대로 저장합니다. 답을 저장해도 다음 질문은 만들지 않으며, 다음 질문은 질문 요청에서 AI 가 앞 답을 읽고 고릅니다.\n경험 카드의 다듬은 문장을 저장할 때는 다듬기 전 사용자 답을 original 로 함께 보내면 TEXT 답에만 남겨 지난 질문 목록의 answer.original 로 돌려줍니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "description" : "kind 가 TEXT(없으면 TEXT)면 답을 가공 없이 그 질문의 칸 글로 저장하고, 그 칸만 바꾼 INTERVIEW 새 버전을 현재 버전으로 삼아 카드 전체를 돌려줍니다.\n확정된 카드도 같은 방식으로 받으며, 확정본 버전은 그대로 두고 새 버전만 현재 버전이 되고 카드는 확정으로 남습니다.\n답을 반영한 글로 카드 상태를 다시 정해, 작성 중 카드는 상황·행동이 차고 확인 필요 칸이 없으면 확정됩니다.\n답한 칸은 옛 글의 근거 커밋과 확인 필요 표시를 잃고, 직접 쓴 답(USER_STATED)이나 보기를 그대로 고른 답(USER_SELECTED)이 되며, 나머지 세 칸은 그대로입니다.\nMEASURED·NOT_MEASURED 는 R 수치 질문(answerMode MEASURE)에만 받습니다. MEASURED 는 확정한 문장으로 TEXT 와 같이 R 칸을 바꿉니다.\nNOT_MEASURED 는 text 가 없으면 칸을 바꾸지 않고, text 가 있어도 R 이 커밋으로 확인된 문장이면 칸을 바꾸지 않고 답만 기록하며, 빈 R·확인 필요 R 일 때만 R 칸을 바꿉니다.\nkind 가 SKIP 이면 카드 칸을 바꾸지 않고 질문만 넘김(SKIPPED)으로 남기며 text·source 는 보지 않습니다. 넘긴 질문도 질문 상한에 세고, 그 칸은 다시 묻지 않습니다.\n이미 결과가 정해진 질문에 같은 요청(같은 종류에 같은 답)이 오면 아무것도 바꾸지 않고 지금 카드를 200 으로 돌려주고, 다른 요청이면 409 INVALID_STATE 입니다.\n확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 이미 한 답(200·409), 답의 모양(400) 입니다.\n답의 글은 1,000자까지이고 앞뒤 공백도 그대로 저장합니다. 답을 저장해도 다음 질문은 만들지 않으며, 다음 질문은 질문 요청에서 AI 가 앞 답을 읽고 고릅니다.\n경험 카드의 다듬은 문장을 저장할 때는 다듬기 전 사용자 답을 original 로 함께 보내면 TEXT 답에만 남겨 지난 질문 목록의 answer.original 로 돌려줍니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
         "operationId" : "answer_1",
         "parameters" : [ {
           "description" : "카드 id",
@@ -5502,7 +6351,7 @@
                 }
               }
             },
-            "description" : "CARD_CONFIRMED: 확정된 카드는 다시 열어야 답할 수 있음, INVALID_STATE: 이미 다른 결과로 끝난 질문 또는 초안을 만드는 중인 카드"
+            "description" : "INVALID_STATE: 이미 다른 결과로 끝난 질문 또는 초안을 만드는 중인 카드"
           },
           "422" : {
             "content" : {
@@ -5531,7 +6380,7 @@
     },
     "/api/cards/{id}/interview/{turnNo}/measured-draft" : {
       "post" : {
-        "description" : "R 수치 질문에 자유롭게 쓴 측정 결과로 R 문장을 만들어 돌려주고, 아무것도 저장하지 않습니다. 확정은 답 저장 API 로 합니다.\n측정 결과에 숫자가 없으면 AI 를 부르지 않고 sentence 가 null 이며, 화면은 수치를 대략이라도 적어 달라고 안내합니다.\nAI 가 쓴 문장에 측정 결과에 없는 숫자가 있거나 AI 가 응답하지 못하면 지금 R 문장 뒤에 측정 결과를 붙인 문장을 돌려줍니다.\n확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 확정된 카드(409 CARD_CONFIRMED), 결과가 정해진 질문(409 INVALID_STATE), R 수치 질문이 아님(400 BAD_FIELD), 글의 모양(400) 입니다.\nAI 를 불러야 할 때 사용자별 호출 한도(답 평가와 같은 한도)를 넘었으면 429 RATE_LIMITED 입니다. 질문 상한에는 세지 않습니다.\n변경 요청과 같은 규칙으로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "description" : "R 수치 질문에 자유롭게 쓴 측정 결과로 R 문장을 만들어 돌려주고, 아무것도 저장하지 않습니다. 확정은 답 저장 API 로 합니다.\n측정 결과에 숫자가 없으면 AI 를 부르지 않고 sentence 가 null 이며, 화면은 수치를 대략이라도 적어 달라고 안내합니다.\nAI 가 쓴 문장에 측정 결과에 없는 숫자가 있거나 AI 가 응답하지 못하면 지금 R 문장 뒤에 측정 결과를 붙인 문장을 돌려줍니다.\n확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 결과가 정해진 질문(409 INVALID_STATE), R 수치 질문이 아님(400 BAD_FIELD), 글의 모양(400) 입니다.\nAI 를 불러야 할 때 사용자별 호출 한도(답 평가와 같은 한도)를 넘었으면 429 RATE_LIMITED 입니다. 질문 상한에는 세지 않습니다.\n변경 요청과 같은 규칙으로 세션과 CSRF 헤더가 모두 필요합니다.\n",
         "operationId" : "draft_1",
         "parameters" : [ {
           "description" : "카드 id",
@@ -5621,7 +6470,7 @@
                 }
               }
             },
-            "description" : "INVALID_STATE: 초안을 만드는 중인 카드 또는 결과가 정해진 질문, CARD_CONFIRMED: 확정된 카드"
+            "description" : "INVALID_STATE: 초안을 만드는 중인 카드 또는 결과가 정해진 질문"
           },
           "422" : {
             "content" : {
@@ -5660,7 +6509,7 @@
     },
     "/api/cards/{id}/interview/{turnNo}/polished-draft" : {
       "post" : {
-        "description" : "경험 카드의 글 질문에 쓴 답을 AI 가 표현만 다듬은 문장으로 돌려주고, 아무것도 저장하지 않습니다. 저장은 답 저장 API 에 다듬은 문장과 original 로 합니다.\nAI 는 답에 없는 사실을 더하지 않도록 지시받고, 다듬은 문장에 답에 없는 숫자가 있으면 unsourcedNumbers 로 알려 화면이 강조하게 합니다.\nAI 가 응답하지 못하면 오류가 아니라 polished 가 false 이고 sentence 가 사용자 답 그대로입니다.\n확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 확정된 카드(409 CARD_CONFIRMED), 결과가 정해진 질문(409 INVALID_STATE), 경험 카드의 글 질문이 아님(400 BAD_FIELD), 글의 모양(400) 입니다.\n사용자별 호출 한도('재 봤어요' 미리 보기와 같은 한도)를 넘었으면 429 RATE_LIMITED 입니다. 질문 상한에는 세지 않습니다.\n변경 요청과 같은 규칙으로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "description" : "경험 카드의 글 질문에 쓴 답을 AI 가 표현만 다듬은 문장으로 돌려주고, 아무것도 저장하지 않습니다. 저장은 답 저장 API 에 다듬은 문장과 original 로 합니다.\nAI 는 답에 없는 사실을 더하지 않도록 지시받고, 다듬은 문장에 답에 없는 숫자가 있으면 unsourcedNumbers 로 알려 화면이 강조하게 합니다.\nAI 가 응답하지 못하면 오류가 아니라 polished 가 false 이고 sentence 가 사용자 답 그대로입니다.\n확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 결과가 정해진 질문(409 INVALID_STATE), 경험 카드의 글 질문이 아님(400 BAD_FIELD), 글의 모양(400) 입니다.\n사용자별 호출 한도('재 봤어요' 미리 보기와 같은 한도)를 넘었으면 429 RATE_LIMITED 입니다. 질문 상한에는 세지 않습니다.\n변경 요청과 같은 규칙으로 세션과 CSRF 헤더가 모두 필요합니다.\n",
         "operationId" : "draft",
         "parameters" : [ {
           "description" : "카드 id",
@@ -5750,7 +6599,7 @@
                 }
               }
             },
-            "description" : "INVALID_STATE: 초안을 만드는 중인 카드 또는 결과가 정해진 질문, CARD_CONFIRMED: 확정된 카드"
+            "description" : "INVALID_STATE: 초안을 만드는 중인 카드 또는 결과가 정해진 질문"
           },
           "422" : {
             "content" : {
@@ -6475,7 +7324,7 @@
         "tags" : [ "Cover letters" ]
       },
       "post" : {
-        "description" : "직무·지원 이유·강점·문항으로 자소서를 만들고 카드 고르기를 줄 세웁니다(stage ASSIGNING).\n공고 상세에서 시작하면 postingId 를 보내며, 그때의 공고와 맞춰 본 판단을 자소서에 남겨 카드 고르기·질문·초안이 그 기준으로 AI 를 부릅니다.\n같은 Idempotency-Key 로 다시 요청하면 보낸 내용과 상관없이 그 키로 만든 자소서를 돌려주고 호출 제한도 세지 않습니다.\n화면은 입력을 고치면 새 키를 만듭니다.\n",
+        "description" : "직무와 문항으로 자소서를 만들고 카드 고르기를 줄 세웁니다(stage ASSIGNING). 지원 이유와 강점은 선택입니다.\n공고 상세에서 시작하면 postingId 를 보내며, 그때의 공고와 맞춰 본 판단을 자소서에 남겨 카드 고르기·질문·초안이 그 기준으로 AI 를 부릅니다.\n같은 Idempotency-Key 로 다시 요청하면 보낸 내용과 상관없이 그 키로 만든 자소서를 돌려주고 호출 제한도 세지 않습니다.\n화면은 입력을 고치면 새 키를 만듭니다.\n",
         "operationId" : "create_1",
         "parameters" : [ {
           "description" : "응답을 못 받고 다시 보내도 자소서가 한 편만 생기도록, 만들 때마다 새로 만들어 보내는 255자까지의 키",
@@ -6515,7 +7364,7 @@
                 }
               }
             },
-            "description" : "INVALID_REQUEST: 직무가 비었거나 100자를 넘음, 지원 이유가 규칙(공백 뺀 20자 이상·1,000자 이하·한글 포함·5번 이상 같은 글자 반복 없음·URL/이메일 없음·한글/영문/숫자/문장부호만)을 어김, 강점이 3개를 넘거나 겹치거나 모르는 값임, 문항이 0개거나 10개를 넘음, 문항이 비었거나 500자를 넘음, 글자 수가 100~5,000 이 아님, U+0000 이 있음, Idempotency-Key 가 255자를 넘음"
+            "description" : "INVALID_REQUEST: 직무가 비었거나 100자를 넘음, 적은 지원 이유가 규칙(공백 뺀 20자 이상·1,000자 이하·한글 포함·5번 이상 같은 글자 반복 없음·URL/이메일 없음·한글/영문/숫자/문장부호만)을 어김, 강점이 3개를 넘거나 겹치거나 모르는 값임, 문항이 0개거나 10개를 넘음, 문항이 비었거나 500자를 넘음, 글자 수가 100~5,000 이 아님, U+0000 이 있음, Idempotency-Key 가 255자를 넘음"
           },
           "404" : {
             "content" : {
@@ -7632,7 +8481,7 @@
                 }
               }
             },
-            "description" : "RATE_LIMITED: 이야기 시작·보내기·넘기기를 합쳐 1분 6번, 하루 60번을 넘음"
+            "description" : "RATE_LIMITED: 이야기 시작·보내기·넘기기를 합쳐 1분 20번, 하루 200번을 넘음"
           },
           "503" : {
             "content" : {
@@ -7721,7 +8570,7 @@
                 }
               }
             },
-            "description" : "RATE_LIMITED: 이야기 시작·보내기·넘기기를 합쳐 1분 6번, 하루 60번을 넘음"
+            "description" : "RATE_LIMITED: 이야기 시작·보내기·넘기기를 합쳐 1분 20번, 하루 200번을 넘음"
           },
           "503" : {
             "content" : {
@@ -7810,7 +8659,7 @@
                 }
               }
             },
-            "description" : "RATE_LIMITED: 이야기 시작·보내기·넘기기를 합쳐 1분 6번, 하루 60번을 넘음"
+            "description" : "RATE_LIMITED: 이야기 시작·보내기·넘기기를 합쳐 1분 20번, 하루 200번을 넘음"
           },
           "503" : {
             "content" : {
@@ -8045,6 +8894,66 @@
         },
         "summary" : "사용 지표 기록",
         "tags" : [ "Events" ]
+      }
+    },
+    "/api/feedback" : {
+      "post" : {
+        "description" : "로그인한 사용자가 쓴 글과 화면 주소, 브라우저 종류를 우리 DB 에 저장합니다.\n팀 Discord 에는 신고가 왔다는 한 줄만 가고 사용자가 쓴 글은 밖으로 나가지 않습니다.\n하루 10건까지 받습니다.\n",
+        "operationId" : "report",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/FeedbackRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "저장됨. data 는 null"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "글이 비었거나 1000자 초과·화면 주소 255자 초과·깨진 JSON"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "하루 신고 한도 초과(RATE_LIMITED)"
+          }
+        },
+        "summary" : "문제 신고 보내기",
+        "tags" : [ "Feedback" ]
       }
     },
     "/api/github/disconnect" : {
@@ -8836,6 +9745,54 @@
       }
     },
     "/api/me" : {
+      "delete" : {
+        "description" : "내 계정과 카드·프로필·자소서·GitHub 연결을 바로 지우고 로그인 세션을 모두 끝냅니다. 분석·카드 초안·도우미·자소서 AI 작업이 돌고 있으면 아무것도 지우지 않고 409 로 거절합니다. 변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.",
+        "operationId" : "leave",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "삭제됨. data 는 null"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "CSRF 토큰 없음 또는 불일치"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "진행 중인 작업이 있음(ACTIVE_WORK_RUNNING), 아무것도 지우지 않음"
+          }
+        },
+        "summary" : "회원 탈퇴",
+        "tags" : [ "Session" ]
+      },
       "get" : {
         "description" : "사용자 ID는 요청으로 받지 않고 로그인 세션에서 확인합니다.",
         "operationId" : "me",
@@ -8872,6 +9829,156 @@
         "tags" : [ "Session" ]
       }
     },
+    "/api/notifications" : {
+      "get" : {
+        "description" : "내 알림을 최근에 남긴 것부터 30개까지 돌려줍니다. readAt 이 null 이면 아직 읽지 않은 알림입니다.\nkind 는 CARDS_DRAFTED(카드 초안이 끝남), REPO_REFRESHED(서버가 스스로 다시 읽어 카드 초안이 끝남), ANALYSIS_FAILED(레포 읽기가 실패함),\nPOSTINGS_MATCHED(새로 올라온 공고 중 확정 카드와 잘 맞는 곳을 찾음)입니다.\nrepoName·cardTitles·postings 는 알림을 남긴 때의 값이고, 해당하지 않는 값은 null 이며 cardTitles·postings 만 빈 배열입니다.\n",
+        "operationId" : "list_2",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListNoticeResponse"
+                }
+              }
+            },
+            "description" : "알림 배열. 없으면 빈 배열"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Not Found"
+          }
+        },
+        "summary" : "알림 목록",
+        "tags" : [ "Notifications" ]
+      }
+    },
+    "/api/notifications/read-all" : {
+      "post" : {
+        "description" : "내 읽지 않은 알림을 모두 읽음으로 표시합니다. 읽지 않은 알림이 없어도 오류가 아닙니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "operationId" : "readAll",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseNoticeOkResponse"
+                }
+              }
+            },
+            "description" : "읽음으로 표시했음"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "CSRF 토큰 없음 또는 불일치"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Not Found"
+          }
+        },
+        "summary" : "알림 모두 읽음 표시",
+        "tags" : [ "Notifications" ]
+      }
+    },
+    "/api/notifications/{id}/read" : {
+      "post" : {
+        "description" : "알림 하나를 읽음으로 표시합니다. 이미 읽은 알림은 처음 읽은 시각을 그대로 두고 오류도 아닙니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "operationId" : "read",
+        "parameters" : [ {
+          "description" : "알림 목록 응답의 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseNoticeOkResponse"
+                }
+              }
+            },
+            "description" : "읽음으로 표시했음"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "CSRF 토큰 없음 또는 불일치"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "NOT_FOUND: UUID 가 아니거나 없는 알림이거나 남의 알림"
+          }
+        },
+        "summary" : "알림 읽음 표시",
+        "tags" : [ "Notifications" ]
+      }
+    },
     "/api/profile" : {
       "get" : {
         "description" : "한 번도 저장하지 않았으면 네 목록이 비고 savedAt 이 null 입니다. 화면은 이것으로 처음 입력을 띄울지 정합니다.",
@@ -8902,7 +10009,7 @@
         "tags" : [ "Profile" ]
       },
       "put" : {
-        "description" : "네 목록을 통째로 바꿉니다. 처음 입력을 건너뛰면 빈 목록 네 개를 보내 저장해, 다음부터 처음 입력을 띄우지 않게 합니다.\n글은 앞뒤 공백을 지우고, 빈 글은 null 로 저장합니다. 목록 순서는 보낸 그대로입니다.\n관심 분야(interests)는 보내면 통째로 바꾸고, 안 보내면 저장된 값을 그대로 둡니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "description" : "네 목록을 통째로 바꿉니다. 처음 입력을 건너뛰면 빈 목록 네 개를 보내 저장해, 다음부터 처음 입력을 띄우지 않게 합니다.\n글은 앞뒤 공백을 지우고, 빈 글은 null 로 저장합니다. 목록 순서는 보낸 그대로입니다.\n관심 분야(interests)는 보내면 통째로 바꾸고, 안 보내면 저장된 값을 그대로 둡니다.\n메일 주소(email)와 수신 여부(mailOptIn)도 안 보내면 저장된 값을 그대로 두며, 수신을 새로 켜거나 켠 채 주소를 바꾸면 그 주소로 확인 메일을 한 통 보냅니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
         "operationId" : "replace",
         "requestBody" : {
           "content" : {
@@ -8933,7 +10040,7 @@
                 }
               }
             },
-            "description" : "INVALID_REQUEST: 목록이 빠짐, 개수를 넘음, 필수 칸이 비었음, 모르는 종류, 달이 YYYY-MM 이 아님, 끝난 달이 시작한 달보다 앞섬, 학점·만점이 맞지 않음, 글이 길거나 U+0000 이 있음, 관심 분야가 4개 이상이거나 겹치거나 모르는 값임. 메시지에 어느 목록의 몇 번째인지 적습니다"
+            "description" : "INVALID_REQUEST: 목록이 빠짐, 개수를 넘음, 필수 칸이 비었음, 모르는 종류, 달이 YYYY-MM 이 아님, 끝난 달이 시작한 달보다 앞섬, 학점·만점이 맞지 않음, 글이 길거나 U+0000 이 있음, 관심 분야가 4개 이상이거나 겹치거나 모르는 값임, 메일 주소가 254자를 넘거나 모양이 틀림, 수신을 켰는데 저장될 주소가 없음. 메시지에 어느 목록의 몇 번째인지 적습니다"
           }
         },
         "summary" : "내 인적사항 저장",
@@ -9118,6 +10225,226 @@
         "tags" : [ "Matches" ]
       }
     },
+    "/api/repo-updates" : {
+      "get" : {
+        "description" : "서버가 스스로 다시 읽어 카드 초안까지 만든 레포 가운데 사용자가 아직 보지 않은 것을 레포마다 하나로 묶어 최근에 끝난 순서로 돌려줍니다.\ncardCount 는 그 레포에서 보지 않은 알림의 카드 수 합이고, finishedAt 은 그중 가장 늦게 끝난 시각입니다.\n",
+        "operationId" : "updates",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListRepoUpdateResponse"
+                }
+              }
+            },
+            "description" : "알림 배열. 없으면 빈 배열"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          }
+        },
+        "summary" : "새 활동 알림 목록",
+        "tags" : [ "Repositories" ]
+      }
+    },
+    "/api/repo-updates/check" : {
+      "post" : {
+        "description" : "정리한 적이 있는 레포 가운데 마지막 정리 뒤에 push 가 있는 레포의 분석 Job 을 사용자 대신 접수합니다.\nGitHub 을 새로 부르지 않고 저장된 마지막 push 시각만 보므로, 화면은 레포 목록(GET /api/repos)을 먼저 읽어 시각을 새로 받아 둡니다.\n한 번에 push 가 최근인 레포부터 3개까지 접수하고, 분석 Job 이 진행 중이거나 마지막 확인으로 접수한 지 6시간이 안 된 레포는 건너뜁니다.\n쓸 수 있는 GitHub 연결이 없으면 오류가 아니라 queued 0 으로 답합니다.\n분석이 끝나면 새 일이 든 후보로 카드 초안까지 서버가 만들고, 초안이 끝나면 GET /api/repo-updates 에 나타납니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "operationId" : "check",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseRepoUpdateCheckResponse"
+                }
+              }
+            },
+            "description" : "접수한 레포 수"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "CSRF 토큰 없음 또는 불일치"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          }
+        },
+        "summary" : "새 활동 확인",
+        "tags" : [ "Repositories" ]
+      }
+    },
+    "/api/repo-updates/{repoId}/seen" : {
+      "post" : {
+        "description" : "그 레포의 보지 않은 알림을 모두 본 것으로 닫아 목록에 다시 나오지 않게 합니다. 이미 닫혔거나 알림이 없어도 오류가 아닙니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "operationId" : "seen",
+        "parameters" : [ {
+          "description" : "레포 목록 응답의 id",
+          "in" : "path",
+          "name" : "repoId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseRepoUpdateSeenResponse"
+                }
+              }
+            },
+            "description" : "닫았음"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "CSRF 토큰 없음 또는 불일치"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "UUID 가 아니거나 없는 레포이거나 남의 레포"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          }
+        },
+        "summary" : "새 활동 알림 확인",
+        "tags" : [ "Repositories" ]
+      }
+    },
     "/api/repos" : {
       "get" : {
         "description" : "부를 때마다 GitHub 에서 접근할 수 있는 저장소와 최근에 커밋한 남의 공개 저장소(조직 소유 포함)를 다시 받아 반영한 뒤, 이번에 받은 저장소만 돌려줍니다. 커밋한 저장소를 찾지 못하면 접근할 수 있는 저장소만 돌려줍니다. 쓸 수 있는 연결이 없거나 GitHub 이 토큰·한도로 거절하면 저장된 저장소를 돌려줍니다. 어느 경우든 커밋이 없다고 센 빈 저장소와 내 프로필 README 저장소(아이디/아이디)는 빠집니다.",
@@ -9132,6 +10459,16 @@
               }
             },
             "description" : "저장소 배열. 없으면 빈 배열. 쓸 수 있는 GitHub 연결이 없거나 GitHub 이 토큰·한도로 거절하면 저장된 저장소를 돌려줌. 어느 경우든 커밋이 없다고 센 빈 저장소와 내 프로필 README 저장소(아이디/아이디)는 빠짐"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
           },
           "401" : {
             "content" : {
@@ -9183,6 +10520,16 @@
             },
             "description" : "저장소 배열. 아직 GitHub 에서 목록을 받은 적이 없으면 빈 배열"
           },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
           "401" : {
             "content" : {
               "*/*" : {
@@ -9233,6 +10580,16 @@
             },
             "description" : "저장소 상세"
           },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
           "401" : {
             "content" : {
               "*/*" : {
@@ -9255,6 +10612,84 @@
           }
         },
         "summary" : "저장소 상세 조회",
+        "tags" : [ "Repos" ]
+      },
+      "patch" : {
+        "description" : "경험 카드 폴더에 보이는 저장소 설명을 사용자가 직접 씁니다. 앞뒤 공백을 뗀 글이 120자까지이고,\n비우거나 공백뿐이거나 null 이면 사용자가 쓴 설명을 지워 GitHub 설명이나 README 문장을 다시 보여 줍니다.\n응답은 목록 한 줄과 같은 저장소 요약입니다. 변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "operationId" : "describe",
+        "parameters" : [ {
+          "description" : "목록 응답의 저장소 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RepoDescriptionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseRepoSummaryResponse"
+                }
+              }
+            },
+            "description" : "고친 뒤의 저장소 요약"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: 설명이 120자를 넘음, U+0000 이 있음, 본문을 읽을 수 없음"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "CSRF 토큰 없음 또는 불일치"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "잘못된 UUID 또는 본인 저장소 없음"
+          }
+        },
+        "summary" : "저장소 폴더 설명 수정",
         "tags" : [ "Repos" ]
       }
     },
@@ -9513,7 +10948,7 @@
     },
     "/api/repos/{id}/cards" : {
       "post" : {
-        "description" : "고른 후보마다 카드(1번 버전, 출처 직접 수정)를 만들고 후보를 카드로 쓴 상태로 바꾸며, 카드를 묶는 카드 초안 Job 하나를 돌려줍니다.\n포함된 커밋이 없는 후보는 정성 카드, 있으면 기술 카드로 시작하고 제목은 후보 제목이며 기간은 비워 둡니다.\n직접 추가하거나 회상으로 만든 후보는 그 글을 과제(T) 칸에 사용자 진술로 넣고 나머지 칸은 비워 둡니다.\n한 요청에 만들 수 있는 카드는 8장(gitory.cards.max-per-request)까지이고, 중복을 뺀 후보가 그보다 많으면 아무것도 만들지 않고 400(INVALID_REQUEST)입니다.\n같은 후보를 여러 번 보내면 한 번으로 세고, 하나라도 이 저장소의 후보가 아니면 아무것도 만들지 않고 404, 이미 카드로 쓴 후보나 제외한 후보가 섞여 있으면 409(INVALID_STATE)입니다.\n카드 초안(CARD_AI_DRAFT_ENABLED)이 켜져 있으면 만들 카드 수만큼 사용자별 하루 한도를 세고, 남은 횟수를 넘으면 아무것도 만들지 않고 429(RATE_LIMITED)입니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "description" : "고른 후보마다 카드(1번 버전, 출처 직접 수정)를 만들고 후보를 카드로 쓴 상태로 바꾸며, 카드를 묶는 카드 초안 Job 하나를 돌려줍니다.\n포함된 커밋이 없는 후보는 정성 카드, 있으면 기술 카드로 시작하고 제목은 후보 제목이며 기간은 비워 둡니다.\n직접 추가하거나 회상으로 만든 후보는 그 글을 과제(T) 칸에 사용자 진술로 넣고 나머지 칸은 비워 둡니다.\n한 요청에 만들 수 있는 카드는 10장(gitory.cards.max-per-request)까지이고, 중복을 뺀 후보가 그보다 많으면 아무것도 만들지 않고 400(INVALID_REQUEST)입니다.\n같은 후보를 여러 번 보내면 한 번으로 세고, 하나라도 이 저장소의 후보가 아니면 아무것도 만들지 않고 404, 이미 카드로 쓴 후보나 제외한 후보가 섞여 있으면 409(INVALID_STATE)입니다.\n카드 초안(CARD_AI_DRAFT_ENABLED)이 켜져 있으면 만들 카드 수만큼 사용자별 하루 한도를 세고, 남은 횟수를 넘으면 아무것도 만들지 않고 429(RATE_LIMITED)입니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
         "operationId" : "create",
         "parameters" : [ {
           "description" : "본인이 선택한 저장소의 공개 UUID",
@@ -9553,7 +10988,7 @@
                 }
               }
             },
-            "description" : "NO_CANDIDATES: 후보를 보내지 않았거나 빈 목록, INVALID_REQUEST: 중복을 뺀 후보가 한 번에 만들 수 있는 수(8개)를 넘음"
+            "description" : "NO_CANDIDATES: 후보를 보내지 않았거나 빈 목록, INVALID_REQUEST: 중복을 뺀 후보가 한 번에 만들 수 있는 수(10개)를 넘음"
           },
           "401" : {
             "content" : {
@@ -9644,6 +11079,16 @@
             },
             "description" : "찾은 커밋 배열. 없으면 빈 배열"
           },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
           "401" : {
             "content" : {
               "*/*" : {
@@ -9693,6 +11138,16 @@
               }
             },
             "description" : "커밋·PR 목록. 분석 전이면 둘 다 빈 배열"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
           },
           "401" : {
             "content" : {
@@ -9881,7 +11336,7 @@
     },
     "/api/repos/{repoId}/recommendations" : {
       "get" : {
-        "description" : "그 레포의 확정 카드로 계산해 저장해 둔 추천 기업을 돌려주며, 열 때 계산하지 않습니다. 카드 초안이 끝나거나 확정 카드가 바뀌고 1분이 지나면 서버가 다시 계산하고, 그동안 status 는 COMPUTING 입니다. 기업마다 이 레포 카드가 채웠다고 AI 가 판단한 조건 수와 그 기술 이름을 담습니다.",
+        "description" : "그 레포의 카드(작성 중과 확정)로 계산해 저장해 둔 추천 기업을 돌려주며, 열 때 계산하지 않습니다. 계산한 적이 없는데 카드가 있으면 조회할 때 계산을 예약합니다(여는 요청 안에서 계산하지는 않습니다). 카드 초안이 끝나거나(서버가 스스로 다시 읽어 만든 초안은 제외) 확정 카드가 바뀌거나 카드를 지우고 1분이 지나면 서버가 다시 계산하고, 그동안 status 는 COMPUTING 이며 queued 는 계산이 시작되기 전까지 true 입니다. 계산을 시작해 후보를 정하는 동안은 live 가 null 이고, 이어서 후보 회사를 하나씩 확인하는 과정이 live 에 담기며, 계산이 끝난 뒤에도 서버가 다시 뜨기 전까지 남습니다. 기업마다 이 레포 카드가 채웠다고 AI 가 판단한 조건 수와 그 기술 이름을 담습니다. fresh 는 바로 앞 계산 결과에 없던 기업이면 true 입니다.",
         "operationId" : "recommendations",
         "parameters" : [ {
           "description" : "레포 목록 응답의 id",
@@ -9902,7 +11357,7 @@
                 }
               }
             },
-            "description" : "추천 상태와 기업. 계산한 적이 없으면 NONE 과 빈 배열"
+            "description" : "추천 상태와 기업, 다시 계산 예약 여부(queued), 고르는 과정(live). 계산한 적도 카드도 없으면 NONE 과 빈 배열"
           },
           "400" : {
             "content" : {
@@ -9978,6 +11433,106 @@
         "summary" : "레포 추천 기업 조회",
         "tags" : [ "Matches" ]
       }
+    },
+    "/api/repos/{repoId}/recommendations/refresh" : {
+      "post" : {
+        "description" : "그 레포의 추천 기업을 다음 배경 작업 차례에 바로 다시 계산하도록 예약하고, 조회와 같은 응답을 돌려줍니다. 이때 queued 는 true 이고 계산이 끝나면 조회에서 바꾼 결과를 읽습니다. 계산이 끝나 결과를 바꿀 때 바뀌기 전 기업을 남겨 두어, 그 뒤 조회에서 바뀌기 전 결과에 없던 기업은 fresh 가 true 입니다. 변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.",
+        "operationId" : "refresh",
+        "parameters" : [ {
+          "description" : "레포 목록 응답의 id",
+          "in" : "path",
+          "name" : "repoId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseRepoRecommendationResponse"
+                }
+              }
+            },
+            "description" : "조회와 같은 모양의 추천 상태. queued 는 true"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "CSRF 토큰 없음 또는 불일치"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "UUID 가 아니거나 없는 레포이거나 남의 레포"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "summary" : "레포 추천 기업 다시 고르기",
+        "tags" : [ "Matches" ]
+      }
     }
   },
   "security" : [ {
@@ -9987,23 +11542,20 @@
     "url" : "/"
   } ],
   "tags" : [ {
-    "description" : "GitHub 연결 관리",
-    "name" : "GitHub"
-  }, {
     "description" : "GitHub 로그인 세션의 사용자 정보",
     "name" : "Session"
   }, {
     "description" : "레포 밖 경험(동아리·대외활동 등)을 묶는 활동",
     "name" : "Activities"
   }, {
+    "description" : "문제 신고",
+    "name" : "Feedback"
+  }, {
+    "description" : "홈 한 줄 명령 — 한 문장으로 맡기면 서버가 걸음마다 도구를 골라 실행한다",
+    "name" : "Assistant"
+  }, {
     "description" : "본인의 분석 Job 상태와 활성 작업 조회",
     "name" : "Jobs"
-  }, {
-    "description" : "본인의 GitHub 저장소 목록·상세 조회",
-    "name" : "Repos"
-  }, {
-    "description" : "확정 카드로 쓰는 자소서",
-    "name" : "Cover letters"
   }, {
     "description" : "본인 카드 작성과 조회",
     "name" : "Cards"
@@ -10011,10 +11563,22 @@
     "description" : "학력·경력·어학·자격증 인적사항",
     "name" : "Profile"
   }, {
-    "description" : "선택한 저장소의 분석 Job 접수",
-    "name" : "Repositories"
-  }, {
     "description" : "화면 사용 지표",
     "name" : "Events"
+  }, {
+    "description" : "GitHub 연결 관리",
+    "name" : "GitHub"
+  }, {
+    "description" : "서버가 남긴 알림 — 카드 초안이 끝났거나 레포 읽기가 실패했을 때",
+    "name" : "Notifications"
+  }, {
+    "description" : "본인의 GitHub 저장소 목록·상세 조회",
+    "name" : "Repos"
+  }, {
+    "description" : "확정 카드로 쓰는 자소서",
+    "name" : "Cover letters"
+  }, {
+    "description" : "선택한 저장소의 분석 Job 접수",
+    "name" : "Repositories"
   } ]
 }

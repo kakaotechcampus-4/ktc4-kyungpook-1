@@ -101,7 +101,7 @@ class DisclosureTest {
                                               int ownPrCount) {
 
         return new RepositorySummary(1L, UUID.randomUUID(), "grow22", "gitory", "Java", null, null, null, countedAt,
-                commitCount, ownCommitCount, prCount, ownPrCount, 0);
+                commitCount, ownCommitCount, prCount, ownPrCount, 0, null, null, null, null);
 
     }
 }

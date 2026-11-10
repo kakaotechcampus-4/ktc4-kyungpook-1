@@ -23,7 +23,7 @@ for (const width of [320, 390, 1440]) test(`weak candidate picked from the rest 
   await page.screenshot({ path: `docs/screenshots/2026-10-21-followups/candidates-${width}.png`, fullPage: true });
 });
 
-test('created cards open with only the new batch as their order, then land on the repo folder once all are written', async ({ page }) => {
+test('created cards open with only the new batch as their order, then land on the repo company-pick screen once all are written', async ({ page }) => {
   test.setTimeout(120_000); // 데모는 카드를 한 장씩 차례로 쓰고(#617) 마지막 카드까지 펼친 뒤에 넘어간다
   await loginAsDemo(page);
   await page.goto('/repos/r_auth/candidates');
@@ -33,6 +33,6 @@ test('created cards open with only the new batch as their order, then land on th
   const order = await page.evaluate(() => window.history.state.usr.cardOrder as string[]);
   expect(order.length).toBeGreaterThan(1);
   expect(page.url()).toContain(`/cards/${order[0]}`);
-  // 여러 장을 다 쓰면 그 레포의 카드 폴더로 옮겨 여러 장을 한눈에 본다 (#704)
-  await expect(page).toHaveURL(/\/cards\/repo\/r_auth$/, { timeout: 90_000 });
+  // 여러 장을 다 쓰면 그 레포 카드로 맞는 기업을 고르는 화면으로 옮겨 간다 (#704)
+  await expect(page).toHaveURL(/\/cards\/repo\/r_auth\/match$/, { timeout: 90_000 });
 });

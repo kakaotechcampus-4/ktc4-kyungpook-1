@@ -59,6 +59,7 @@
   /* 포인트 — 화면마다 눈이 먼저 가야 할 한두 곳(주 행동, 강조 단어, 지금 메뉴)에만. 주 행동은 차콜, 파스텔은 배경으로만 사용 */
   --accent-point: #202022; --accent-point-hover: #38383C; --accent-point-soft: #F0F1F3;
   --border-default: #E5E5EA; --border-strong: #94949E; --border-selected: #565660; --border-accent: #4E80BE; --bg-accent: #E4F1FC;
+  --accent-met: #3D6A47; --deadline-urgent: #A33B2B;
   --nav-active-bg: #E4F1FC; --nav-active-text: #202022;
   --sidebar-text: var(--ink-900);
   --bg-feature: #242426; --text-on-feature: #FFFFFF; --text-on-feature-muted: #CDCDD4;
@@ -94,6 +95,7 @@
   --text-accent: #E4F1FC; --accent-decoration: #6C8EAC;
   --accent-point: #E4F1FC; --accent-point-hover: #FFFFFF; --accent-point-soft: #36363D;
   --border-default: #3C3C44; --border-strong: #737380; --border-selected: #BDD9F1; --border-accent: #BDD9F1; --bg-accent: #25394C;
+  --accent-met: #A8C47C; --deadline-urgent: #E59C88;
   --nav-active-bg: #E4F1FC; --nav-active-text: #202022;
   --sidebar-text: var(--text-primary);
   --bg-feature: #2D2D32; --text-on-feature: #F5F5F7; --text-on-feature-muted: #BDBDC8;

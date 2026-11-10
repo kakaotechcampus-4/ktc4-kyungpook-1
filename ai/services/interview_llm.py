@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any, Literal, Optional, Protocol
 
@@ -44,21 +45,29 @@ QUESTION_PROMPT = """당신은 개발자가 STAR(상황·책임·행동·결과)
 이 카드에서 이미 끝난 질문(previous_turns: 칸·질문·결과·답), 작업 커밋 메시지(commits)가 주어집니다.
 
 - action: fixed_slot 이 있으면 반드시 ASK 입니다. 없으면, 고를 수 있는 칸을 더 물어도 카드가 나아질 것이 없을 때만 END, 아니면 ASK.
+  source_type 이 DIRECT_CARD 나 ACTIVITY 면 비었거나 뭉뚱그린 칸만 묻고, 그런 칸이 없으면 END 입니다.
 - star_slot: ASK 일 때 fixed_slot, 없으면 allowed_slots 중 하나. 비었거나 근거 신뢰도가 낮거나 앞 답이 모자란 칸을 먼저 고릅니다.
   앞 답으로 이미 충분히 채운 칸은 다시 고르지 않습니다.
   card_kind 가 QUALITATIVE 이고 allowed_slots 에 previous_turns 의 마지막 칸이 있으면, 빈 칸보다 그 마지막 답이 충분한지를 먼저 봅니다.
   누가·무엇을·어떻게 같은 구체적인 사실 없이 한 구절이거나 뭉뚱그린 말('문제가 있었어요', '열심히 했다')이면 그 칸을 다시 고르고,
   사실이 들어 있으면 다른 칸을 고릅니다.
-- question: 한국어 해요체 한두 문장, 120자 이내. 커밋 메시지나 지금 문장을 짧게 인용해 무엇을 묻는지 분명히 합니다.
+  이 순서가 다른 규칙보다 먼저입니다. 다음 칸이 비어 있어도 마지막 답이 뭉뚱그렸으면 그 칸을 한 번 더 묻고 나서 넘어갑니다.
+  그때 질문은 다음 이야기로 넘어가지 않고, 그 답에서 빠진 사실 하나(어떤 일이었는지, 무엇이 문제였는지, 무엇을 맡았는지)를 묻습니다.
+- question: 한국어 해요체 한두 문장, 120자 이내.
+  무엇을 묻는지는 입력 기록(commits·리뷰·이슈)을 짧게 인용해 분명히 하고, 앞 답(previous_turns 의 answer)과 지금 문장은 그대로 되풀이하지 않습니다 —
+  '그 뒤에', '측정 결과를 공유한 다음에' 처럼 짧게 받습니다.
   실패를 단정하지 않습니다. 고른 칸에 확인이 필요한 이유(review_reason)가 있으면 그 이유가 짚는 수치나 사실을 집어
   '그 10초는 어디서 재신 건가요?'처럼 무엇을 확인하려는지 드러나게 묻습니다.
+  칸을 통째로 묻지 않고 빠진 것 하나를 고릅니다: 숫자(얼마나·몇 번), 사람(누가·누구와), 달라진 점(전과 후).
+  예: '측정 결과를 팀과 본 다음에 실제로 뭐가 바뀌었나요? 기준을 바꿨는지, 코드를 고쳤는지, 그대로 두기로 했는지요.'
+  앞 답이 둘 이상 있고 묻는 칸이 A 나 R 이면, 앞 답에 있는 사실로 세운 가설을 확인하는 질문을 쓸 수 있습니다:
+  '…한 건가요? 다르면 실제로는 어땠는지 적어 주세요.' 가설은 질문에만 쓰고 입력에 없는 사실·수치를 넣지 않습니다.
 - answer_mode: R 칸에서 시간·횟수·비율 같은 수치를 묻는 질문이면 MEASURE, 그 밖은 TEXT.
 - suggested_answers: 사용자가 그대로 고를 수 있는 그 칸의 카드 문장 후보 0~2개. 평서체 '~했다', 각 80자 이내.
   입력에 있는 사실만 쓰고 입력에 없는 수치를 쓰지 않습니다. 앞 답에 이 칸에 쓸 내용이 있으면 그것을 문장으로 옮깁니다.
   MEASURE 면 수치 없이 결과를 적은 문장(측정하지 않았을 때 고를 문장)을 씁니다. 쓸 만한 후보가 없으면 빈 배열.
-  source_type 이 ACTIVITY 면 읽을 기록이 없으므로 완성된 문장 대신 activity 와 앞 답을 살린 빈칸 틀을 씁니다.
-  사용자가 채울 곳은 ___ 로 남기고, 빈칸을 지어내 채우지 않습니다. 틀의 행동·결과도 activity 와 앞 답에 있는 것만 쓰고,
-  무엇을 했는지 모르면 행동 자체를 ___ 로 둡니다(예: '반응이 낮아 ___했다').
+  source_type 이 DIRECT_CARD 나 ACTIVITY 면 읽을 기록이 없으므로, 앞 답(previous_turns 의 answer)에 있는 내용을 완성된 문장으로 옮긴 후보만 쓰고 없으면 빈 배열입니다.
+  사용자가 채울 빈칸(___)이 있는 틀은 쓰지 않습니다.
 - reason: 사용자에게 보일 판단 이유 한 문장, 해요체 60자 이내. ASK 면 왜 그 칸을 묻는지, END 면 왜 그만 묻는지 씁니다.
   앞 답이 모자라 같은 칸을 다시 고르면 앞 답에서 무엇이 빠졌는지 짚습니다. 입력에 없는 사실·수치를 쓰지 않습니다.
   칸은 S, T, A, R 글자 대신 '상황, 맡은 일, 행동, 결과'로 부르고, '근거 신뢰도' 같은 입력 속 말은 쓰지 않습니다.
@@ -193,11 +202,28 @@ class InterviewLLM:
     async def write_question(
         self, request: InterviewTurnRequest, fixed_slot: Optional[StarSlot]
     ) -> WrittenQuestion | EndedQuestions:
-        """질문을 쓰거나, 정해진 칸이 없을 때 LLM 이 끝을 고르면 그 결정을 돌려준다."""
+        """질문을 쓰거나, 정해진 칸이 없을 때 LLM 이 끝을 고르면 그 결정을 돌려준다.
+
+        질문이 앞 답이나 지금 문장을 그대로 되풀이하면 같은 입력으로 한 번 더 묻고,
+        또 되풀이하거나 다시 받지 못해도 질문이 없는 것보다 낫기에 받은 질문을 그대로 쓴다.
+        """
         payload = self._question_payload(request, fixed_slot)
         allowed = request.choosable_slots()
-        output = await self._call(QUESTION_PROMPT, payload, QuestionOutput, self._limits.question_max_completion_tokens,
-                                  lambda out: self._question_problem(out, allowed, fixed_slot), "질문")
+        deadline = asyncio.get_running_loop().time() + self._limits.deadline_seconds
+
+        async def ask(what: str) -> QuestionOutput:
+            return await self._call(QUESTION_PROMPT, payload, QuestionOutput, self._limits.question_max_completion_tokens,
+                                    lambda out: self._question_problem(out, allowed, fixed_slot), what, deadline)
+
+        output = await ask("질문")
+        if self._repeats_input(output, payload):
+            try:
+                output = await ask("질문 다시")
+            except InterviewLLMUnavailable:
+                logger.warning("되묻기 질문이 앞 답을 되풀이하지만 다시 받지 못해 그대로 쓴다")
+            else:
+                if self._repeats_input(output, payload):
+                    logger.warning("되묻기 질문이 두 번 모두 앞 답을 되풀이해 그대로 쓴다")
         source = self._source_text(payload)
         reason = self._reason(output.reason, source)
         if output.action == "END":
@@ -207,8 +233,7 @@ class InterviewLLM:
             star_slot=output.star_slot,  # type: ignore[arg-type]
             question=output.question.strip(),  # type: ignore[union-attr]
             answer_mode="MEASURE" if output.answer_mode == "MEASURE" and output.star_slot == "R" else "TEXT",
-            suggested_answers=self._suggestions(output.suggested_answers, source,
-                                                needs_blank=request.source_type == "ACTIVITY"),
+            suggested_answers=self._suggestions(output.suggested_answers, source),
             reason=reason,
         )
 
@@ -330,20 +355,29 @@ class InterviewLLM:
             return "다듬은 문장이 비었거나 너무 김"
         return None
 
-    def _suggestions(self, written: list[str], source: str, needs_blank: bool = False) -> list[str]:
+    def _suggestions(self, written: list[str], source: str) -> list[str]:
         """입력에 없는 수치가 든 후보는 사용자가 그대로 고르면 카드에 지어낸 수치가 들어가므로 버린다.
 
-        활동 카드는 읽을 기록이 없어 빈칸(___)이 없는 후보는 LLM 이 지어낸 문장이므로 버린다.
+        빈칸(___)이 든 틀도 그대로 고르면 카드 문장에 빈칸이 남으므로 어느 출처든 버린다.
         """
         kept: list[str] = []
         for suggestion in written:
             text = suggestion.strip()
             if not text or len(text) > self._limits.max_suggestion_chars or text in kept:
                 continue
-            if unsupported_metrics(text, source) or (needs_blank and _BLANK not in text):
+            if unsupported_metrics(text, source) or _BLANK in text:
                 continue
             kept.append(text)
         return kept[: self._limits.max_suggestions]
+
+    @staticmethod
+    def _repeats_input(output: QuestionOutput, payload: dict[str, Any]) -> bool:
+        """질문이 사용자가 이미 한 말(앞 답과 묻는 칸의 지금 문장)을 그대로 되풀이하는지 본다."""
+        if output.action != "ASK":
+            return False
+        sources = [turn["answer"] for turn in payload["previous_turns"] if turn["answer"]]
+        sources += [slot["text"] for slot in payload["slots"] if slot["slot"] == output.star_slot and slot["text"]]
+        return repeats_previous(output.question or "", sources)
 
     def _themes(self, written: list[CardTheme]) -> tuple[CardTheme, ...]:
         kept: list[CardTheme] = []
@@ -410,3 +444,18 @@ class InterviewLLM:
 def has_metric(text: Optional[str]) -> bool:
     """문장에 시간·횟수·비율 같은 수치가 있는지 본다. 첫 질문을 R 로 할지 정하는 데 쓴다."""
     return bool(text) and next(iter_metrics(text), None) is not None
+
+
+def repeats_previous(question: str, sources: Iterable[str], n: int = 12) -> bool:
+    """질문이 사용자가 이미 쓴 글(sources)의 n자 연속 구절을 그대로 담고 있는지 본다.
+
+    공백은 하나로 접어 견주고, 공백·문장부호만인 구절은 겹침으로 세지 않는다.
+    """
+    folded = " ".join(question.split())
+    for source in sources:
+        text = " ".join(source.split())
+        for start in range(len(text) - n + 1):
+            phrase = text[start:start + n]
+            if any(char.isalnum() for char in phrase) and phrase in folded:
+                return True
+    return False

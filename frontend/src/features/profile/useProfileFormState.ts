@@ -11,7 +11,9 @@ import { useUnsavedChanges } from '@/lib/useUnsavedChanges';
 
 /** 오류를 묶는 범위 — 네 목록과 관심 분야. 처음 입력 창은 한 단계(= 한 범위)씩 검사해 보여 준다 */
 export type Scope = SectionKey | 'interests';
-export const ALL_SCOPES: readonly Scope[] = ['interests', 'educations', 'careers', 'languages', 'certifications'];
+/** 메일 칸은 단계가 아니라 폼 맨 아래 칸이라 오류 범위만 따로 둔다 */
+export type ErrorScope = Scope | 'email';
+export const ALL_SCOPES: readonly ErrorScope[] = ['interests', 'educations', 'careers', 'languages', 'certifications', 'email'];
 const FIRST_FIELD: Record<SectionKey, string> = { educations: 'level', careers: 'company', languages: 'test', certifications: 'name' };
 /** 한 칸을 고치면 같이 다시 봐야 하는 칸 — 서버가 준 오류를 함께 지운다 */
 const RELATED: Record<string, string[]> = { startMonth: ['endMonth'], current: ['endMonth'], gpa: ['gpaMax'], gpaMax: ['gpa'], test: ['testName'] };
@@ -26,6 +28,7 @@ const isRejected = (error: unknown) => error instanceof ApiError && error.status
 export const fieldId = (rowKey: string, field: string) => `p-${rowKey}-${field}`;
 export const addId = (section: SectionKey) => `p-add-${section}`;
 export const INTERESTS_ID = 'p-interests';
+export const MAIL_ID = 'p-mail';
 export const SAVE_ID = 'p-save';
 /** 입력칸·선택칸·버튼 어디든 초점을 보낸다 */
 export function focusById(id: string) {
@@ -33,7 +36,7 @@ export function focusById(id: string) {
   const target = el?.matches('input, button, select, textarea') ? el : el?.querySelector<HTMLElement>('input, button, select, textarea');
   target?.focus();
 }
-const scopeOf = (key: string) => key.split('.')[0] as Scope;
+const scopeOf = (key: string) => key.split('.')[0] as ErrorScope;
 
 /**
  * 인적사항 폼의 상태 — 마이페이지 폼과 처음 입력 창이 같이 쓴다.
@@ -45,7 +48,7 @@ export function useProfileFormState(initial: Profile, options: { guard?: boolean
   const [initialForm] = useState(() => toForm(initial));
   const [form, setForm] = useState<Form>(initialForm);
   const [baseline, setBaseline] = useState(() => formSnapshot(initialForm));
-  const [attempted, setAttempted] = useState<ReadonlySet<Scope>>(() => new Set());
+  const [attempted, setAttempted] = useState<ReadonlySet<ErrorScope>>(() => new Set());
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
   const [saveError, setSaveError] = useState<unknown>(null);
   const [savedOnce, setSavedOnce] = useState(false);
@@ -58,11 +61,11 @@ export function useProfileFormState(initial: Profile, options: { guard?: boolean
   Object.entries(clientCodes).forEach(([key, code]) => { if (attempted.has(scopeOf(key))) errors[key] = issueMessage(key, code); });
   const errorCount = Object.keys(errors).length;
   /** 그 범위에서 지금 걸리는 첫 오류의 칸 id — 보이든 안 보이든. 없으면 null */
-  const firstErrorId = (scope: Scope) => {
+  const firstErrorId = (scope: ErrorScope) => {
     const key = [...Object.keys(serverErrors), ...Object.keys(clientCodes)].find((candidate) => scopeOf(candidate) === scope);
     return key ? keyToId(key) : null;
   };
-  const attempt = (scope: Scope) => setAttempted((current) => (current.has(scope) ? current : new Set([...current, scope])));
+  const attempt = (scope: ErrorScope) => setAttempted((current) => (current.has(scope) ? current : new Set([...current, scope])));
 
   const guard = useUnsavedChanges(options.guard !== false && (dirty || save.isPending));
 
@@ -94,6 +97,10 @@ export function useProfileFormState(initial: Profile, options: { guard?: boolean
     setForm((current) => ({ ...current, interests }));
     setServerErrors((current) => { const next = { ...current }; delete next.interests; return next; });
   };
+  const setMail = (patch: { email?: string; mailOptIn?: boolean }) => {
+    setForm((current) => ({ ...current, ...patch }));
+    setServerErrors((current) => { const next = { ...current }; delete next.email; return next; });
+  };
   /** 목록을 통째로 바꾼다 — 처음 입력 창의 타일이 줄을 넣고 뺄 때. 줄 번호가 바뀌므로 서버 오류는 다음 저장에서 다시 받는다 */
   const replaceSection = <S extends SectionKey>(section: S, rows: Form[S]) => {
     setForm((current) => ({ ...current, [section]: rows }) as Form);
@@ -103,6 +110,7 @@ export function useProfileFormState(initial: Profile, options: { guard?: boolean
   function keyToId(key: string) {
     const [section, index, field] = key.split('.');
     if (section === 'interests') return INTERESTS_ID;
+    if (section === 'email') return MAIL_ID;
     const row = (form[section as SectionKey] as { key: string }[] | undefined)?.[Number(index)];
     return row && field ? fieldId(row.key, field) : addId(section as SectionKey);
   }
@@ -148,6 +156,6 @@ export function useProfileFormState(initial: Profile, options: { guard?: boolean
     : dirty ? '저장하지 않은 변경이 있어요'
     : savedOnce ? '저장했어요' : '고친 곳이 없어요';
 
-  return { form, errors, errorCount, dirty, saving, saveError, view, savedOnce, statusText, guard, edit, add, remove, replaceSection, setInterests, submit, attempt, firstErrorId, focus: setFocusRequest };
+  return { form, errors, errorCount, dirty, saving, saveError, view, savedOnce, statusText, guard, edit, add, remove, replaceSection, setInterests, setMail, submit, attempt, firstErrorId, focus: setFocusRequest };
 }
 export type ProfileFormState = ReturnType<typeof useProfileFormState>;

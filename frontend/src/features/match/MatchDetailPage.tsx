@@ -100,16 +100,16 @@ const displayLines = (conditions: Condition[]) => {
   });
 };
 
-/** 한 절의 집계 글 — '2/3 맞음 · 직접 확인 1'. 카드로 판단한 조건이 없으면 직접 확인 수만 */
+/** 한 절의 집계 글 — '2/3 맞음, 직접 확인 1'. 카드로 판단한 조건이 없으면 직접 확인 수만 */
 const tallyText = ({ met, judged, check }: SectionTally) =>
-  [judged > 0 && `${met}/${judged} 맞음`, check > 0 && `직접 확인 ${check}`].filter(Boolean).join(" · ");
+  [judged > 0 && `${met}/${judged} 맞음`, check > 0 && `직접 확인 ${check}`].filter(Boolean).join(", ");
 
 /** 맞춰 본 결과를 펼칠 때 요약 카드에 적는 두 줄 — 읽은 카드 수와 견준 조건 수 */
 const comparedText = (conditions: Condition[]) => {
   const required = sectionTally(conditions, "REQUIRED").judged;
   const preferred = sectionTally(conditions, "PREFERRED").judged;
   if (required + preferred === 0) return "조건과 견줬어요";
-  return `${required > 0 ? `필수 ${required}개` : ""}${required > 0 && preferred > 0 ? "·" : ""}${preferred > 0 ? `우대 ${preferred}개` : ""}와 견줬어요`;
+  return `${required > 0 ? `필수 ${required}개` : ""}${required > 0 && preferred > 0 ? ", " : ""}${preferred > 0 ? `우대 ${preferred}개` : ""}와 견줬어요`;
 };
 
 type GapProps = {
@@ -142,7 +142,7 @@ function ConditionItem({ condition, line, judged, filled, detailId, gap }: { con
               const KindIcon = card.cardKind === "TECH" ? GitCommitHorizontal : MessageSquareQuote;
               return (
                 <Fragment key={card.cardId}>
-                  {i > 0 && <span className="posting-condition__sep" aria-hidden="true">·</span>}
+                  {i > 0 && <span className="posting-condition__sep" aria-hidden="true">,</span>}
                   <Link
                     to={`/cards/${encodeURIComponent(card.cardId)}`}
                     title={card.reason}
@@ -193,7 +193,7 @@ export function MatchDetailPage() {
     if (openedId) track("match_opened", { view: "detail", matchId: openedId, fit: openedFit });
   }, [openedId, openedFit]);
 
-  // 이 화면에서 맞춰 보기를 눌렀으면 결과를 조건마다 차례로 펼친다(새로고침해 다시 열면 저장된 결과라 바로 다 보인다)
+  // 이 화면에서 맞춰 보기를 시작했으면 결과를 조건마다 차례로 펼친다(새로고침해 다시 열면 저장된 결과라 바로 다 보인다)
   const [revealing, setRevealing] = useState(false);
   // 채우기가 이 화면에서 돌고 있으면 새로 생긴 일만 하나씩 펼친다. 끝난 결과를 열어 본 것이면 바로 다 보인다
   const [gapLive, setGapLive] = useState(false);
@@ -236,6 +236,16 @@ export function MatchDetailPage() {
       onError: () => setRevealing(false),
     });
   };
+
+  // 열자마자 공고마다 한 번만 맞춰 본다 — 맞춰 보기는 AI 호출이라 실패해도 되풀이하지 않고 버튼으로 사람이 다시 누르게 둔다
+  // 진행하기에서 돌아온 공고는 위의 다시 맞춰 보기가 맡는다(returned 는 다음 렌더에야 채워져서 저장된 값을 바로 읽는다)
+  const autoJudged = useRef<string | null>(null);
+  useEffect(() => {
+    if (!detail?.needsJudgement || autoJudged.current === detail.id) return;
+    if (!cards.data?.some((card) => card.status === "CONFIRMED") || readProceeded(matchId)) return;
+    autoJudged.current = detail.id;
+    startJudge();
+  }, [detail, cards.data, matchId]);
 
   // 확정 카드가 0장이면 서버는 기술 조건을 모두 NOT_MET 으로 준다 — 모자란 사람처럼 보이지 않게 원문만 두고 카드 확정을 안내한다. 카드 목록을 아직 못 받았으면 서버 응답대로 그린다
   const noConfirmedCards = cards.data !== undefined && !cards.data.some((card) => card.status === "CONFIRMED");
@@ -306,7 +316,7 @@ export function MatchDetailPage() {
   if (!returned && judge.isPending) log.push({ key: "judging", text: confirmedCount === undefined ? "확정 카드를 읽고 조건과 견주고 있어요" : `확정 카드 ${confirmedCount}장을 읽고 조건과 견주고 있어요`, live: true });
   if (returned && judge.isPending) log.push({ key: "rejudge", text: "새로 확정한 카드로 다시 맞춰 보고 있어요", live: true });
   if (returned && filled) log.push({ key: "filled", text: `모자랐던 조건 ${returned.length}개 중 ${filled.size}개를 채웠어요` });
-  if (returned && !filled && detail && !detail.needsJudgement) log.push({ key: "wait-confirm", text: "새로 만든 카드를 확정하면 다시 맞춰 볼게요" });
+  if (returned && !filled && detail && !detail.needsJudgement) log.push({ key: "wait-confirm", text: "새로 만든 카드가 확정되면 다시 맞춰 볼게요" });
   if (showGap && gapRunning) log.push({ key: "gap-running", text: `모자란 조건 ${gf.conditions.length}개를 채울 자료를 찾고 있어요`, live: true });
   if (showGap && gf.state === "DONE") log.push({ key: "gap-done", text: gapSummary(gf) });
   if (judgedData && settled && gapNeedsGithub) {

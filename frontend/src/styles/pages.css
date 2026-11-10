@@ -29,18 +29,7 @@
 .repo-row { gap: 12px; padding: 13px 14px; width: 100%; text-align: left; border-radius: 10px; }
 .repo-row--sel { background: var(--bg-selected); }
 
-/* ───────── 분석 진행 (B3) · 실패 (B4) ───────── */
-.stages { display: flex; flex-direction: column; }
-.stage { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid var(--border-default); }
-.stage:first-child { border-top: 0; }
-.stage__icon { width: 26px; height: 26px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--bg-surface); display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--text-on-ink); flex: 0 0 auto; }
-.stage--DONE .stage__icon { background: var(--bg-ink-solid); border-color: var(--bg-ink-solid); }
-.stage--WAIT .stage__icon { border-color: var(--border-default); }
-.stage__label { font-size: 14px; line-height: 20px; font-weight: 600; }
-.stage__detail { font-size: 12px; line-height: 19px; color: var(--text-secondary); }
-.stage--WAIT .stage__label, .stage--WAIT .stage__detail { color: var(--text-tertiary); }
-.stage--NOW .stage__icon { animation: pulse 1.2s ease-in-out infinite; }
-@keyframes pulse { 50% { border-color: var(--bg-ink-solid); } }
+/* ───────── 분석 실패 (B4) — 진행 화면의 타임라인은 features/repos/AnalyzePage.css ───────── */
 .fail-card { display: flex; align-items: center; gap: 18px; padding: 22px 24px; border-radius: var(--radius-lg); background: var(--state-failed-bg); }
 .fail-card__bang { font-size: 20px; font-weight: 800; color: var(--state-failed-text); flex: 0 0 auto; }
 /* 일부만 정리된 결과(B5): 배지, 글, 버튼이 가로로 놓인다. 좁은 폭에서는 버튼 글자가 여러 줄로 쪼개지므로 세로로 쌓는다(#520 A-06) */
@@ -100,6 +89,26 @@
 .star-row__body { display: flex; flex-direction: column; gap: var(--space-12); min-width: 0; }
 .star-read__row:first-child { border-top: 0; }
 .star-read__row--gap { background: var(--field-dropped-bg); }
+/* 확정 카드 읽기만 왼쪽 라벨 열 + 오른쪽 본문의 행이고, 다른 화면의 .star-read 는 이 클래스가 없어 그대로다 — 오른쪽 padding 60px 은 연필 자리 */
+.star-read--rows > .star-read__row:last-child { border-radius: 0 0 calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px); } /* 결과 행 바탕이 카드의 둥근 모서리(테두리 1px 안쪽)를 따르게 — overflow 로 자르면 긴 카드가 인쇄에서 잘린다 */
+.star-read--rows .star-read__row { position: relative; display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 0 20px; align-items: start; padding: 24px 60px 24px 24px; }
+.star-read--rows .star-row__label { min-height: 28px; }
+.star-read--rows .star__name { font-size: 16px; line-height: 24px; }
+.star-read--rows .star-row__body { gap: var(--space-6); }
+.star-read--rows .star-read__row--result { background: var(--bg-subtle); }
+.star-read--rows .star-read__row--gap { background: var(--field-dropped-bg); } /* 비운 결과 칸은 결과 바탕보다 비운 칸 바탕이 이긴다 */
+.star-read--rows .star-read__row--gap .star-row__body { min-height: 28px; justify-content: center; } /* 13px 안내 글을 한 줄짜리 라벨의 가운데에 맞춘다 */
+.star-read--rows .star__pencil { position: absolute; top: 16px; right: 8px; margin: 0; }
+/* 근거는 상자 버튼 대신 문장 아래 글자 링크라 네 칸에서 되풀이돼도 가볍고, 누르는 높이 44px 은 두고 위아래 여백만 당겨 문장에 붙인다 */
+.star-read--rows .evidence-open { align-self: flex-start; justify-content: flex-start; min-height: var(--control-touch-size); margin: -8px 0 -12px; padding: 0; border: 0; background: transparent; color: var(--text-secondary); font-size: 13px; font-weight: var(--body-weight); }
+.star-read--rows .evidence-open svg { color: var(--text-tertiary); }
+.star-read--rows .evidence-open:hover { color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
+/* 인쇄 폭이 700px 안팎이어도 2열이 그대로 나오게 screen 에서만 접는다 */
+@media screen and (max-width: 700px) {
+  .star-read--rows .star-read__row { grid-template-columns: minmax(0, 1fr); gap: 8px 0; padding: 20px 16px; }
+  .star-read--rows .star__pencil { top: 12px; }
+}
+@media print { .star-read--rows .star__pencil { display: none; } } /* 종이에서는 고칠 수 없다 */
 .qpanel { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 10px; background: var(--bg-canvas); }
 .qpanel--caution { background: var(--field-low-bg); }
 .qpanel__q { font-size: 13px; line-height: 20px; font-weight: 600; }
@@ -110,12 +119,15 @@
 .done-card { display: flex; align-items: center; gap: 18px; padding: 18px 20px; flex-wrap: wrap; }
 .done-card__ok { width: 38px; height: 38px; border-radius: 50%; background: var(--bg-ink-solid); color: var(--text-on-ink); display: grid; place-items: center; font-weight: 700; flex: 0 0 auto; }
 @media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } }
+/* 폰에서는 확정 패널의 주 버튼을 글 바로 아래 한 줄로, 보조 버튼은 그 아래로 */
+@media (max-width: 640px) {
+  .done-card > .btn { flex: 1 1 100%; order: 3; }
+  .done-card > .btn--primary { order: 2; }
+}
 
 /* ───────── 되묻기 (D5) ───────── */
 .turn { display: flex; gap: 13px; padding: 16px; }
 .turn--now { flex-direction: column; gap: 14px; padding: 18px; }
-.turn__no { width: 25px; height: 25px; border-radius: 50%; background: var(--bg-inset); color: var(--text-secondary); display: grid; place-items: center; font-size: 11px; font-weight: 600; flex: 0 0 auto; }
-.turn__no--now { background: var(--bg-ink-solid); color: var(--text-on-ink); }
 .turn__q { font-size: 13px; line-height: 20px; font-weight: 600; color: var(--text-secondary); }
 .turn__a { font-size: 14px; line-height: 22px; }
 .turn__big { font-size: 20px; line-height: 27px; font-weight: 600; }

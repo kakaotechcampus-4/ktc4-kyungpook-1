@@ -15,6 +15,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -87,6 +88,39 @@ class OverallRecommendationStoreTest {
         jdbc.update("UPDATE overall_recommendation SET status = 'READY' WHERE user_id = ?", userId);
         recommendations.progress(userId, 5, 15);
         assertThat(row()).containsEntry("progress_done", 3);
+
+    }
+
+    @Test
+    @DisplayName("회사마다 맞은·모자란 조건 이름을 JSON 에 저장하고 그대로 다시 읽는다")
+    void keepsConditionNamesThroughJson() {
+
+        recommendations.start(userId, T0, T0.minus(STUCK));
+        OverallRecommendation saved = recommendations.findByUserId(userId).orElseThrow();
+        OverallCompany company = new OverallCompany("toss", "토스", 21L, 3, 4, 1, 2,
+                List.of(new OverallCompany.Condition("Spring 서버 개발 경험", List.of("SPRING")),
+                        new OverallCompany.Condition("코드 리뷰 문화 경험", List.of())),
+                List.of(new OverallCompany.Condition("Kafka 운영 경험", List.of("KAFKA"))));
+        saved.refresh(List.of(company), "fingerprint", T0);
+        recommendations.save(saved);
+
+        assertThat(recommendations.findByUserId(userId).orElseThrow().getCompanies()).containsExactly(company);
+
+    }
+
+    @Test
+    @DisplayName("조건 이름 칸이 생기기 전에 저장한 회사는 빈 목록으로 읽힌다")
+    void readsCompaniesSavedWithoutConditionNamesAsEmptyLists() {
+
+        recommendations.start(userId, T0, T0.minus(STUCK));
+        jdbc.update("UPDATE overall_recommendation SET companies = CAST(? AS jsonb) WHERE user_id = ?", """
+                [{"companyId": "toss", "companyName": "토스", "postingId": 21, "requiredMet": 3, "requiredTotal": 4,
+                  "preferredMet": 1, "preferredTotal": 2}]
+                """, userId);
+
+        OverallCompany company = recommendations.findByUserId(userId).orElseThrow().getCompanies().getFirst();
+        assertThat(company.met()).isEmpty();
+        assertThat(company.missing()).isEmpty();
 
     }
 

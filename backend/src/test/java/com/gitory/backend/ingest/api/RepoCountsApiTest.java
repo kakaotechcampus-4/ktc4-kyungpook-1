@@ -435,7 +435,7 @@ class RepoCountsApiTest {
     private static GithubRepositoryResponse repo(long githubRepoId, String name) {
 
         return new GithubRepositoryResponse(githubRepoId, name, new GithubOwnerResponse("grow22"),
-                false, "Java", "main", CREATED, PUSHED);
+                false, "Java", "main", CREATED, PUSHED, null);
 
     }
 

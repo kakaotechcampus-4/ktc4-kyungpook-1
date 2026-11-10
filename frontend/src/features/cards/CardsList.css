@@ -9,3 +9,6 @@
   .cards-list__tools { width: 100%; }
   .cards-list__tools .list-search { flex-basis: 100%; min-width: 0; }
 }
+
+.cards-list .list-head { flex-direction: column; align-items: stretch; gap: 16px; }
+.cards-list .list-head > .right { width: 100%; margin-left: 0; }

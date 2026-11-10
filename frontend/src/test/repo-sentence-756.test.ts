@@ -50,7 +50,7 @@ describe('repoSentence', () => {
   });
 
   it('메타 줄은 언어와 연월 범위이고, 언어가 없으면 범위만 둔다', () => {
-    expect(repoMeta(repo())).toBe('Java · 2026.08 ~ 2026.11');
+    expect(repoMeta(repo())).toBe('Java, 2026.08 ~ 2026.11');
     expect(repoMeta(repo({ language: null }))).toBe('2026.08 ~ 2026.11');
   });
 });

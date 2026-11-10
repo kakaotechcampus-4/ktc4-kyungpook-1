@@ -129,12 +129,13 @@ export function NewCardPage() {
   const { flush, saving } = autosave;
   const guard = useUnsavedChanges(autosave.dirty || saving);
 
-  const leave = async (thenConfirm: boolean) => {
+  // 상황·행동을 저장하는 순간 서버가 카드를 확정하므로 확정 창은 없고, 저장을 마치면 어느 상태의 카드든 그 카드 화면으로 간다
+  const leave = async () => {
     if (!await flush()) return;
     const id = cardIdRef.current;
     if (!id) return;
     guard.allowNavigation();
-    nav(`/cards/${id}${thenConfirm ? '?confirm=1' : ''}`);
+    nav(`/cards/${id}`);
   };
   // 카드를 만들고 되묻기로 넘어간다. 뒤로 가기로 이 화면에 돌아와 같은 카드를 또 만들지 않게 기록을 바꿔 둔다
   const startInterview = async () => {
@@ -164,7 +165,7 @@ export function NewCardPage() {
     <main className="main main--footer main--tight manual-card-page">
       <Breadcrumb items={[{ label: '홈', to: '/' }, { label: '경험 카드', to: '/cards' }, { label: starting ? '경험 카드 만들기' : '직접 작성' }]} />
       {starting
-        ? <PageTitle lead="제목만 정하면 AI 가 상황부터 하나씩 묻고, 답한 내용으로 상황·과제·행동·결과 네 칸을 채워요.">경험 카드 만들기</PageTitle>
+        ? <PageTitle lead="제목만 정하면 AI 가 상황부터 하나씩 묻고, 답한 내용으로 상황, 과제, 행동, 결과 네 칸을 채워요.">경험 카드 만들기</PageTitle>
         : <PageTitle>직접 작성</PageTitle>}
 
       <div className="card manual-metadata">
@@ -191,7 +192,7 @@ export function NewCardPage() {
 
       {!starting && <>
       <div className="manual-save-row">
-        <p id="manual-requirements" className="t-12 c-2" aria-live="polite">{missing ? `확정까지: ${missing}` : '확정할 수 있어요'}</p>
+        <p id="manual-requirements" className="t-12 c-2" aria-live="polite">{missing ? `더 필요한 것: ${missing}` : '이대로 쓸 수 있어요'}</p>
         {!blockedCard && (cardId || autosave.status === 'error') && <SaveStatus status={autosave.status} retry={flush} />}
       </div>
       {blockedCard && <p role="alert">이미 확정된 카드예요. 현재 입력은 이 화면에 남아 있어요. <Link to={`/cards/${blockedCard.id}`}>기존 카드 보기</Link></p>}
@@ -217,8 +218,8 @@ export function NewCardPage() {
         strong={saving ? '저장 중' : autosave.failed ? '저장 상태를 확인해 주세요' : cardId ? '본문은 자동으로 저장돼요' : '제목을 적고 작성을 시작해 주세요'}>
         <Link to="/" className="btn btn--text">나가기</Link>
         {!cardId ? <Button size="lg" disabled={isBlankCardText(title)} loading={saving} onClick={() => void flush()}>작성 시작</Button> : <>
-          <Button variant="outline" disabled={!!blockedCard || isBlankCardText(title)} loading={saving} onClick={() => void leave(false)}>저장 후 종료</Button>
-          <Button size="lg" disabled={!canConfirm} loading={saving} onClick={() => void leave(true)}>확정</Button>
+          <Button variant="outline" disabled={!!blockedCard || isBlankCardText(title)} loading={saving} onClick={() => void leave()}>저장 후 종료</Button>
+          <Button size="lg" disabled={!canConfirm} loading={saving} onClick={() => void leave()}>다 썼어요</Button>
         </>}
       </StickyFooter>
       )}

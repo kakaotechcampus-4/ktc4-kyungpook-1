@@ -52,7 +52,7 @@ const callsTo = (fetchMock: ReturnType<typeof stubApi>, path: string) => fetchMo
 describe('정리 화면 (#520 G-13 · A-04 · A-05 · A-08 · A-09 · A-12)', () => {
   function mountAnalyze(path: string, data?: Job, activeJobs: unknown = { jobs: [] }) {
     const client = quiet();
-    client.setQueryData(keys.repo('r_auth'), RepoDetail.parse(req('/repos/r_auth').data));
+    client.setQueryData(keys.repo('r_auth'), { ...RepoDetail.parse(req('/repos/r_auth').data), lastAnalyzedAt: null }); // 시작 화면 문구를 본다(정리한 레포는 '지난 결과 보기' 화면)
     if (data) { client.setQueryData(keys.job(data.jobId), data); vi.spyOn(endpoints, 'job').mockResolvedValue(data); }
     vi.spyOn(endpoints, 'activeJobs').mockResolvedValue(activeJobs as never);
     render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[path]}><Routes><Route path="/repos/:repoId/run" element={<AnalyzePage />} /></Routes></MemoryRouter></QueryClientProvider>);
@@ -161,18 +161,17 @@ describe('홈 (#520 G-08 · H-01 · H-03)', () => {
   it('홈에는 최근 경험 카드와 카드 검색을 표시하지 않는다', async () => {
     stubApi(() => undefined);
     home();
-    await screen.findByRole('heading', { name: '홈', level: 1 });
+    await screen.findByRole('heading', { name: '지원할 곳', level: 1 });
     expect(screen.queryByRole('textbox', { name: '카드 이름으로 검색' })).not.toBeInTheDocument();
     expect(screen.queryByText('최근 경험 카드')).not.toBeInTheDocument();
     expect(document.querySelector('.home-recent')).toBeNull();
   });
 
-  it('탭 제목은 화면 제목과 같다', async () => {
+  it('탭 제목은 첫 화면의 질문이 아니라 왼쪽 메뉴 이름 "홈" 을 쓴다', async () => {
     stubApi(() => undefined);
     home();
-    // 홈 제목의 글자는 다른 PR 이 정하므로(지금은 '홈') 글자를 적지 않고, 화면 제목과 탭 제목이 같은지만 본다
-    const heading = await screen.findByRole('heading', { level: 1 });
-    expect(document.title).toBe(`${heading.textContent} · Gitory`);
+    await screen.findByRole('heading', { level: 1 });
+    expect(document.title).toBe('홈 · Gitory');
   });
 });
 
@@ -193,7 +192,7 @@ describe('레포 화면 (#520 G-03 · 용어집)', () => {
     repos();
     expect(screen.getByText('레포를 하나 골라 주세요')).toBeInTheDocument();
     expect(screen.queryByText(/고르세요/)).not.toBeInTheDocument();
-    expect(screen.getAllByText(/^정리 완료 · 카드 \d+장$/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^카드 \d+장$/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/^카드 \d+건$/)).not.toBeInTheDocument();
   });
 
@@ -256,7 +255,7 @@ describe('앱 셸의 메뉴 이름 (#520 G-03 · G-04)', () => {
 
 describe('용어집 규칙 (#520 G-12)', () => {
   it('목록에 올린 화면 파일에는 합니다체 끝맺음이 남지 않았다', async () => {
-    const files = import.meta.glob(['/src/api/client.ts', '/src/api/errorView.ts', '/src/features/auth/LandingPage.tsx', '/src/features/home/HomePage.tsx', '/src/features/repos/*.tsx', '/src/features/jobs/*.tsx'], { query: '?raw', import: 'default' }) as Record<string, () => Promise<string>>;
+    const files = import.meta.glob(['/src/api/client.ts', '/src/api/errorView.ts', '/src/features/auth/LandingPage.tsx', '/src/features/home/HomePage.tsx', '/src/features/home/HomeSections.tsx', '/src/lib/homeModel.ts', '/src/features/repos/*.tsx'], { query: '?raw', import: 'default' }) as Record<string, () => Promise<string>>;
     const names = Object.keys(files);
     expect(names.length).toBeGreaterThanOrEqual(7);
     for (const name of names) {

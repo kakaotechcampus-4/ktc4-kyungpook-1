@@ -89,7 +89,7 @@ it('요약 카드의 근무지는 근무지 조건이 있을 때만 그 원문�
 it('요약 카드의 자격 요건·우대 사항 집계는 맞춰 본 뒤에만 있고, 카드로 판단한 수와 직접 확인 수를 나눠 적는다', async () => {
   mount(base);
   await screen.findByRole('complementary', { name: '공고 요약' });
-  expect(fact('자격 요건')).toBe('2/3 맞음 · 직접 확인 1');
+  expect(fact('자격 요건')).toBe('2/3 맞음, 직접 확인 1');
   expect(fact('우대 사항')).toBe('1/2 맞음');
   cleanup();
   mount({ ...base, needsJudgement: true, summary: null });

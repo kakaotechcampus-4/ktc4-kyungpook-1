@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
@@ -98,7 +98,7 @@ describe('agentLine — 멈춘 작업의 단계 문장 (#459 뒤 남은 현재�
   it('끝난 단계와 건너뛴 단계의 문장은 그대로다', () => {
     for (const state of ['FAILED', 'CANCELED'] as const) {
       const j = job(state);
-      expect(agentLine(commits, j)).toBe('내 커밋을 모두 읽었어요');
+      expect(agentLine(commits, j)).toBe('커밋을 모두 읽었어요');
       expect(agentLine(reason, j)).toBe('이유를 붙일 후보가 없었어요');
     }
   });
@@ -152,26 +152,25 @@ describe('정리 화면 — 목의 실패 작업(r_fail)', () => {
   it('정리 화면 — 진행 중인 작업의 단계 목록은 그대로다(현재형 문장과 "진행 중")', () => {
     const running = { ...failedByMock(), state: 'RUNNING' as const, errorCode: null, finishedAt: null };
     mount(`/repos/r_fail/run?job=${running.jobId}`, '/repos/:repoId/run', <AnalyzePage />, running);
-    const stages = Array.from(document.querySelectorAll('.stage'));
+    const stages = Array.from(document.querySelectorAll('.tl__item'));
     expect(stages).toHaveLength(running.steps.length);
     const now = running.steps.find((s) => s.state === 'RUNNING');
     expect(now).toBeDefined();
     expect(document.body.textContent).toContain(agentLine(now!));
     expect(agentLine(now!)).toMatch(LIVE_TENSE);
-    expect(screen.getAllByText('진행 중').length).toBeGreaterThan(0);
-    expect(screen.queryByText('중단됨')).not.toBeInTheDocument();
+    expect(document.querySelectorAll('.tl__item--now')).toHaveLength(1);   // 읽는 단계는 파랑 점으로 진행 중이다
+    expect(document.querySelectorAll('.tl__item--halt')).toHaveLength(0);
   });
 
   it('정리 화면 — 취소된 작업이 떠나기 전에 한 번 그려질 때도 단계는 "진행 중"이나 현재형 문장이 아니다', () => {
     const canceled = { ...failedByMock(), state: 'CANCELED' as const, errorCode: null };
     mount(`/repos/r_fail/run?job=${canceled.jobId}`, '/repos/:repoId/run', <AnalyzePage />, canceled);
     expect(navigate).toHaveBeenCalledWith('/repos', { replace: true });
-    const stages = Array.from(document.querySelectorAll<HTMLElement>('.stage'));
+    const stages = Array.from(document.querySelectorAll<HTMLElement>('.tl__item'));
     expect(stages).toHaveLength(canceled.steps.length);
-    const badges = stages.map((stage) => within(stage).getByText(/^(완료|진행 중|중단됨|대기|해당 없음)$/).textContent);
-    expect(badges).toContain('중단됨');
-    expect(badges).not.toContain('진행 중');
-    stages.forEach((stage) => expect(stage.querySelector('.stage__agent')?.textContent).not.toMatch(LIVE_TENSE));
-    expect(stages.map((stage) => stage.querySelector('.stage__agent')?.textContent)).toContain('여기서 멈추게 했어요');
+    expect(document.querySelectorAll('.tl__item--halt')).toHaveLength(1);   // 읽던 단계는 멈춘 점이고
+    expect(document.querySelectorAll('.tl__item--now')).toHaveLength(0);    // 진행 중인 점은 없다
+    stages.forEach((stage) => expect(stage.querySelector('.tl__line')?.textContent).not.toMatch(LIVE_TENSE));
+    expect(stages.map((stage) => stage.querySelector('.tl__line')?.textContent)).toContain('여기서 멈추게 했어요');
   });
 });

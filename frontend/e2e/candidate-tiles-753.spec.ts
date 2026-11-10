@@ -28,7 +28,7 @@ test('처음엔 점수 높은 추천 5개만 보이고, 나머지 N개 더 보�
   await expect(tiles(page)).toHaveCount(5);
 });
 
-test('타일 전체가 고르기 버튼이고, 8개를 고르면 아홉 번째는 골라지지 않고 안내가 뜬다', async ({ page }) => {
+test('타일 전체가 고르기 버튼이고, 10개를 고르면 열한 번째는 골라지지 않고 안내가 뜬다', async ({ page }) => {
   await page.getByRole('button', { name: /^나머지 \d+개 더 보기$/ }).click();
   const first = tiles(page).first();
   await first.locator('.cand-tile__reason').click();
@@ -36,22 +36,22 @@ test('타일 전체가 고르기 버튼이고, 8개를 고르면 아홉 번째�
   await expect(first).toContainText('골랐어요');
   await first.click();
   await expect(first).toHaveAttribute('aria-pressed', 'false');
-  for (let i = 0; i < 8; i += 1) await tiles(page).nth(i).click();
-  const ninth = tiles(page).nth(8);
-  await ninth.click();
-  await expect(ninth).toHaveAttribute('aria-pressed', 'false');
-  await expect(page.locator('.toast')).toContainText('카드는 한 번에 8개까지 만들 수 있어요');
-  await expect(page.locator('.cand-tiles [aria-pressed="true"]')).toHaveCount(8);
+  for (let i = 0; i < 10; i += 1) await tiles(page).nth(i).click();
+  const eleventh = tiles(page).nth(10);
+  await eleventh.click();
+  await expect(eleventh).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.toast')).toContainText('카드는 한 번에 10개까지 만들 수 있어요');
+  await expect(page.locator('.cand-tiles [aria-pressed="true"]')).toHaveCount(10);
 });
 
 test('아래 막대는 고른 수와 걸리는 시간을 말하고, 카드 만들기 하나만 둔다', async ({ page }) => {
   const footer = page.locator('.sticky-footer');
-  await expect(footer.locator('.sticky-footer__text')).toHaveText('카드로 남길 일을 골라 주세요8개까지 고를 수 있어요');
+  await expect(footer.locator('.sticky-footer__text')).toHaveText('카드로 남길 일을 골라 주세요10개까지 고를 수 있어요');
   await expect(footer.getByRole('button')).toHaveCount(1);
   await expect(footer.getByRole('button', { name: '카드 만들기' })).toBeDisabled();
   await tiles(page).nth(0).click();
   await tiles(page).nth(1).click();
-  await expect(footer.locator('.sticky-footer__text')).toHaveText('2개 골랐어요8개까지 고를 수 있고, 하나에 1~2분쯤 걸려요');
+  await expect(footer.locator('.sticky-footer__text')).toHaveText('2개 골랐어요10개까지 고를 수 있고, 하나에 1~2분쯤 걸려요');
   await expect(footer.getByRole('button', { name: '카드 만들기' })).toBeEnabled();
 });
 

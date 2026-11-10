@@ -1,6 +1,6 @@
 import { Copy, ExternalLink, History, Pencil } from 'lucide-react';
-import { DraftProgress } from './DraftProgress';
-import { LiveCardDraft } from './LiveCardDraft';
+import { DraftHeader } from './DraftHeader';
+import { DraftFoot, LiveCardDraft } from './LiveCardDraft';
 import { CardNavigation } from './CardNavigation';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -143,14 +143,9 @@ export function CardPage() {
         <Breadcrumb items={[...crumbs.slice(0, -1), { label: '초안 생성 중' }]} />
         <PageTitle>카드 초안을 쓰고 있어요</PageTitle>
         {job.isError && <QueryFailure error={job.error} retry={() => job.refetch()} pending={job.isFetching} />}
-        <DraftProgress job={j} checkedAt={job.dataUpdatedAt} />
-        <LiveCardDraft view={live.view} instant={{ on: live.manualInstant, toggle: live.reducedMotion ? null : () => live.setManualInstant((on) => !on) }} />
-        <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
-          <div className="right row" style={{ gap: 8 }}>
-            {card.repo && <ButtonLink to={`/repos/${card.repo.id}/candidates`} variant="secondary">후보 보드로</ButtonLink>}
-            <ButtonLink to="/" variant="text">홈으로</ButtonLink>
-          </div>
-        </div>
+        <DraftHeader job={j} checkedAt={job.dataUpdatedAt} view={live.view} />
+        <LiveCardDraft view={live.view} />
+        <DraftFoot folderTo={card.repo || card.activity ? cardFolderPath(card) : undefined} />
       </main>
     );
   }

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Check, CircleDashed, Minus, PencilLine, RefreshCw, TriangleAlert, type LucideIcon } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { ButtonLink } from '@/components/ui';
 import { draftStepGroups } from '@/lib/draftSteps';
 import { kindIcon } from './DraftSteps';
 import { starFieldShort } from '@/lib/labels';
@@ -9,7 +9,7 @@ import './LiveCardDraft.css';
 
 /** 색만으로 상태를 가르지 않는다. 칸 상태는 늘 글자로도 쓴다 */
 const phaseLabel: Record<SlotPhase, string> = {
-  WAITING: '대기', NEXT: '쓸 차례', WRITING: '쓰는 중', REWRITING: '다시 쓰는 중', DONE: '완료', BLANK: '비움', EMPTY: '비어 있음', MISSED: '쓰지 못함',
+  WAITING: '대기', NEXT: '쓸 차례', WRITING: '쓰는 중', REWRITING: '고치는 중', DONE: '완료', BLANK: '비움', EMPTY: '비어 있음', MISSED: '쓰지 못함',
 };
 /** 아이콘은 장식이다 */
 const phaseIcon: Record<SlotPhase, LucideIcon> = {
@@ -19,9 +19,8 @@ const phaseIcon: Record<SlotPhase, LucideIcon> = {
 const phaseNote: Partial<Record<SlotPhase, string>> = {
   BLANK: '근거가 부족해 비워 둠', EMPTY: '이 칸은 쓰지 않았어요', MISSED: '끝내지 못했어요',
 };
-const cardLabel: Record<LiveCard['state'], string> = {
-  WAITING: '차례를 기다리는 중', READING: '코드를 읽는 중', WRITING: '쓰는 중', DONE: '다 썼어요', FAILED: '완성하지 못했어요',
-};
+/** 카드 제목 밑에 한 줄로 보이는 것은 글이 아직 시작되지 않았거나 끝내 못 쓴 카드뿐이다 */
+const cardNote: Partial<Record<LiveCard['state'], string>> = { WAITING: '차례를 기다리고 있어요', READING: '코드를 읽고 있어요', FAILED: '완성하지 못했어요' };
 /** 글이 아직 펼쳐지는 중인 칸은 낭독하지 않는다. 다 쓴 뒤에 읽는다 */
 const unsettled = (phase: SlotPhase) => phase === 'WAITING' || phase === 'NEXT' || phase === 'WRITING' || phase === 'REWRITING';
 
@@ -81,6 +80,7 @@ function Slot({ slot }: { slot: LiveSlot }) {
           </span>
         )}
       </p>
+      {slot.rewrote && !hidden && <span className="live-slot__rewrote">고쳐 썼어요</span>}
       <SlotSteps slot={slot} />
     </li>
   );
@@ -90,15 +90,19 @@ function Slots({ card }: { card: LiveCard }) {
   return <ol className="live-slots">{card.slots.map((slot) => <Slot key={slot.field} slot={slot} />)}</ol>;
 }
 
-/** 다 쓴 카드는 접어 둔다. 눌러서 펼치면 네 칸의 글이 그대로 보인다 */
+/** 다 쓴 카드는 한 줄로 접어 둔다. 눌러서 펼치면 네 칸의 글이 그대로 보인다 */
 function FinishedCard({ card }: { card: LiveCard }) {
   const blanks = card.slots.filter((slot) => slot.phase === 'BLANK').length;
   const failed = card.state === 'FAILED';
+  const skipped = skippedByAi(card);
   return (
     <details className="live-finished__item" data-state={card.state}>
       <summary className="live-finished__summary">
         <span className="live-finished__title">{titleOf(card)}</span>
-        <span className="live-finished__state">{failed ? '완성하지 못했어요' : skippedByAi(card) ? SKIPPED_LABEL : blanks ? `다 썼어요, 비운 칸 ${blanks}개` : '다 썼어요'}</span>
+        <span className="live-finished__state">
+          {!failed && !skipped && <Check size={14} aria-hidden />}
+          {failed ? '완성하지 못했어요' : skipped ? SKIPPED_LABEL : blanks ? `다 썼어요, 비운 칸 ${blanks}개` : '다 썼어요'}
+        </span>
       </summary>
       <div className="live-finished__body"><Slots card={card} /></div>
     </details>
@@ -125,33 +129,26 @@ function useAnnouncement(current: LiveCard | null) {
 }
 
 /**
- * 카드 초안을 쓰는 동안 AI 가 STAR 칸을 쓰는 모습(#617). 지금 쓰는 카드 한 장을 네 칸 틀로 보이고, 다 쓰면 다음 카드로 넘어간다.
- * 다 쓴 칸은 색을 채우고 아직 안 쓴 칸은 비워 둔다. 상태는 색뿐 아니라 칸 이름 옆 글자로도 쓴다.
- * 서버가 준 카드가 없으면(카드 초안 Job 이 아니거나 서버가 진행을 잃음) 아무것도 그리지 않는다. 진행 막대는 따로 있다.
+ * 카드 초안을 쓰는 동안 AI 가 STAR 칸을 쓰는 모습(#617). 지금 쓰는 카드 한 장을 네 칸 틀로 보이고, 다 쓰면 한 줄 목록으로 내려간다.
+ * 다 쓴 칸은 색을 채우고 아직 안 쓴 칸은 비워 둔다. 상태는 색뿐 아니라 칸 이름 옆 글자로도 쓴다. 진행 막대는 DraftHeader 가 맡는다.
+ * 서버가 준 카드가 없으면(카드 초안 Job 이 아니거나 서버가 진행을 잃음) 아무것도 그리지 않는다.
  */
-export function LiveCardDraft({ view, instant }: {
-  view: LiveView;
-  /** 글을 펼치지 않고 한 번에 보이는 중인지, 사용자가 누르는 버튼(동작 줄이기를 켠 사람에게는 필요 없어 null) */
-  instant: { on: boolean; toggle: (() => void) | null };
-}) {
+export function LiveCardDraft({ view }: { view: LiveView }) {
   const titleId = useId();
   const cardTitleId = useId();
   const finishedId = useId();
   const { current, finished } = view;
   const announcement = useAnnouncement(current);
   if (!current) return null;
+  const note = skippedByAi(current) ? SKIPPED_LABEL : cardNote[current.state];
   return (
     <section className="card live-draft" aria-labelledby={titleId}>
-      <div className="live-draft__head">
-        <h2 id={titleId} className="live-draft__title">지금 쓰는 카드</h2>
-        <span className="live-draft__count">{view.total}장 중 {current.index + 1}번째</span>
-        {instant.toggle && <Button variant="secondary" size="sm" aria-pressed={instant.on} onClick={instant.toggle}>한 번에 보기</Button>}
-      </div>
+      <h2 id={titleId} className="live-draft__title">지금 쓰는 카드</h2>
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
       <article className="live-card" data-state={current.state} aria-labelledby={cardTitleId}>
         <header className="live-card__head">
           <h3 id={cardTitleId} className="live-card__title">{titleOf(current)}</h3>
-          <span className="live-card__state">{skippedByAi(current) ? SKIPPED_LABEL : cardLabel[current.state]}</span>
+          {note && <p className="live-card__note">{note}</p>}
         </header>
         <Slots card={current} />
       </article>
@@ -165,3 +162,15 @@ export function LiveCardDraft({ view, instant }: {
   );
 }
 
+/** 화면 맨 아래 글자 링크. 이 화면에는 눌러야 할 큰 버튼이 없다 */
+export function DraftFoot({ folderTo }: {
+  /** 카드가 든 레포·활동 폴더. 없으면 링크를 두지 않는다 */
+  folderTo?: string;
+}) {
+  return (
+    <div className="live-foot">
+      {folderTo && <ButtonLink to={folderTo} variant="text" size="sm">다 쓴 카드 먼저 보기</ButtonLink>}
+      <ButtonLink to="/" variant="text" size="sm">홈으로</ButtonLink>
+    </div>
+  );
+}

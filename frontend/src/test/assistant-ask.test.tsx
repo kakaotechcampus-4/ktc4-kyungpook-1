@@ -43,6 +43,7 @@ const routes = () => [{
     { path: '/', element: <p>홈 화면</p> },
     { path: '/ask', element: <AskPage /> },
     { path: '/ask/:runId', element: <AskPage /> },
+    { path: '/cover-letters/:id', element: <p>자소서 화면</p> },
   ],
 }];
 /** 실제 앱(main.tsx)처럼 StrictMode 안에서 연다 — 효과가 두 번 도는 개발 모드에서도 같아야 한다 */
@@ -292,7 +293,7 @@ describe('문항을 모를 때 고르기', () => {
     expect(screen.queryByText('문항이 아직 없나요?')).not.toBeInTheDocument();
   });
 
-  it('Q2 자주 나오는 문항을 고르면 그 말을 보내고, 끝난 줄은 3개 문항으로 시작했다고 말하며 자소서 열기가 나온다', async () => {
+  it('Q2 자주 나오는 문항을 고르면 그 말을 보내고, 끝난 줄은 3개 문항으로 시작했다고 말하며 자소서를 열어 준다', async () => {
     const made = begin('가온소프트 공고에 맞춰 자소서 써 줘');
     advance(10);
     mount(`/ask/${made.id}`);
@@ -302,6 +303,9 @@ describe('문항을 모를 때 고르기', () => {
     const done = read(made.id);
     expect(done.items.find((i) => i.tool === 'START_COVER_LETTER')).toMatchObject({ defaultQuestions: true, questionCount: 3 });
     expect(await screen.findByText('자주 나오는 문항 3개로 자소서를 쓰기 시작했어요', SEEN)).toBeInTheDocument();
+    // 지켜본 실행이라 자소서가 저절로 열린다 — 머무르면 열기 링크가 남는다
+    expect(await screen.findByText('자소서를 열고 있어요', SEEN)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '여기 머무르기' }));
     expect(await screen.findByRole('link', { name: '자소서 열기' })).toBeInTheDocument();
   });
 
@@ -464,7 +468,7 @@ describe('새 도구 걸음 — 모자란 조건 채우기 · 카드 빈 칸 질
 
   it('F4 자소서를 첨삭했으면 첨삭 보기 버튼이 그 자소서로 간다', async () => {
     await open('DONE', [user, polished()], '첨삭했어요');
-    expect(screen.getByRole('link', { name: '첨삭 보기' })).toHaveAttribute('href', '/cover-letters/cl%2F1');
+    expect(screen.getByRole('link', { name: '첨삭 보기' })).toHaveAttribute('href', '/cover-letters/cl%2F1?tab=polish');
   });
 
   it('F5 새 실패 코드는 정해진 문장으로 보이고, 모르는 코드는 끝내지 못했다고만 보인다', async () => {
@@ -494,5 +498,78 @@ describe('새 도구 걸음 — 모자란 조건 채우기 · 카드 빈 칸 질
     const polish = begin('자소서 첨삭해 줘');
     advance(10);
     expect(read(polish.id).items.find((i) => i.tool === 'POLISH_COVER_LETTER')).toMatchObject({ letterId: db.coverLetters[0].id, polished: [{ seq: 1, points: 3 }, { seq: 2, points: 2 }], remainingQuestions: 0 });
+  });
+});
+
+describe('J2 한 줄 명령으로 자소서를 시작하면 바로 연다', () => {
+  const user = { seq: 1, kind: 'USER', text: '토스 공고로 자소서 써 줘' };
+  const started = { seq: 2, kind: 'STEP', tool: 'START_COVER_LETTER', ok: true, coverLetterId: 'cl_9' };
+  const said = { seq: 3, kind: 'SAY', text: '자소서를 시작했어요' };
+  const serve = (state: () => string) =>
+    connectMockServer((call) => (call.path === '/assistant/runs/run_j' ? json(rawRun('run_j', state(), [user, started, said])) : undefined));
+
+  it('도는 걸 지켜보다 끝나면 한 줄을 보이고 1.5초 뒤 자소서로 간다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let state = 'RUNNING';
+    const { client } = mount('/ask/run_j', serve(() => state));
+    await screen.findByText('자소서를 시작했어요', SEEN);
+    state = 'DONE';
+    await act(async () => { await client.invalidateQueries(); });
+    expect(await screen.findByText('자소서를 열고 있어요')).toBeInTheDocument();
+    expect(where()).toBe('/ask/run_j');
+    await act(async () => { await vi.advanceTimersByTimeAsync(1600); });
+    expect(where()).toBe('/cover-letters/cl_9');
+  });
+
+  it('여기 머무르기를 누르면 타이머가 멈추고 자소서 열기 버튼이 남는다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let state = 'RUNNING';
+    const { client } = mount('/ask/run_j', serve(() => state));
+    await screen.findByText('자소서를 시작했어요', SEEN);
+    state = 'DONE';
+    await act(async () => { await client.invalidateQueries(); });
+    fireEvent.click(await screen.findByRole('button', { name: '여기 머무르기' }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(where()).toBe('/ask/run_j');
+    expect(screen.getByRole('link', { name: '자소서 열기' })).toHaveAttribute('href', '/cover-letters/cl_9');
+  });
+
+  it('이미 끝난 실행을 다시 열면 자동으로 가지 않는다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mount('/ask/run_j', serve(() => 'DONE'));
+    expect(await screen.findByRole('link', { name: '자소서 열기' })).toBeInTheDocument();
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(screen.queryByText('자소서를 열고 있어요')).not.toBeInTheDocument();
+    expect(where()).toBe('/ask/run_j');
+  });
+});
+
+describe('J3 실패했을 때 이어갈 일', () => {
+  const user = { seq: 1, kind: 'USER', text: '토스 공고로 자소서 써 줘' };
+  const failStep = (error: string) => ({ seq: 2, kind: 'STEP', tool: 'START_COVER_LETTER', ok: false, error });
+  const open = async (state: string, items: unknown[]) => {
+    mount('/ask/run_f', connectMockServer((call) => (call.path === '/assistant/runs/run_f' ? json(rawRun('run_f', state, items)) : undefined)));
+    await screen.findByText(user.text, SEEN);
+  };
+
+  it('실행이 실패하면 다시 하기가 처음 적은 말로 /ask?q= 에 간다', async () => {
+    await open('FAILED', [user]);
+    fireEvent.click(await screen.findByRole('button', { name: '다시 하기' }));
+    await waitFor(() => expect(where()).toBe(`/ask?q=${encodeURIComponent(user.text)}`));
+  });
+
+  it('확정 카드가 없어서 끝났으면 카드 확정하러 가기가 카드 화면으로 잇는다', async () => {
+    await open('DONE', [user, failStep('NO_CONFIRMED_CARDS')]);
+    expect(await screen.findByRole('link', { name: '카드 확정하러 가기' })).toHaveAttribute('href', '/cards');
+  });
+
+  it('GitHub 연결이 끊겨서 끝났으면 GitHub 다시 연결이 설정으로 잇는다', async () => {
+    await open('DONE', [user, failStep('GITHUB_DISCONNECTED')]);
+    expect(await screen.findByRole('link', { name: 'GitHub 다시 연결' })).toHaveAttribute('href', '/settings/github');
+  });
+
+  it('다른 이유로 걸음이 실패했으면 다시 하기를 보인다', async () => {
+    await open('DONE', [user, failStep('RATE_LIMITED')]);
+    expect(await screen.findByRole('button', { name: '다시 하기' })).toBeInTheDocument();
   });
 });

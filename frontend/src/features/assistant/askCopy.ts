@@ -76,7 +76,7 @@ export function resultLink(items: readonly AssistantItem[]): { label: string; to
   for (const item of [...items].reverse()) {
     if (item.kind !== 'STEP' || item.ok !== true) continue;
     if (item.tool === 'START_COVER_LETTER' && item.coverLetterId) return { label: '자소서 열기', to: `/cover-letters/${encodeURIComponent(item.coverLetterId)}` };
-    if (item.tool === 'POLISH_COVER_LETTER' && item.letterId) return { label: '첨삭 보기', to: `/cover-letters/${encodeURIComponent(item.letterId)}` };
+    if (item.tool === 'POLISH_COVER_LETTER' && item.letterId) return { label: '첨삭 보기', to: `/cover-letters/${encodeURIComponent(item.letterId)}?tab=polish` };
     if (item.tool === 'ASK_CARD_GAP' && item.cardId && item.question) return { label: '질문에 답하기', to: `/cards/${encodeURIComponent(item.cardId)}/interview` };
     if (item.tool === 'START_REPO_ANALYSIS' && item.repoId) {
       const job = item.jobId ? `?job=${encodeURIComponent(item.jobId)}` : '';
@@ -84,6 +84,24 @@ export function resultLink(items: readonly AssistantItem[]): { label: string; to
     }
   }
   return null;
+}
+
+/** 한 줄 명령으로 자소서를 막 시작했을 때 바로 열 자소서 — 마지막으로 잘 끝난 걸음이 자소서 시작일 때만이다 */
+export function coverLetterToOpen(items: readonly AssistantItem[]): string | null {
+  const last = [...items].reverse().find((item) => item.kind === 'STEP' && item.ok === true);
+  return last?.tool === 'START_COVER_LETTER' && last.coverLetterId ? `/cover-letters/${encodeURIComponent(last.coverLetterId)}` : null;
+}
+
+/** 다시 하기에 쓸 말 — 이 실행에서 처음 적은 말이다 */
+export const firstUserText = (items: readonly AssistantItem[]) => items.find((item) => item.kind === 'USER')?.text?.trim() || null;
+
+/** 마지막 걸음이 실패로 끝났을 때 이어갈 일 — 링크가 아니면 같은 말로 다시 하기다 */
+export function failedNext(items: readonly AssistantItem[]): { label: string; to: string } | 'RETRY' | null {
+  const last = items.filter((item) => item.kind === 'STEP').at(-1);
+  if (!last || last.ok !== false) return null;
+  if (last.error === 'NO_CONFIRMED_CARDS') return { label: '카드 확정하러 가기', to: '/cards' };
+  if (last.error === 'GITHUB_DISCONNECTED') return { label: 'GitHub 다시 연결', to: '/settings/github' };
+  return 'RETRY';
 }
 
 /** 마지막으로 끝난 걸음이 공고 맞춰 보기·모자란 조건 채우기일 때 그 공고로 가는 카드 — 그 뒤에 다른 일을 했으면 카드를 띄우지 않는다 */

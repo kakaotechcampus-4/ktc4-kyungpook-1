@@ -107,7 +107,7 @@ describe('정리 화면 (#520 G-13 · A-04 · A-05 · A-08 · A-09 · A-12)', ()
 
   it('일부만 정리한 결과는 클래스로 꾸미고(인라인 스타일 없음) 버튼 이름이 그대로다', () => {
     mountAnalyze('/repos/r_auth/run?job=job', job({ state: 'SUCCEEDED', partial: true, errorCode: 'GITHUB_RATE_LIMITED', retryable: true, retryAfterSec: 720, finishedAt: new Date().toISOString() }));
-    const card = document.querySelector('.partial-card')!;
+    const card = document.querySelector('.run-capnote')!;
     expect(card).not.toBeNull();
     expect(card.getAttribute('style')).toBeNull();
     expect(within(card as HTMLElement).getByRole('button', { name: /뒤 이어 읽기$/ })).toBeDisabled();

@@ -78,10 +78,10 @@ describe('정리 실패 화면 — 서버가 모르는 오류 코드를 보내�
     expect(await screen.findByRole('button', { name: '다시 시도' })).toBeEnabled();
   });
 
-  it('부분 결과에 모르는 코드가 붙어도 읽은 범위의 후보로 가는 길이 남는다', async () => {
+  it('부분 결과에 모르는 코드가 붙어도 후보를 직접 고르는 길이 남는다', async () => {
     serve({ '/jobs/job_x': job({ state: 'SUCCEEDED', partial: true, errorCode: 'GITHUB_QUOTA_EXCEEDED' }) });
     mount(<AnalyzePage />, '/repos/r_auth/run?job=job_x', '/repos/:repoId/run');
-    expect(await screen.findByRole('button', { name: '읽은 범위의 후보 보기' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: '후보 직접 고르기' })).toBeInTheDocument();
     expect(screen.getByText(/서버가 작업을 끝내지 못했어요|서버에서 처리하지 못했어요/)).toBeInTheDocument();
   });
 

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { keys } from '@/api/keys';
 import { Job, RepoDetail } from '@/api/schemas';
 import { AnalyzePage } from '@/features/repos/AnalyzePage';
-import { activityLine, READ_LINES, revealDelay, stepLines, type ActivityLine } from '@/lib/agentActivity';
+import { activityLine, foldedJudgeCount, JUDGE_LINES, READ_LINES, revealDelay, stepLines, type ActivityLine } from '@/lib/agentActivity';
 import { handle } from '@/mock/router';
 import { resetDb, viewJob, startAnalyze } from '@/mock/store';
 
@@ -72,6 +72,20 @@ describe('activity 한 줄 만들기', () => {
     expect(stepLines(lines, 'REASON', false).map((l) => l.text)).toEqual(['A', 'B']);
   });
 
+  it('지금 읽는 단계의 판단 줄은 최근 3줄만 보이고 접은 수를 알려 준다', () => {
+    const lines = Array.from({ length: 5 }, (_, i) => activityLine(described(i + 1, `이유 ${i + 1}`))).filter((l): l is ActivityLine => !!l);
+    expect(stepLines(lines, 'REASON', true).map((l) => l.text)).toEqual(['이유 3', '이유 4', '이유 5'].slice(-JUDGE_LINES));
+    expect(foldedJudgeCount(lines, 'REASON', true)).toBe(2);
+    expect(foldedJudgeCount(lines.slice(0, 3), 'REASON', true)).toBe(0);
+  });
+
+  it('끝난 단계는 판단 줄이 3줄을 넘으면 모두 접고, 3줄 이하면 그대로 둔다', () => {
+    const lines = Array.from({ length: 5 }, (_, i) => activityLine(described(i + 1, `이유 ${i + 1}`))).filter((l): l is ActivityLine => !!l);
+    expect(stepLines(lines, 'REASON', false)).toEqual([]);
+    expect(foldedJudgeCount(lines, 'REASON', false)).toBe(5);
+    expect(stepLines(lines.slice(0, 2), 'REASON', false)).toHaveLength(2);
+  });
+
   it('한꺼번에 온 판단 줄은 남은 수가 많을수록 빨리 보인다', () => {
     expect(revealDelay(1)).toBe(600);
     expect(revealDelay(8)).toBeLessThan(revealDelay(2));
@@ -102,6 +116,19 @@ describe('분석 화면에 AI 가 읽고 판단한 줄', () => {
     await waitFor(() => expect(screen.getByText('로그인 세션 처리')).toBeInTheDocument(), { timeout: 3000 });
     expect(screen.queryByText('후보 보드 화면')).not.toBeInTheDocument();
     await screen.findByText('후보 보드 화면', {}, { timeout: 5000 });
+  });
+
+  it('끝난 고른 이유 단계가 5개면 "추천 이유 5개를 붙였어요" 한 줄과 후보 보드 링크만 보이고, 2개면 그대로 보인다', async () => {
+    const done = steps('REASON').map((s) => ({ ...s, state: 'DONE' }));
+    const base = { state: 'SUCCEEDED', finishedAt: '2026-10-29T00:00:10Z', pollAfterMs: 0, steps: done }; // 오래전에 끝나 한꺼번에 보인다
+    mount(job({ ...base, activity: [1, 2, 3, 4, 5].map((n) => described(n, `이유 ${n}번`)) }));
+    expect(await screen.findByText('추천 이유 5개를 붙였어요')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '후보 보드에서 보기' })).toHaveAttribute('href', '/repos/r_auth/candidates');
+    expect(screen.queryByText('이유 1번')).not.toBeInTheDocument();
+    cleanup();
+    mount(job({ ...base, activity: [1, 2].map((n) => described(n, `이유 ${n}번`)) }));
+    expect(await screen.findByText('이유 2번')).toBeInTheDocument();
+    expect(screen.queryByText(/추천 이유 \d+개를 붙였어요/)).not.toBeInTheDocument();
   });
 
   it('폴링으로 같은 seq 가 다시 와도 한 번만 그린다', () => {

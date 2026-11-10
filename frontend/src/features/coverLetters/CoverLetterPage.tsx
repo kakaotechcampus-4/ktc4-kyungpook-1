@@ -175,7 +175,7 @@ function Failed({ letter }: { letter: CoverLetter }) {
       </div>
       <div className="row" style={{ gap: 8 }}>
         {letter.retryable === true && <Button onClick={() => retry.mutate(undefined)} loading={retry.isPending}>다시 시도</Button>}
-        <Link to="/cover-letters/new" className={buttonClass(letter.retryable === true ? 'secondary' : 'primary')}>새로 만들기</Link>
+        <Link to={`/cover-letters/new?from=${encodeURIComponent(letter.id)}`} className={buttonClass(letter.retryable === true ? 'secondary' : 'primary')}>새로 만들기</Link>
       </div>
     </>
   );

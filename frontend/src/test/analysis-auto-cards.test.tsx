@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -8,6 +8,7 @@ import { keys } from '@/api/keys';
 import { Candidate, CandidateBoard, CardSummary, Job, RepoDetail } from '@/api/schemas';
 import { AnalyzePage } from '@/features/repos/AnalyzePage';
 import { MAX_CARDS_PER_REQUEST } from '@/lib/candidatePicks';
+import { jobErrorTitle } from '@/lib/labels';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 
@@ -83,8 +84,8 @@ describe('정리가 끝나면 카드 초안까지 이어서 쓴다', () => {
     expect(create).not.toHaveBeenCalled();
 
     release();
-    await screen.findByText('카드를 쓰기 시작했어요', {}, LONG);
-    expect(screen.queryByRole('link', { name: '후보 직접 고르기' })).not.toBeInTheDocument();
+    await screen.findByText(`추천 후보 ${MAX_CARDS_PER_REQUEST}개로 카드 초안을 쓰러 가요`, {}, LONG);
+    expect(screen.getByRole('link', { name: '후보 직접 고르기' })).toBeInTheDocument(); // 넘어가기 전까지 직접 고르는 길을 남긴다
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'] } }), LONG);
     expect(create).toHaveBeenCalledTimes(1);
     expect(create).toHaveBeenCalledWith('r_auth', topIds('s')); // 쓸 만한 후보가 상한보다 많아도 상한까지, 점수 순이다
@@ -102,7 +103,6 @@ describe('정리가 끝나면 카드 초안까지 이어서 쓴다', () => {
     const { create, finish } = mount(job('RUNNING'), { cards: [cardOf('r_auth')] });
     finish(job('SUCCEEDED'));
     await screen.findByText('만들어 둔 카드가 있어서 카드 폴더로 가요', {}, LONG);
-    expect(screen.queryByRole('link', { name: '후보 직접 고르기' })).not.toBeInTheDocument();
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/repo/r_auth', { replace: true }), LONG);
     expect(create).not.toHaveBeenCalled();
     expect(navigate).toHaveBeenCalledTimes(1);
@@ -137,15 +137,22 @@ describe('정리가 끝나면 카드 초안까지 이어서 쓴다', () => {
     expect(navigate).toHaveBeenCalledTimes(1);
   });
 
-  it('일부만 읽은 정리는 카드를 만들지 않고 지금처럼 멈춘다', async () => {
-    const { create, read, list, finish } = mount(job('RUNNING'));
+  it('일부만 읽은 정리도 같은 길로 간다 — 상한 안내 한 줄만 더하고 첫 카드로 넘어간다', async () => {
+    const { create, finish } = mount(job('RUNNING'));
     finish(job('SUCCEEDED', { partial: true, errorCode: 'COLLECTION_CAPPED', retryable: false }));
     await screen.findByRole('heading', { level: 1, name: '읽은 데까지 정리했어요' }, LONG);
-    await settle(900); // 다 읽은 정리가 넘어가기까지 머무는 시간보다 길게
-    expect(screen.getByRole('button', { name: '읽은 범위의 후보 보기' })).toBeInTheDocument();
-    expect(create).not.toHaveBeenCalled();
-    expect(read).not.toHaveBeenCalled();
-    expect(list).not.toHaveBeenCalled();
-    expect(navigate).not.toHaveBeenCalled();
+    expect(screen.getByText(jobErrorTitle.COLLECTION_CAPPED)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '읽은 범위의 후보 보기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /이어 읽기/ })).not.toBeInTheDocument();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'] } }), LONG);
+    expect(create).toHaveBeenCalledWith('r_auth', topIds('s'));
+  });
+
+  it('한도에 걸린 일부 정리는 상한 안내 안에 이어 읽기 버튼을 둔다', async () => {
+    const { finish } = mount(job('RUNNING'));
+    finish(job('SUCCEEDED', { partial: true, errorCode: 'GITHUB_RATE_LIMITED', retryable: true, retryAfterSec: 0 }));
+    await screen.findByRole('heading', { level: 1, name: '읽은 데까지 정리했어요' }, LONG);
+    const note = document.querySelector('.run-capnote') as HTMLElement;
+    expect(within(note).getByRole('button', { name: '이어 읽기' })).toBeEnabled();
   });
 });

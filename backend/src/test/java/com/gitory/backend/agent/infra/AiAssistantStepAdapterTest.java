@@ -34,9 +34,17 @@ class AiAssistantStepAdapterTest {
             List.of(new AssistantStepRequest.DoneStep(2, AssistantTool.FIND_POSTINGS, true, null,
                     new AssistantStepRequest.Find("토스", List.of("백엔드")), null, null,
                     List.of(new AssistantStepRequest.Posting("p1", "토스", "백엔드 개발자", 2, null, null)), 1, null,
-                    null)),
+                    null, null, null, null, null, List.of(), null),
+                    new AssistantStepRequest.DoneStep(3, AssistantTool.ASK_CARD_GAP, true, null, null, null, null,
+                            null, null, null, null, "c1", null, null,
+                            new AssistantStepRequest.QuestionAsked("R", "결과는 어땠나요?"), List.of(), null),
+                    new AssistantStepRequest.DoneStep(4, AssistantTool.POLISH_COVER_LETTER, true, null, null, null,
+                            null, null, null, null, null, null, "l1", null, null,
+                            List.of(new AssistantStepRequest.Polished(1, 3)), 2)),
             new AssistantStepRequest.Context(2, List.of(new AssistantStepRequest.Repo("r1", "gitory", true, false)),
-                    List.of("백엔드")),
+                    List.of("백엔드"),
+                    List.of(new AssistantStepRequest.Card("c1", "결제 서버 개선", List.of("상황", "결과"))),
+                    List.of(new AssistantStepRequest.Letter("l1", "백엔드 개발자", "토스", 3))),
             4);
 
     private final ObjectMapper mapper = JsonMapper.builder().build();
@@ -100,7 +108,19 @@ class AiAssistantStepAdapterTest {
         assertThat(sent.path("context").path("repos").get(0).path("analyzed").booleanValue()).isTrue();
         assertThat(sent.path("context").path("repos").get(0).path("analyzing").booleanValue()).isFalse();
         assertThat(sent.path("context").path("interests").get(0).asString()).isEqualTo("백엔드");
-        assertThat(call).isEqualTo(AssistantStepReply.call(AssistantTool.START_COVER_LETTER, null, "p1", null, null,
+        JsonNode asked = sent.path("steps").get(1);
+        assertThat(asked.path("card_ref").asString()).isEqualTo("c1");
+        assertThat(asked.path("question").path("field").asString()).isEqualTo("R");
+        assertThat(asked.path("question").path("text").asString()).isEqualTo("결과는 어땠나요?");
+        JsonNode polished = sent.path("steps").get(2);
+        assertThat(polished.path("letter_ref").asString()).isEqualTo("l1");
+        assertThat(polished.path("polished").get(0).path("points").asInt()).isEqualTo(3);
+        assertThat(polished.path("remaining_questions").asInt()).isEqualTo(2);
+        assertThat(sent.path("context").path("cards").get(0).path("ref").asString()).isEqualTo("c1");
+        assertThat(sent.path("context").path("cards").get(0).path("missing").get(1).asString()).isEqualTo("결과");
+        assertThat(sent.path("context").path("letters").get(0).path("job_role").asString()).isEqualTo("백엔드 개발자");
+        assertThat(sent.path("context").path("letters").get(0).path("question_count").asInt()).isEqualTo(3);
+        assertThat(call).isEqualTo(AssistantStepReply.call(AssistantTool.START_COVER_LETTER, null, "p1", null, null, null, null,
                 List.of(new AssistantStepReply.Question("지원 동기를 쓰세요", null),
                         new AssistantStepReply.Question("협업 경험을 쓰세요", 700))));
 
@@ -110,6 +130,33 @@ class AiAssistantStepAdapterTest {
 
         responseBody = success(finishReply());
         assertThat(adapter().next(REQUEST)).isEqualTo(AssistantStepReply.finish("자소서를 쓰기 시작했어요."));
+
+    }
+
+    @Test
+    @DisplayName("새 도구는 card_ref, letter_ref, posting_ref 를 읽는다")
+    void readsRefsOfTheNewTools() {
+
+        ObjectNode ask = callReply();
+        ask.put("tool", "ASK_CARD_GAP").put("card_ref", "c1").putNull("posting_ref");
+        ask.putArray("questions");
+        responseBody = success(ask);
+        assertThat(adapter().next(REQUEST)).isEqualTo(AssistantStepReply.call(AssistantTool.ASK_CARD_GAP, null, null,
+                null, "c1", null, null, List.of()));
+
+        ObjectNode polish = callReply();
+        polish.put("tool", "POLISH_COVER_LETTER").put("letter_ref", "l1").putNull("posting_ref");
+        polish.putArray("questions");
+        responseBody = success(polish);
+        assertThat(adapter().next(REQUEST)).isEqualTo(AssistantStepReply.call(AssistantTool.POLISH_COVER_LETTER, null,
+                null, null, null, "l1", null, List.of()));
+
+        ObjectNode fill = callReply();
+        fill.put("tool", "FILL_POSTING_GAPS");
+        fill.putArray("questions");
+        responseBody = success(fill);
+        assertThat(adapter().next(REQUEST)).isEqualTo(AssistantStepReply.call(AssistantTool.FILL_POSTING_GAPS, null,
+                "p1", null, null, null, null, List.of()));
 
     }
 

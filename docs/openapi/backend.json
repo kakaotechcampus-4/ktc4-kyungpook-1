@@ -945,16 +945,29 @@
             "description" : "ASK 만. QUESTIONS·CHOICE·FREE",
             "type" : "string"
           },
+          "cardId" : {
+            "description" : "ASK_CARD_GAP 이 질문을 연 카드",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "cardTitle" : {
+            "type" : "string"
+          },
           "coverLetterId" : {
             "format" : "uuid",
             "type" : "string"
           },
           "error" : {
-            "description" : "실패한 걸음의 코드(NOT_FOUND·NO_CONFIRMED_CARDS·RATE_LIMITED·FAILED)",
+            "description" : "실패한 걸음의 코드(NOT_FOUND·NO_CONFIRMED_CARDS·RATE_LIMITED·NOT_MATCHED·GITHUB_DISCONNECTED·CAP_REACHED·NOT_READY·FAILED)",
             "type" : "string"
           },
           "find" : {
             "$ref" : "#/components/schemas/AssistantRunFind"
+          },
+          "gapsFilled" : {
+            "description" : "FILL_POSTING_GAPS 로 맞은 필수 조건이 늘어난 수",
+            "format" : "int32",
+            "type" : "integer"
           },
           "jobId" : {
             "format" : "uuid",
@@ -962,6 +975,11 @@
           },
           "kind" : {
             "enum" : [ "USER", "STEP", "ASK", "SAY" ],
+            "type" : "string"
+          },
+          "letterId" : {
+            "description" : "POLISH_COVER_LETTER 가 첨삭한 자소서",
+            "format" : "uuid",
             "type" : "string"
           },
           "match" : {
@@ -977,9 +995,16 @@
             },
             "type" : "array"
           },
+          "polished" : {
+            "description" : "POLISH_COVER_LETTER 가 첨삭한 문항(번호 순서)",
+            "items" : {
+              "$ref" : "#/components/schemas/AssistantRunPolished"
+            },
+            "type" : "array"
+          },
           "posting" : {
             "$ref" : "#/components/schemas/AssistantRunPosting",
-            "description" : "MATCH_POSTING 이 맞춰 본 공고"
+            "description" : "MATCH_POSTING·FILL_POSTING_GAPS 가 다룬 공고"
           },
           "postings" : {
             "items" : {
@@ -987,7 +1012,16 @@
             },
             "type" : "array"
           },
+          "question" : {
+            "$ref" : "#/components/schemas/AssistantRunQuestion",
+            "description" : "ASK_CARD_GAP 이 연 질문. 더 물을 것이 없으면 없다"
+          },
           "questionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "remainingQuestions" : {
+            "description" : "POLISH_COVER_LETTER 뒤에도 아직 첨삭하지 않은 문항 수",
             "format" : "int32",
             "type" : "integer"
           },
@@ -1007,7 +1041,7 @@
             "type" : "string"
           },
           "tool" : {
-            "enum" : [ "FIND_POSTINGS", "MATCH_POSTING", "START_COVER_LETTER", "START_REPO_ANALYSIS" ],
+            "enum" : [ "FIND_POSTINGS", "MATCH_POSTING", "START_COVER_LETTER", "START_REPO_ANALYSIS", "FILL_POSTING_GAPS", "ASK_CARD_GAP", "POLISH_COVER_LETTER" ],
             "type" : "string"
           },
           "totalFound" : {
@@ -1042,6 +1076,21 @@
         },
         "type" : "object"
       },
+      "AssistantRunPolished" : {
+        "properties" : {
+          "points" : {
+            "description" : "첨삭 포인트 수",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "seq" : {
+            "description" : "문항 번호",
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "AssistantRunPosting" : {
         "properties" : {
           "company" : {
@@ -1066,6 +1115,18 @@
             "type" : "integer"
           },
           "title" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AssistantRunQuestion" : {
+        "properties" : {
+          "field" : {
+            "description" : "S·T·A·R",
+            "type" : "string"
+          },
+          "text" : {
             "type" : "string"
           }
         },

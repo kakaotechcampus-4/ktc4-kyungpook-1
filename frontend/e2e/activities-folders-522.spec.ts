@@ -92,21 +92,23 @@ test('확정 카드가 든 활동을 지우면 확정 카드도 지워진다고 
   await expect(page.locator('.experience-item')).toHaveCount(6); // 8장 중 활동 카드 2장이 함께 지워졌다
 });
 
-test('폴더는 키보드로 열고, 위에 두면 테두리 색만 바뀌며 겹친 종이 장식은 없다(#920)', async ({ page }) => {
+test('폴더는 키보드로 열고, 위에 두면 테두리 색이 바뀌고 부채꼴이 조금 벌어진다', async ({ page }) => {
   await loginAsDemo(page);
   await page.goto('/cards');
   const auth = folder(page, /^레포 hong-dev, auth-service/);
   await expect(auth).toBeVisible();
   const read = (el: Element) => {
     const back = el.querySelector('.folder__back')!, front = el.querySelector('.folder__front')!;
-    return { layers: ['::before', '::after'].map((pseudo) => getComputedStyle(back, pseudo).display), border: getComputedStyle(front).borderColor, box: JSON.stringify(el.getBoundingClientRect()), transform: getComputedStyle(el).transform };
+    return { layer: getComputedStyle(back, '::before').borderTopColor, layer2: getComputedStyle(back, '::after').borderTopColor, border: getComputedStyle(front).borderColor, box: JSON.stringify(el.getBoundingClientRect()), transform: getComputedStyle(el).transform };
   };
-  const before = await auth.evaluate(read);
-  expect(before.layers).toEqual(['none', 'none']); // 폴더 수와 상태는 글이 말한다
+  const fan = (el: Element) => getComputedStyle(el.querySelector('.folder__back')!, '::before').transform;
+  const before = await auth.evaluate(read), fanBefore = await auth.evaluate(fan);
   await auth.hover();
-  await expect.poll(async () => (await auth.evaluate(read)).border).not.toBe(before.border); // 맨 위 카드 테두리
   const after = await auth.evaluate(read);
-  expect(after.layers).toEqual(['none', 'none']);
+  await expect.poll(() => auth.evaluate(fan)).not.toBe(fanBefore); // 부채꼴이 조금 더 벌어진다
+  expect(after.border).not.toBe(before.border); // 맨 위 카드 테두리
+  expect(after.layer).not.toBe(before.layer); // 겹친 카드 테두리
+  expect(after.layer2).toBe(after.layer); // 겹친 카드는 한 색
   expect(after.box).toBe(before.box); // 폴더 자리는 그대로
   expect(after.transform).toBe(before.transform);
 
@@ -132,6 +134,36 @@ for (const [width, perRow] of [[1440, 3], [1920, 4]] as const) test(`폴더는 �
   for (const box of boxes) { expect(box.width).toBeGreaterThanOrEqual(340); expect(box.width).toBeLessThanOrEqual(440); }
   expect(boxes.filter((box) => Math.round(box.top) === Math.round(boxes[0].top))).toHaveLength(perRow);
   expect(boxes.filter((box) => box.top > boxes[0].bottom)).toHaveLength(5 - perRow); // 다섯이면 두 줄
+});
+
+test('위에 두어 부채꼴이 벌어져도 뒤 카드가 윗줄 폴더에 닿지 않는다(1440, 두 줄)', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' }); // 0.15초 움직임 없이 벌어진 자리를 바로 잰다
+  await loginAsDemo(page);
+  await page.goto('/cards');
+  await expect(page.locator('.folder')).toHaveCount(5);
+  const decks = page.locator('.folder:not([data-deck="0"])');
+  expect(await decks.count()).toBeGreaterThan(0);
+  for (const deck of await decks.all()) {
+    await deck.hover();
+    const result = await deck.evaluate((el) => {
+      const back = el.querySelector('.folder__back')!, box = back.getBoundingClientRect(), self = el.getBoundingClientRect();
+      // 뒤 카드는 아래쪽 오른편(85% 100%)을 축으로 돈다. 네 모서리를 돌려 가장 높은 점을 찾는다
+      const layers = ['::before', '::after'].map((pseudo) => getComputedStyle(back, pseudo)).filter((style) => style.display !== 'none');
+      const tops = layers.map((style) => {
+        const turn = new DOMMatrix(style.transform), ox = box.width * .85, oy = box.height;
+        return box.top + oy + Math.min(...[[0, 0], [box.width, 0], [0, box.height], [box.width, box.height]].map(([x, y]) => turn.transformPoint(new DOMPoint(x - ox, y - oy)).y));
+      });
+      const angles = layers.map((style) => { const turn = new DOMMatrix(style.transform); return Math.round(Math.atan2(turn.b, turn.a) * 180 / Math.PI); });
+      const rowGap = parseFloat(getComputedStyle(el.closest('.folder-grid')!).rowGap);
+      const above = Array.from(document.querySelectorAll('.folder')).map((other) => other.getBoundingClientRect())
+        .filter((other) => Math.round(other.left) === Math.round(self.left) && other.bottom <= self.top);
+      return { top: Math.min(...tops), angles, rowLine: self.top - rowGap, aboveBottom: above.length ? Math.max(...above.map((other) => other.bottom)) : null };
+    });
+    expect(result.angles.sort()).toEqual(result.angles.length === 2 ? [4, 7] : [4]); // 올린 각도
+    expect(result.top).toBeGreaterThanOrEqual(result.rowLine); // 윗줄이 끝나는 선보다 아래
+    if (result.aboveBottom !== null) expect(result.top).toBeGreaterThanOrEqual(result.aboveBottom);
+    await page.mouse.move(0, 0);
+  }
 });
 
 for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark'] as const) {

@@ -49,13 +49,13 @@ function stubFetch(log: string[], hold?: Promise<void>) {
   });
 }
 
-function mount(l: CoverLetter) {
+function mount(l: CoverLetter, search = '') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
   client.setQueryData(coverLetterKeys.one(l.id), l);
   client.setQueryData(keys.cards, (req('GET', '/cards').data as unknown[]).map((c) => CardSummary.parse(c)));
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[`/cover-letters/${l.id}`]}>
+      <MemoryRouter initialEntries={[`/cover-letters/${l.id}${search}`]}>
         <Routes><Route path="/cover-letters/:coverLetterId" element={<CoverLetterPage />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -114,6 +114,15 @@ describe('목 서버', () => {
 });
 
 describe('진단과 첨삭 탭', () => {
+  it('J4 주소에 tab=polish 가 있으면 진단과 첨삭 탭에서 시작하고, 모르는 값이면 대화 탭에서 시작한다', () => {
+    const l = draftedFromMock();
+    mount(l, '?tab=polish');
+    expect(screen.getByRole('tab', { name: '진단과 첨삭' })).toHaveAttribute('aria-selected', 'true');
+    cleanup();
+    mount(l, '?tab=nothing');
+    expect(screen.getByRole('tab', { name: '진단과 첨삭' })).toHaveAttribute('aria-selected', 'false');
+  });
+
   it('첨삭 받기는 POST …/polish 를 부르고, 기다리는 동안 살펴보는 중 → 고치는 중, 끝나면 종합 평가 · 포인트 · 고친 글을 보인다', async () => {
     const log: string[] = [];
     let release!: () => void;

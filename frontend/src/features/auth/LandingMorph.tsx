@@ -15,9 +15,18 @@ export function LandingMorph({ active }: { active: boolean }) {
   const [still] = useState(reducedMotion);
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>(still ? 'chip' : 'commit');
+  // 숨은 탭의 타이머는 브라우저가 늦춰서 돌아오면 한꺼번에 터진다 — 숨겨지면 멈추고 다시 보일 때 이 커밋의 처음부터 돈다
+  const [round, setRound] = useState(0);
 
   useEffect(() => {
     if (still || !active) return;
+    const onVisibility = () => setRound((value) => value + 1);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [active, still]);
+
+  useEffect(() => {
+    if (still || !active || document.hidden) return;
     setPhase('commit');
     // 바뀌는 쪽이 사라지고 0.6초 뒤에 다음 글이 떠오른다 — 커밋에서 문장으로 갈 때와 다음 커밋으로 돌아갈 때 같은 빠르기다
     const steps: [number, () => void][] = [
@@ -28,7 +37,7 @@ export function LandingMorph({ active }: { active: boolean }) {
     ];
     const timers = steps.map(([ms, run]) => window.setTimeout(run, ms));
     return () => timers.forEach(window.clearTimeout);
-  }, [active, index, still]);
+  }, [active, index, round, still]);
 
   const pair = MORPH_PAIRS[index];
   return (

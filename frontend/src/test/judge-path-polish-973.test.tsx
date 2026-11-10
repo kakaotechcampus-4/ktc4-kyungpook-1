@@ -139,7 +139,7 @@ describe('/cover-letters', () => {
   });
 
   it('목록이 있으면 머리의 새 자소서 하나가 주된 버튼이다', () => {
-    mountList([{ id: 'a', stage: 'DRAFTED', jobRole: '백엔드 개발', posting: null, questionCount: 1, firstQuestion: '지원 동기', createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-01T00:00:00Z' }]);
+    mountList([{ id: 'a', stage: 'DRAFTED', jobRole: '백엔드 개발', posting: null, questionCount: 1, emptyQuestionCount: 0, firstQuestion: '지원 동기', createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-01T00:00:00Z' }]);
     const buttons = screen.getAllByRole('link', { name: '새 자소서' });
     expect(buttons).toHaveLength(1);
     expect(isPrimary(buttons[0])).toBe(true);

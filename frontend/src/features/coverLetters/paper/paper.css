@@ -34,6 +34,7 @@
 .pq__answer--empty { color: var(--text-tertiary); }
 .pq__card { grid-column: 2; margin-top: -8px; font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
 .pq__foot { grid-column: 2; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
+.pq__empty { margin: 0; font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
 .pq__count { margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pq__count--over { color: var(--state-failed-text); font-weight: var(--weight-bold); }
 .pq__tools { grid-column: 2; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }

@@ -12,7 +12,7 @@ afterEach(cleanup);
 
 const POSTING = { id: '3f6c2a10-6b1d-4c2e-9a51-0d7e8b4f1a01', company: '가온소프트', title: '백엔드 엔지니어 (Java·Spring)' };
 const summary = (over: Record<string, unknown>) => CoverLetterSummary.parse({
-  id: 'a', stage: 'DRAFTED', jobRole: '백엔드 개발', posting: null, questionCount: 1, firstQuestion: '지원 동기를 적어 주세요',
+  id: 'a', stage: 'DRAFTED', jobRole: '백엔드 개발', posting: null, questionCount: 1, emptyQuestionCount: 0, firstQuestion: '지원 동기를 적어 주세요',
   createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-01T00:00:00Z', ...over,
 });
 
@@ -66,5 +66,13 @@ describe('자소서 목록 종이', () => {
     expect(within(done).getByText('초안 완성')).toHaveClass('badge--CONFIRMED');
     expect(within(drafting).getByText('초안 쓰는 중')).toHaveClass('badge--NEUTRAL');
     expect(within(failed).getByText('멈춤')).toHaveClass('badge--NEUTRAL');
+  });
+
+  it('S7 빈 문항이 있는 초안 완성 자소서는 목록에서 재료 필요로 보인다', () => {
+    mount([summary({ id: 'a', stage: 'DRAFTED', emptyQuestionCount: 1 }), summary({ id: 'b', stage: 'DRAFTING', emptyQuestionCount: 1 })]);
+    const [empty, drafting] = screen.getAllByRole('listitem');
+    expect(within(empty).getByText('재료 필요')).toHaveClass('badge--CAUTION');
+    expect(within(empty).queryByText('초안 완성')).not.toBeInTheDocument();
+    expect(within(drafting).getByText('초안 쓰는 중')).toBeInTheDocument();
   });
 });

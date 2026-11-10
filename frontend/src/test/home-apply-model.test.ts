@@ -7,7 +7,7 @@ const NOW = Date.parse('2026-11-07T10:00:00+09:00');
 const inDays = (days: number) => new Date(NOW + days * 86_400_000).toISOString();
 const pick = (id: string, days: number | null): HomePick => ({ postingId: id, company: `회사 ${id}`, title: `공고 ${id}`, deadline: days === null ? null : inDays(days), closed: false, met: 2, total: 3 });
 const letter = (id: string, postingId: string, stage: CoverLetterSummary['stage'] = 'ASKED', updatedAt = '2026-11-05T00:00:00Z'): CoverLetterSummary => ({
-  id, stage, jobRole: '백엔드', posting: { id: postingId, company: `회사 ${postingId}`, title: `공고 ${postingId}` }, questionCount: 1, firstQuestion: null, createdAt: updatedAt, updatedAt,
+  id, stage, jobRole: '백엔드', posting: { id: postingId, company: `회사 ${postingId}`, title: `공고 ${postingId}` }, questionCount: 1, emptyQuestionCount: 0, firstQuestion: null, createdAt: updatedAt, updatedAt,
 });
 const ids = (picks: HomePick[], newIds: string[], letters: CoverLetterSummary[]) => orderApplyList(picks, new Set(newIds), letters, NOW).map((item) => item.pick.postingId);
 

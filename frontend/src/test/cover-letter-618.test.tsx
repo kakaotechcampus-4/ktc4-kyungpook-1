@@ -400,6 +400,14 @@ describe('⑥ 같은 종이에서 고치기', () => {
     expect(screen.getAllByRole('button', { name: /^(근거|겹침|짐작) / }).map((b) => b.textContent)).toEqual(['근거 고침 1', '겹침 없음', '짐작 없음']);
   });
 
+  it('글이 빈칸뿐인 문항은 제목이 재료가 더 필요하다고 말하고 칩 대신 안내 한 줄을 보인다', () => {
+    mount(letter({ stage: 'DRAFTED', pollAfterMs: null, questions: [question({ draft: draft('[지원 이유: 이 회사를 고른 이유를 적어 주세요]') })] }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Q1 은 재료가 더 필요해요' })).toBeInTheDocument();
+    expect(screen.queryByText('초안이 나왔어요')).not.toBeInTheDocument();
+    expect(document.querySelector('.pq__empty')?.textContent).toBe('맞는 카드가 없어 아직 쓰지 못했어요. 오른쪽에서 카드를 고르거나 한 줄로 알려 주세요.');
+    expect(screen.queryByRole('button', { name: /^근거 / })).toBeNull();
+  });
+
   it('전체 복사는 화면에 있는 지금 글로 만든다', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });

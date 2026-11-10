@@ -32,7 +32,7 @@ const detail = (id: string, over: Record<string, unknown> = {}) => ({
   ...detailExample.data, id, needsJudgement: false, summary: { requiredMet: 1, requiredTotal: 2 }, conditions: [condition('a', true), condition('b', false)], ...over,
 });
 const letter = (id: string, postingId: string, stage = 'ASKED') => ({
-  id, stage, jobRole: '백엔드', posting: { id: postingId, company: '회사', title: '공고' }, questionCount: 1, firstQuestion: null, createdAt: '2026-11-05T00:00:00Z', updatedAt: '2026-11-05T00:00:00Z',
+  id, stage, jobRole: '백엔드', posting: { id: postingId, company: '회사', title: '공고' }, questionCount: 1, emptyQuestionCount: 0, firstQuestion: null, createdAt: '2026-11-05T00:00:00Z', updatedAt: '2026-11-05T00:00:00Z',
 });
 const notice = (postingIds: string[], readAt: string | null = null) => ({
   id: 'n1', kind: 'POSTINGS_MATCHED', createdAt: '2026-11-07T00:00:00Z', readAt,

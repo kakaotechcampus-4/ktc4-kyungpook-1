@@ -388,7 +388,7 @@ export function createCoverLetter(body: Any, key: string | undefined): CoverLett
 
 export const listCoverLetters = (): CoverLetterResult => ok(letters().map((l) => {
   advance(l);
-  return { id: l.id, stage: l.stage, jobRole: l.jobRole, posting: l.posting ?? null, questionCount: l.questions.length, firstQuestion: l.questions[0]?.text ?? null, createdAt: l.createdAt, updatedAt: l.updatedAt };
+  return { id: l.id, stage: l.stage, jobRole: l.jobRole, posting: l.posting ?? null, questionCount: l.questions.length, emptyQuestionCount: l.questions.filter((q: Any) => q.draft && countableLength(q.draft.text) === 0).length, firstQuestion: l.questions[0]?.text ?? null, createdAt: l.createdAt, updatedAt: l.updatedAt };
 }));
 
 export function getCoverLetter(id: string): CoverLetterResult {

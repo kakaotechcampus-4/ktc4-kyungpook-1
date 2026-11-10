@@ -47,6 +47,118 @@
         "title": "ActivityContext",
         "type": "object"
       },
+      "AppendCardRequest": {
+        "additionalProperties": false,
+        "description": "`POST /internal/cover-letter-append` 요청 모델.",
+        "properties": {
+          "added_card_id": {
+            "description": "새로 더할 카드. target.supporting_card 의 card_id 와 같아야 한다",
+            "exclusiveMinimum": 0.0,
+            "title": "Added Card Id",
+            "type": "integer"
+          },
+          "cover_letter_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Cover Letter Id",
+            "type": "integer"
+          },
+          "job_role": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Job Role",
+            "type": "string"
+          },
+          "memo": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo"
+          },
+          "others": {
+            "description": "같은 자소서의 다른 문항",
+            "items": {
+              "$ref": "#/components/schemas/PolishOther"
+            },
+            "maxItems": 9,
+            "title": "Others",
+            "type": "array"
+          },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Posting"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "strengths": {
+            "default": [],
+            "description": "사용자가 고른 강점 최대 3개, 같은 값 없이. 없으면 빈 배열",
+            "items": {
+              "enum": [
+                "METICULOUS",
+                "PERSISTENT",
+                "PROACTIVE",
+                "FAST_LEARNER",
+                "RESPONSIBLE",
+                "PROBLEM_SOLVING",
+                "COMMUNICATION",
+                "COLLABORATION",
+                "PERSUASION",
+                "CONSIDERATE",
+                "USER_FOCUS",
+                "DOCUMENTING"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Strengths",
+            "type": "array"
+          },
+          "target": {
+            "$ref": "#/components/schemas/PolishTarget",
+            "description": "글을 지킬 문항. current_text 는 그대로 둘 글이고, primary_card 는 이미 쓴 카드, supporting_card 는 새로 더할 카드다"
+          }
+        },
+        "required": [
+          "cover_letter_id",
+          "job_role",
+          "target",
+          "added_card_id"
+        ],
+        "title": "AppendCardRequest",
+        "type": "object"
+      },
+      "AppendCardResult": {
+        "description": "`POST /internal/cover-letter-append` 응답 `data` 모델.",
+        "properties": {
+          "draft": {
+            "$ref": "#/components/schemas/QuestionDraft",
+            "description": "새 카드 내용을 더한 글. 원래 문장이 바뀌었거나 더한 문장이 없으면 앞 글로 되돌리고 steps 에 REVERTED 가 남는다"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/DraftStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "draft",
+          "steps"
+        ],
+        "title": "AppendCardResult",
+        "type": "object"
+      },
       "AssignmentRequest": {
         "additionalProperties": false,
         "description": "`POST /internal/cover-letter-assignments` 요청 모델.",
@@ -3206,6 +3318,43 @@
         ],
         "title": "EducationLevel",
         "type": "string"
+      },
+      "Envelope_AppendCardResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AppendCardResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[AppendCardResult]",
+        "type": "object"
       },
       "Envelope_AssignmentResult_": {
         "properties": {
@@ -10579,6 +10728,77 @@
         "summary": "A-1 GitHub 저장소 활동 수집 (진행 스트리밍)",
         "tags": [
           "collection"
+        ]
+      }
+    },
+    "/internal/cover-letter-append": {
+      "post": {
+        "description": "target.current_text 의 문장은 그대로 두고, 새 카드(target.supporting_card, added_card_id)의 내용을 알맞은 자리에 한두 문장으로 더합니다. 초안 쓰기의 고치기 경로로 쓰므로 근거 없는 수치·낱말 검사와 추론(INFERRED) 표시가 초안과 같고, 새로 더한 문장만 감독이 한 번 더 봅니다. 원래 문장이 하나라도 바뀌었거나 더한 문장이 없으면 앞 글로 되돌리고 steps 에 REVERTED(reason 에 까닭)를 남깁니다. 쓰기 답을 60초 안에 받지 못하면 503 LLM_UNAVAILABLE(retryable=true)입니다.",
+        "operationId": "append_card_internal_cover_letter_append_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppendCardRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_AppendCardResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패 또는 LLM 환경 설정 누락. 다시 시도할지는 retryable로 알린다(설정 누락·콘텐츠 필터·STAR 출력 길이 초과는 false)."
+          }
+        },
+        "summary": "이미 쓴 글에 새 카드 내용 덧붙이기",
+        "tags": [
+          "cover-letters"
         ]
       }
     },

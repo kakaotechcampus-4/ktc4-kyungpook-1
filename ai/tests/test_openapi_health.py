@@ -46,6 +46,7 @@ INTERNAL_PATHS = {
     "/internal/cover-letter-drafts/stream",
     "/internal/cover-letter-polish",
     "/internal/cover-letter-turns",
+    "/internal/cover-letter-append",
     "/internal/cover-letter-fill",
     "/internal/cover-letter-suggestions",
     "/internal/repo-summary",

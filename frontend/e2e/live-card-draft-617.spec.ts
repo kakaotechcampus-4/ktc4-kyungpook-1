@@ -61,20 +61,26 @@ test('카드가 차례로 채워지고, 읽는 동안은 커서만, 글은 일�
   await expect(slot(page, 'S')).toHaveAttribute('data-phase', 'DONE');
   await expect(slot(page, 'S').locator('.live-slot__status')).toHaveText('완료');
   await expect(slot(page, 'R')).toHaveAttribute('data-phase', 'DONE', { timeout: 30_000 });
-  // 과정은 '과정 N단계 보기' 로 접혀 있고 누르면 펼쳐진다
+  // 과정은 '과정 N단계 보기' 로 접혀 있고 누르면 펼쳐진다. 결과 칸은 첫 글을 쓴 뒤와 다시 쓴 뒤 두 번 '완료' 가 되고 다시 쓰는 동안은 목록이 접히므로,
+  // 여기서는 두 경우 모두 들어 있는 검사 단계만 보고 다시 쓴 과정은 아래에서 끝난 카드를 펼쳐 본다
   await slot(page, 'R').locator('.live-steps-fold__summary').click();
-  const process = page.getByRole('list', { name: '결과 칸에서 AI 가 한 일' });
-  await expect(process).toContainText('근거 없는 숫자(50%)를 찾았어요');
-  await expect(process).toContainText('이슈를 열어 봤어요');
-  await expect(process).toContainText('다시 썼어요');
-  await slot(page, 'T').locator('.live-steps-fold__summary').click();
-  await expect(page.getByRole('list', { name: '과제 칸에서 AI 가 한 일' })).toContainText('그대로 두기로 했어요');
+  await expect(page.getByRole('list', { name: '결과 칸에서 AI 가 한 일' })).toContainText('근거 없는 숫자(50%)를 찾았어요');
 
   // 첫 카드를 다 쓰면 다음 카드로 넘어가고, 앞 카드는 접힌 목록에 남는다
   await expect(page.getByText('2장 중 2번째')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('heading', { name: '앞서 쓴 카드 1장' })).toBeVisible();
-  await expect(page.locator('.live-finished__item')).toHaveCount(1);
+  const finished = page.locator('.live-finished__item');
+  await expect(finished).toHaveCount(1);
   await expect(page.locator('.live-card__note')).toHaveText('코드를 읽고 있어요');
+  // 끝난 카드를 펼치면 다시 쓴 칸의 과정(이슈를 열어 본 뒤 다시 씀)과 비운 칸의 이유가 그대로 남아 있다
+  await finished.locator('.live-finished__summary').click();
+  const finishedSlot = (field: 'T' | 'R') => finished.locator(`.live-slot[data-field="${field}"]`);
+  await finishedSlot('R').locator('.live-steps-fold__summary').click();
+  const process = finished.getByRole('list', { name: '결과 칸에서 AI 가 한 일' });
+  await expect(process).toContainText('이슈를 열어 봤어요');
+  await expect(process).toContainText('다시 썼어요');
+  await finishedSlot('T').locator('.live-steps-fold__summary').click();
+  await expect(finished.getByRole('list', { name: '과제 칸에서 AI 가 한 일' })).toContainText('그대로 두기로 했어요');
 
   // Job 이 끝나도 마지막 카드를 다 펼친 뒤에야 완성된 카드로 넘어간다
   await expect(slot(page, 'R')).toHaveAttribute('data-phase', 'DONE', { timeout: 30_000 });

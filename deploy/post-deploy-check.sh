@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 컨테이너가 healthy 여도 인증서, 화면 파일, 서버 연결, 로그인 주소 중 하나가 깨지면 사용자는 사이트를 쓰지 못한다
-# 배포 서버 안에서 돌기 때문에 공개 DNS 를 거치지 않고 이 서버의 443 으로 바로 붙는다
+# 배포 서버 안에서는 공개 DNS 를 거치지 않고 이 서버의 443 으로 바로 붙는다
+# 둘째 인자가 public 이면 서버 밖에서 보는 것이라 공개 DNS 로 붙어 주소와 인증서까지 같이 확인한다
 set -uo pipefail
 
 site="${1:?확인할 주소가 필요하다}"
@@ -10,8 +11,11 @@ interval="${CHECK_INTERVAL:-5}"
 base="https://$site"
 reason=""
 
+resolve=(--resolve "$site:443:$target")
+[ "$target" = "public" ] && resolve=()
+
 get() {
-  curl -sS -m 10 --resolve "$site:443:$target" "$@"
+  curl -sS -m 10 ${resolve[@]+"${resolve[@]}"} "$@"
 }
 
 check() {
@@ -37,12 +41,12 @@ check() {
 
 for ((i = 1; i <= attempts; i++)); do
   if check; then
-    echo "배포 뒤 확인 통과: $site"
+    echo "사이트 확인 통과: $site"
     exit 0
   fi
   echo "[$i/$attempts] $reason"
   [ "$i" -lt "$attempts" ] && sleep "$interval"
 done
 
-echo "::error::배포 뒤 확인 실패: $reason"
+echo "::error::사이트 확인 실패: $reason"
 exit 1

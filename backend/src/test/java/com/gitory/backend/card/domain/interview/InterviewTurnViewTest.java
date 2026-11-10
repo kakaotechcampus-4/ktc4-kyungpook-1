@@ -45,9 +45,9 @@ class InterviewTurnViewTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = TurnOutcome.class, names = "ANSWERED", mode = EnumSource.Mode.EXCLUDE)
+    @EnumSource(value = TurnOutcome.class, names = {"ANSWERED", "INSUFFICIENT"}, mode = EnumSource.Mode.EXCLUDE)
     @NullSource
-    @DisplayName("결과가 ANSWERED 가 아니거나 비어 있으면 답 글이 남아 있어도 answer 는 null 이다")
+    @DisplayName("결과가 ANSWERED·INSUFFICIENT 가 아니거나 비어 있으면 답 글이 남아 있어도 answer 는 null 이다")
     void hasNoAnswerUnlessAnswered(TurnOutcome outcome) {
 
         InterviewTurn turn = InterviewTurnSamples.turn(1, StarField.T, QuestionType.EVIDENCE_GAP, TriggerSource.USER,

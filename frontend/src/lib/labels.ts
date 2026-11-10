@@ -32,6 +32,13 @@ export const starFieldExample: Record<StarField, string> = {
   A: '예: 로그를 보고 바뀐 모듈만 다시 빌드하게 설정을 고쳤다',
   R: '예: 배포가 12분으로 줄어 하루 다섯 번 올릴 수 있게 됐다',
 };
+/** 되묻기 입력칸 예시 — 말하듯 답하면 AI 가 카드 문장으로 다듬으므로 '~했어요' 로 적는다 */
+export const starFieldSpoken: Record<StarField, string> = {
+  S: '편하게 말하듯 적어 주세요. 예: 배포가 너무 오래 걸려서 다들 답답해했어요',
+  T: '편하게 말하듯 적어 주세요. 예: 배포 시간을 줄여야 했어요',
+  A: '편하게 말하듯 적어 주세요. 예: 로그를 보고 설정을 고쳤어요',
+  R: '편하게 말하듯 적어 주세요. 예: 12분 걸리던 게 4분 정도로 줄었어요',
+};
 export const dropReasonLabel: Record<DropReason, string> = {
   NO_EVIDENCE: '근거를 찾지 못해 비워 뒀어요',
   OVERCLAIM: '기여도를 넘는 표현이라 비워 뒀어요',

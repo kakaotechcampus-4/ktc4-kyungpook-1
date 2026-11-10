@@ -71,7 +71,7 @@ public class CardDetailService {
                 card.areaTags(), card.techTags(), card.themeTags(), card.getPeriod(), repository, activity, current.getSource(),
                 current.getUpdatedAt(), slots, card.getMaskRules(), card.getConfirmedAt(), card.getCreatedAt(),
                 candidate, generationOf(card), card.getGenerationFailure(), answeredCount(asked),
-                card.getInterviewEndReason(), turnNosOf(slots, asked), notesOf(card),
+                changeCountOf(card), card.getInterviewEndReason(), turnNosOf(slots, asked), notesOf(card),
                 commitsOf(slots), draftStepsOf(card));
 
     }
@@ -119,6 +119,13 @@ public class CardDetailService {
         }
 
         return notesBySlot;
+
+    }
+
+    // 확정하며 남기는 같은 글의 사본도 버전 번호를 올리므로, 사본이 아닌 버전만 글이 바뀐 횟수로 센다
+    private int changeCountOf(Card card) {
+
+        return versions.countByCardIdAndVersionNoGreaterThanAndConfirmedFalse(card.getId(), CardDraftWriter.FIRST);
 
     }
 

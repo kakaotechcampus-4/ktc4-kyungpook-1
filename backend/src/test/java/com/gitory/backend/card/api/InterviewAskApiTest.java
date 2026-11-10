@@ -315,8 +315,8 @@ class InterviewAskApiTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"LATER", "INSUFFICIENT"})
-    @DisplayName("결과가 LATER·INSUFFICIENT 면 답 글이 남아 있어도 답을 기다리는 질문으로 보고 answer 가 null 인 그 질문을 돌려준다")
+    @ValueSource(strings = {"LATER"})
+    @DisplayName("결과가 LATER 면 답 글이 남아 있어도 답을 기다리는 질문으로 보고 answer 가 null 인 그 질문을 돌려준다")
     void treatsOtherOutcomesAsOpen(String outcome) throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);

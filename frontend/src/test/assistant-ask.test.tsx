@@ -46,7 +46,7 @@ const routes = () => [{
   ],
 }];
 /** 실제 앱(main.tsx)처럼 StrictMode 안에서 연다 — 효과가 두 번 도는 개발 모드에서도 같아야 한다 */
-function mount(path: string, server = connectMockServer()) {
+function mount(path: string | { pathname: string; search: string; state: unknown }, server = connectMockServer()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const router = createMemoryRouter(routes(), { initialEntries: [path] });
   render(<StrictMode><QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider></StrictMode>);
@@ -62,7 +62,7 @@ const json = (data: unknown) => new Response(JSON.stringify({ data, error: null 
 const rawRun = (id: string, state: string, items: unknown[]) =>
   ({ id, state, stepsUsed: 0, stepLimit: 6, pollAfterMs: null, errorCode: null, items, createdAt: '2026-11-05T09:00:00Z', updatedAt: '2026-11-05T09:00:05Z' });
 
-beforeEach(() => { resetDb(); shift = 0; Date.now = realNow; vi.stubEnv('VITE_ASSISTANT_ENABLED', 'true'); });
+beforeEach(() => { window.scrollTo = vi.fn(); resetDb(); shift = 0; Date.now = realNow; vi.stubEnv('VITE_ASSISTANT_ENABLED', 'true'); });
 afterEach(() => { cleanup(); Date.now = realNow; vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 describe('홈 한 줄 명령 화면', () => {
@@ -396,5 +396,26 @@ describe('맞춰 본 공고 결과', () => {
     cleanup();
     mount('/ask');
     expect(composer()).toHaveAttribute('placeholder', hint);
+  });
+});
+
+describe('홈 대화 — 앞 대화', () => {
+  it('C6 일이 끝난 뒤 새 일을 적으면 앞 대화가 위에 남는다', async () => {
+    const done = settled(begin('spring 공고 보여 줘'));
+    mount(`/ask/${done.id}`);
+    fireEvent.change(await screen.findByLabelText('할 일이나 답'), { target: { value: '레포 하나 정리해 줘' } });
+    fireEvent.click(screen.getByRole('button', { name: '보내기' }));
+    await waitFor(() => expect(where()).not.toBe(`/ask/${done.id}`));
+    const before = await screen.findByText('spring 공고 보여 줘', SEEN);
+    const now = await screen.findByText('레포 하나 정리해 줘', SEEN);
+    expect(before.compareDocumentPosition(now) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('C7 홈에서 새로 들어온 대화는 앞 대화 없이 시작한다', async () => {
+    const done = settled(begin('spring 공고 보여 줘'));
+    mount({ pathname: '/ask', search: `?q=${encodeURIComponent('레포 하나 정리해 줘')}`, state: { earlier: [done.id] } });
+    await waitFor(() => expect(where()).toMatch(/^\/ask\/run_\d+$/));
+    expect(await screen.findByText('레포 하나 정리해 줘', SEEN)).toBeInTheDocument();
+    expect(screen.queryByText('spring 공고 보여 줘', SEEN)).toBeNull();
   });
 });

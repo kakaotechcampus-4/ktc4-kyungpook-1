@@ -6,6 +6,7 @@ import { endpoints } from '@/api/endpoints';
 import { keys } from '@/api/keys';
 import { InterviewTurn as InterviewTurnSchema, type Card, type InterviewTurn, type StarField } from '@/api/schemas';
 import { InterviewPage } from '@/features/cards/InterviewPage';
+import { appliedReply } from './replyResult';
 import { askJudgement, cleanAiText } from '@/lib/interviewReason';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
@@ -131,9 +132,9 @@ describe('질문 위의 AI 판단', () => {
   it('다음 질문이 같은 이유를 가져도 새 글로 그려 다시 한 번 읽히게 한다', async () => {
     let turns: InterviewTurn[] = [aiTurn('A', 1, '행동이 비어 있어요')];
     vi.spyOn(endpoints, 'interviewTurns').mockImplementation(async () => turns);
-    vi.spyOn(endpoints, 'answerInterview').mockImplementation(async (_id, no) => {
+    vi.spyOn(endpoints, 'replyInterview').mockImplementation(async (_id, no) => {
       turns = turns.map((turn) => turn.turnNo === no ? answered(turn) : turn);
-      return card;
+      return appliedReply(card);
     });
     vi.spyOn(endpoints, 'askInterview').mockImplementation(async () => {
       const next = aiTurn('R', 2, '행동이 비어 있어요'); // 같은 글
@@ -144,7 +145,7 @@ describe('질문 위의 AI 판단', () => {
     const first = screen.getByText('AI 판단').closest('p')!;
 
     fireEvent.change(screen.getByRole('textbox', { name: '답변' }), { target: { value: 'A 답' } });
-    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
 
     await screen.findByRole('heading', { name: /R 질문/ });
     const second = screen.getByText('AI 판단').closest('p')!;
@@ -157,16 +158,16 @@ describe('AI 가 끝낸 이유', () => {
   const finish = (turns: InterviewTurn[], endReason: string | null) => {
     let list = turns;
     vi.spyOn(endpoints, 'interviewTurns').mockImplementation(async () => list);
-    vi.spyOn(endpoints, 'answerInterview').mockImplementation(async (_id, no) => {
+    vi.spyOn(endpoints, 'replyInterview').mockImplementation(async (_id, no) => {
       list = list.map((turn) => turn.turnNo === no ? answered(turn) : turn);
-      return card;
+      return appliedReply(card);
     });
     vi.spyOn(endpoints, 'askInterview').mockResolvedValue(null);
     // 질문이 null 이면 화면이 카드를 다시 읽는다. 서버가 그만 묻기로 한 이유를 카드에 남긴다
     vi.spyOn(endpoints, 'card').mockResolvedValue({ ...card, interviewEndReason: endReason });
     mount(list);
     fireEvent.change(screen.getByRole('textbox', { name: '답변' }), { target: { value: 'T 답' } });
-    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
   };
 
   it('AI 가 끝내면 그만 묻는 이유를 AI 판단으로 보이고, 끝난 알림과 같은 낭독 영역 안에 둔다', async () => {

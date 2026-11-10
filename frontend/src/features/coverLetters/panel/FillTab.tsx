@@ -6,6 +6,7 @@ import {
 } from '@/api/coverLetters';
 import { errorView, isDailyRateLimit } from '@/api/errorView';
 import { Bubble, ChatFrom, Composer } from '@/components/chat/Chat';
+import { scrollChatTo } from '@/components/chat/chatScroll';
 import { Button } from '@/components/ui';
 import { ITEM_LABEL, THEME_LABEL } from '@/lib/coverLetterCopy';
 import { splitSentences } from '@/lib/draftPaper';
@@ -100,10 +101,11 @@ export function FillTab({ letter, activeId, texts, onText, talk, onTalked, onSho
 
   // 다 쓴 글을 종이에 넣기 전에 탭을 옮겨도 종이는 서버 글을 따라가야 한다 — 남은 넣기를 바로 한다
   useEffect(() => () => { reveal.current?.(); }, []);
-  // 새 말풍선이 붙으면 패널만 맨 아래로 굴린다(페이지는 그대로)
+  // 새 말풍선이 붙으면 패널만 굴린다(페이지는 그대로) — 위에 붙은 머리 줄 높이만큼 띄워 새 말의 첫 줄이 가리지 않게 한다
   useEffect(() => {
-    const box = threadRef.current?.closest<HTMLElement>('.clp-scroll');
-    box?.scrollTo?.({ top: box.scrollHeight, behavior: reduced ? 'auto' : 'smooth' });
+    const thread = threadRef.current;
+    const box = thread?.closest<HTMLElement>('.clp-scroll');
+    if (thread && box) scrollChatTo(box, thread, { pad: (box.querySelector<HTMLElement>('.clp-head')?.offsetHeight ?? 44) + 8, smooth: !reduced });
   }, [turns.length, busy, sending, rewriting, failure, filled, reduced]);
 
   // auto 는 스스로 여는 질문 — 첫 질문(first)은 아직 손대지 않은 대화라 입력 칸으로 포커스를 옮기지 않는다

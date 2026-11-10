@@ -7,7 +7,7 @@
 .paper > .pq__margin { grid-column: 2; }
 
 .paper__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 var(--paper-px); padding: 44px 0 18px; border-bottom: 2px solid var(--text-primary); }
-.paper__title { margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: var(--text-tracking); color: var(--text-primary); }
+.paper__title { margin: 0; font-size: 20px; line-height: 28px; font-weight: var(--weight-bold); letter-spacing: var(--text-tracking); color: var(--text-primary); }
 .paper__meta { font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
 .paper__foot { display: flex; flex-direction: column; gap: 6px; margin: 0 var(--paper-px); padding: 18px 0 36px; font-size: 12px; line-height: 18px; color: var(--text-secondary); }
 .paper__foot--empty { padding-top: 0; }
@@ -15,12 +15,12 @@
 /* 문항 한 칸 — 'Q1.' · 문항 · 답 · 글자 수 */
 .pq { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 12px; row-gap: 10px; margin: 0 var(--paper-px); padding: 28px 0 22px; border-bottom: 1px solid var(--border-default); }
 .pq--last { border-bottom: 0; }
-.pq__no { font-size: 13px; line-height: 24px; font-weight: 600; color: var(--text-tertiary); }
+.pq__no { font-size: 13px; line-height: 24px; font-weight: var(--weight-bold); color: var(--text-tertiary); }
 .pq__head { grid-column: 2; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.pq__title { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-primary); }
+.pq__title { margin: 0; font-size: 16px; line-height: 24px; font-weight: var(--weight-bold); color: var(--text-primary); }
 /* 기다리는 동안 문항마다 상태 한 줄(#745) — 차례 기다림(빈 동그라미) · 하는 중(점 셋, 진하게) · 끝남(✓) */
 .pq__status { grid-column: 2; display: inline-flex; align-items: center; gap: 8px; min-height: 24px; margin: 0; font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
-.pq__status--now { color: var(--text-primary); font-weight: 600; }
+.pq__status--now { color: var(--text-primary); font-weight: var(--weight-bold); }
 .pq__status--done, .pq__status--end { color: var(--text-secondary); }
 .pq__status .ai-wait__dots { padding-top: 0; gap: 3px; }
 .pq__status .ai-wait__dots i { width: 5px; height: 5px; }
@@ -35,7 +35,7 @@
 .pq__card { grid-column: 2; margin-top: -8px; font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
 .pq__foot { grid-column: 2; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
 .pq__count { margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pq__count--over { color: var(--state-failed-text); font-weight: 600; }
+.pq__count--over { color: var(--state-failed-text); font-weight: var(--weight-bold); }
 .pq__tools { grid-column: 2; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .pq__tools .right { margin-left: auto; }
 .pq__note { grid-column: 2; margin: 0; font-size: 12px; line-height: 18px; color: var(--text-secondary); }
@@ -44,7 +44,7 @@
 /* 점검표 — 네 칸이 늘 같은 자리에, 글자로 상태를 말한다 */
 .pcheck { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .pcheck__cell { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: var(--radius-full); border: 1px solid var(--border-default); background: var(--bg-surface); font: inherit; font-size: 11px; line-height: 16px; color: var(--text-secondary); cursor: default; }
-.pcheck__cell b { font-weight: 600; color: var(--text-strong); }
+.pcheck__cell b { font-weight: var(--weight-bold); color: var(--text-strong); }
 .pcheck__cell--checking { border-style: dashed; }
 .pcheck__cell--marked { background: var(--field-low-bg); border-color: transparent; color: var(--field-low-text); }
 .pcheck__cell--marked b { color: inherit; }
@@ -64,7 +64,7 @@
 .phl--inferred { background: var(--field-low-bg); box-shadow: inset 0 -3px 0 var(--caution-300); }
 .phl--kept { text-decoration: underline dotted var(--border-strong); text-underline-offset: 4px; }
 .phl--focus { outline: 2px solid var(--accent-point); outline-offset: 2px; }
-.phl__value { font-weight: 600; }
+.phl__value { font-weight: var(--weight-bold); }
 .pblank { background: var(--bg-inset); border-radius: var(--radius-xs); padding: 0 4px; color: var(--text-secondary); }
 .pcaret { display: inline-block; width: 2px; height: 1.15em; margin-left: 1px; vertical-align: -.22em; background: var(--accent-point); animation: pcaret 1s steps(2, start) infinite; }
 @keyframes pcaret { to { visibility: hidden; } }
@@ -91,13 +91,13 @@
 .pnote--fixed-ai, .pnote--fixed-user { border-left-color: var(--border-selected); }
 .pnote--focus { box-shadow: var(--focus); }
 .pnote__head { display: flex; align-items: center; gap: 6px; font-size: 11px; line-height: 16px; color: var(--text-tertiary); }
-.pnote__status { margin-left: auto; font-weight: 600; color: var(--text-secondary); }
+.pnote__status { margin-left: auto; font-weight: var(--weight-bold); color: var(--text-secondary); }
 .pnote--marked .pnote__status { color: var(--field-low-text); }
 .pnote--inferred { border-left-color: var(--caution-500); }
 .pnote--inferred .pnote__status { color: var(--field-low-text); }
 .pnote__orig { margin: 0; font-size: 11px; line-height: 16px; color: var(--text-tertiary); }
 .pnote__item { display: flex; flex-direction: column; gap: 1px; }
-.pnote__who { font-size: 11px; line-height: 16px; font-weight: 600; color: var(--text-strong); }
+.pnote__who { font-size: 11px; line-height: 16px; font-weight: var(--weight-bold); color: var(--text-strong); }
 .pnote__reason { color: var(--text-secondary); }
 .pnotes-inline { grid-column: 2; display: flex; flex-direction: column; gap: 8px; }
 @media (prefers-reduced-motion: reduce) { .pq__margin .pnote { transition: none; } }

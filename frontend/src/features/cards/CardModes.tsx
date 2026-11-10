@@ -84,7 +84,7 @@ export function EditMode({ card, onDone, initialField }: { card: Card; onDone: (
           const dirty = changed.includes(f);
           return (
             <StarEditorField key={f} field={f} label={starFieldName[f]} dropped={!draft[f]}
-              metadata={dirty && <><Badge kind="CAUTION">고친 칸</Badge><button type="button" className="star-row__undo t-12 w-500 c-2" disabled={canceling} onClick={() => setDraft((d) => ({ ...d, [f]: baseRef.current[f] }))}>되돌리기</button></>}
+              metadata={dirty && <><Badge kind="CAUTION">고친 칸</Badge><button type="button" className="star-row__undo t-12 w-regular c-2" disabled={canceling} onClick={() => setDraft((d) => ({ ...d, [f]: baseRef.current[f] }))}>되돌리기</button></>}
               ref={(element) => { fields.current[f] = element; }} maxLength={CONFIG.MANUAL_FIELD_MAX} disabled={canceling} value={draft[f]} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
               placeholder={ev.length ? '' : '여기에 쓰면 내가 쓴 문장으로 저장돼요'} aria-label={starFieldName[f]}>
               <EvidenceList items={ev} label={starFieldName[f]} sentence={draft[f] || null} />
@@ -144,7 +144,7 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
   return (
     <>
       <div className="card stack" style={{ gap: 10, padding: '16px 20px' }}>
-        <span className="t-12 w-600 c-3">치환 규칙</span>
+        <span className="t-12 w-bold c-3">치환 규칙</span>
         {locked && <p role="alert">확정된 카드는 다시 열어 수정해 주세요.</p>}
         {rules.map((r, i) => (
           <div key={i} className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
@@ -178,7 +178,7 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
       </div>
       {mask.isError && <p role="alert">가리기를 저장하지 못했어요. 다시 시도해 주세요.</p>}
       <StickyFooter strong={!changed ? '변경한 규칙 없음' : hits.length ? `${hits.length}칸에 적용` : valid.length ? '현재 본문과 일치하는 문구 없음' : '가리기 해제'} sub={changed && valid.length && !hits.length ? '규칙은 저장되고, 일치하는 문구가 생기면 적용돼요' : '원문은 그대로 두고 표시할 때만 가려요'}>
-        <Button variant="outline" disabled={mask.isPending} onClick={onDone}>카드로 돌아가기</Button>
+        <Button variant="secondary" disabled={mask.isPending} onClick={onDone}>카드로 돌아가기</Button>
         <Button disabled={locked || invalidRules || !changed} loading={mask.isPending} onClick={() => void apply()}>가리기 적용</Button>
       </StickyFooter>
       <UnsavedChangesDialog blocker={guard.blocker} saving={mask.isPending} flush={saveMask} />

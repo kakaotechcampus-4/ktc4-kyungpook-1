@@ -1,10 +1,10 @@
 import { useId, useRef, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '@/api/client';
 import { errorView } from '@/api/errorView';
 import { ACTIVITY_LIMITS, useActivity, useCreateActivity, useUpdateActivity, type Activity } from '@/api/activities';
 import { ACTIVITY_TYPES, type ActivityType } from '@/api/schemas';
-import { Breadcrumb, Button, Field, Input, Note, PageTitle, Skeleton } from '@/components/ui';
+import { Breadcrumb, Button, ButtonLink, Field, Input, Note, PageTitle, Skeleton } from '@/components/ui';
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { activityTypeLabel } from '@/lib/activityLabels';
@@ -46,7 +46,7 @@ export function ActivityEditPage() {
       {!isPending && !isError && !activity && (
         <div className="folder-missing">
           <p className="c-2">이미 삭제됐거나 볼 수 없는 활동이에요.</p>
-          <Link to="/activities" className="btn btn--outline">활동 목록</Link>
+          <ButtonLink to="/activities" variant="secondary">활동 목록</ButtonLink>
         </div>
       )}
       {activity && <ActivityForm key={activity.id} activity={activity} />}
@@ -147,7 +147,7 @@ function ActivityForm({ activity }: { activity?: Activity }) {
       </fieldset>
       <div className="activity-form__actions">
         <Button type="submit" size="lg" loading={saving} disabled={unchanged}>{activity ? '고친 내용 저장' : '활동 만들기'}</Button>
-        <Link to={activity ? folderPath.activity(activity.id) : '/activities'} className="btn btn--text">취소</Link>
+        <ButtonLink to={activity ? folderPath.activity(activity.id) : '/activities'} variant="text">취소</ButtonLink>
         {unchanged && <span className="t-12 c-2">바뀐 내용이 없어요</span>}
       </div>
     </form>

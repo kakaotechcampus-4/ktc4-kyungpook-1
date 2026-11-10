@@ -6,7 +6,7 @@ import { ApiError } from '@/api/client';
 import { errorView } from '@/api/errorView';
 import { COVER_LETTER_LIMITS as L, useCoverLetter, useCreateCoverLetter, type NewCoverLetter, type QuestionTheme } from '@/api/coverLetters';
 import { matchSupported, useMatch, type MatchTarget } from '@/api/matching';
-import { Breadcrumb, Button, Chip, EmptyState, Field, Input, Note, PageTitle, Skeleton } from '@/components/ui';
+import { Breadcrumb, Button, ButtonLink, Chip, EmptyState, Field, Input, Note, PageTitle, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { CompanyMark } from '@/features/match/CompanyMark';
 import { companyLabel } from '@/features/match/model';
@@ -115,8 +115,8 @@ export function CoverLetterNewPage() {
       <main className="main main--tight">
         <Breadcrumb items={crumbs} />
         <EmptyState icon={FileSearch} title="공고를 찾을 수 없어요" desc="마감되었거나 내려간 공고예요. 다른 공고를 고르거나, 공고 없이 새 자소서를 쓸 수 있어요.">
-          <Link to="/match" className="btn btn--primary">공고 목록으로</Link>
-          <Link to="/cover-letters/new" className="btn btn--outline">공고 없이 새 자소서 쓰기</Link>
+          <ButtonLink to="/match" variant="primary">공고 목록으로</ButtonLink>
+          <ButtonLink to="/cover-letters/new" variant="secondary">공고 없이 새 자소서 쓰기</ButtonLink>
         </EmptyState>
       </main>
     );

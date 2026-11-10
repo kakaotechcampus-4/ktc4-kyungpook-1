@@ -40,7 +40,7 @@ describe('마이페이지', () => {
     const titles = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     expect(titles).toEqual(['내 정보', '설정', '내 데이터']);
     const logout = screen.getByRole('button', { name: '로그아웃' });
-    expect(logout).toHaveClass('btn--outline');
+    expect(logout).toHaveClass('btn--secondary');
     expect(screen.getByRole('heading', { name: '내 데이터' }).compareDocumentPosition(logout) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -81,7 +81,7 @@ describe('GitHub 연결 화면', () => {
     mountGithub();
     expect(screen.getByText('2026년 10월 6일에 연결했어요')).toBeInTheDocument();
     const again = screen.getByRole('link', { name: '다시 연결' });
-    expect(again).toHaveClass('btn--outline');
+    expect(again).toHaveClass('btn--secondary');
     expect(again).toHaveAttribute('href', endpoints.githubStartUrl());
   });
 

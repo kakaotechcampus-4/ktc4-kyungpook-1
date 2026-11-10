@@ -27,7 +27,7 @@ export function InferenceTab({ items, confirmingKey, note, onShow, onConfirm, on
                 <span className="clp-inf__t"><mark>{i.sentence}</mark></span>
               </button>
               <div className="clp-inf__acts" role="group" aria-label={`Q${i.questionSeq} 짐작 문장`}>
-                <Button variant="outline" size="sm" loading={confirmingKey === i.key} onClick={() => onConfirm(i)}>확인</Button>
+                <Button variant="secondary" size="sm" loading={confirmingKey === i.key} onClick={() => onConfirm(i)}>확인</Button>
                 <Button variant="text" size="sm" onClick={() => onFix(i)}>고치기</Button>
                 <Button variant="text" size="sm" onClick={() => onRemove(i)}>빼기</Button>
               </div>

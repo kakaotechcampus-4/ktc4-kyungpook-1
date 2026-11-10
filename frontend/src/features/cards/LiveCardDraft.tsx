@@ -145,7 +145,7 @@ export function LiveCardDraft({ view, instant }: {
       <div className="live-draft__head">
         <h2 id={titleId} className="live-draft__title">지금 쓰는 카드</h2>
         <span className="live-draft__count">{view.total}장 중 {current.index + 1}번째</span>
-        {instant.toggle && <Button variant="outline" size="sm" aria-pressed={instant.on} onClick={instant.toggle}>한 번에 보기</Button>}
+        {instant.toggle && <Button variant="secondary" size="sm" aria-pressed={instant.on} onClick={instant.toggle}>한 번에 보기</Button>}
       </div>
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
       <article className="live-card" data-state={current.state} aria-labelledby={cardTitleId}>

@@ -14,14 +14,14 @@
 .example-heading > span { margin-left: auto; color: var(--text-tertiary); font-size: 11px; }
 .github-snapshot__repo { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 16px 8px; font-size: 12px; }
 .github-snapshot__repo > span:last-child { display: flex; gap: 5px; align-items: center; color: var(--text-tertiary); font-size: 11px; }
-.github-snapshot__title { padding: 0 16px 16px; font-weight: 600; font-size: 13px; }
-.github-snapshot__title > span { color: var(--text-tertiary); font-weight: 400; }
+.github-snapshot__title { padding: 0 16px 16px; font-weight: var(--weight-bold); font-size: 13px; }
+.github-snapshot__title > span { color: var(--text-tertiary); font-weight: var(--weight-regular); }
 .github-snapshot__commits { margin: 0 12px; border: 1px solid var(--border-default); border-radius: 10px; overflow: hidden; }
 .github-snapshot__commits li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px 8px; padding: 12px; }
 .github-snapshot__commits li + li { border-top: 1px solid var(--border-default); }
 .github-snapshot__commits li > svg { color: var(--text-tertiary); }
 .github-snapshot__commits li > div { display: grid; gap: 3px; min-width: 0; }
-.github-snapshot__commits strong { font-size: 12px; font-weight: 600; }
+.github-snapshot__commits strong { font-size: 12px; font-weight: var(--weight-bold); }
 .github-snapshot__commits div > span { font-size: 11px; color: var(--text-tertiary); overflow-wrap: anywhere; }
 .github-snapshot__commits code { grid-column: 2; font-size: 11px; color: var(--text-secondary); }
 .github-snapshot__diff { display: grid; gap: 4px; margin: 12px; padding: 10px 12px; background: var(--bg-subtle); border-radius: 10px; color: var(--text-secondary); font-size: 11px; }

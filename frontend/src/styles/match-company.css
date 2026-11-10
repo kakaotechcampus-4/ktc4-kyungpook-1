@@ -14,7 +14,7 @@
   background: var(--bg-subtle);
   color: var(--text-primary);
   font-size: calc(var(--cm-size) * 0.44);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   line-height: 1;
   user-select: none;
 }
@@ -63,7 +63,7 @@
   min-width: 0;
   color: var(--text-primary);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   line-height: 1.4;
   overflow-wrap: anywhere;
 }

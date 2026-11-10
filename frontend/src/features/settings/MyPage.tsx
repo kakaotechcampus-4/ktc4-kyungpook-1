@@ -55,7 +55,7 @@ export function MyPage() {
             <div className="set-row__text"><b>화면 테마</b></div>
             <div className="row" style={{ gap: 8 }} role="radiogroup" aria-label="테마">
               {(['light', 'dark'] as Theme[]).map((t) => (
-                <Button key={t} variant={theme === t ? 'primary' : 'outline'} role="radio" aria-checked={theme === t} onClick={() => pick(t)}>{t === 'light' ? '라이트' : '다크'}</Button>
+                <Button key={t} variant={theme === t ? 'primary' : 'secondary'} role="radio" aria-checked={theme === t} onClick={() => pick(t)}>{t === 'light' ? '라이트' : '다크'}</Button>
               ))}
             </div>
           </div>
@@ -72,7 +72,7 @@ export function MyPage() {
             <div className="set-details__body">
               {[...COLLECTED, ...COVER_LETTER_COLLECTED, ...(profileSupported() ? PROFILE_COLLECTED : [])].map(([name, why, keep]) => (
                 <div key={name} className="kv settings-data-row">
-                  <div className="settings-data-copy"><span className="w-500">{name}</span><span className="set-data__why">{why}</span></div>
+                  <div className="settings-data-copy"><span className="w-regular">{name}</span><span className="set-data__why">{why}</span></div>
                   <Badge kind={keep === '보관' ? 'NEUTRAL' : 'CAUTION'}>{keep}</Badge>
                 </div>
               ))}
@@ -86,7 +86,7 @@ export function MyPage() {
       </section>
 
       <div className="set-group">
-        <Button variant="outline" className="set-logout" loading={logout.isPending} onClick={async () => { await logout.mutateAsync(); nav('/login'); }}>로그아웃</Button>
+        <Button variant="secondary" className="set-logout" loading={logout.isPending} onClick={async () => { await logout.mutateAsync(); nav('/login'); }}>로그아웃</Button>
       </div>
       <LegalLinks report />
     </main>

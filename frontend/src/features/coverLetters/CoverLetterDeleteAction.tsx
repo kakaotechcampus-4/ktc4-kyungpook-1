@@ -40,7 +40,7 @@ function CoverLetterDeleteDialog({ letter, onClose, onDeleted }: { letter: Targe
   return (
     <Modal title="자소서를 삭제할까요?" width={480} onClose={close} footer={{
       strong: '삭제한 자소서는 되돌릴 수 없어요',
-      actions: <><Button variant="outline" disabled={actions.running} onClick={close}>취소</Button>
+      actions: <><Button variant="secondary" disabled={actions.running} onClick={close}>취소</Button>
         <Button variant="danger" loading={actions.running} onClick={remove}>삭제</Button></>,
     }}>
       <div className="stack" style={{ gap: 12 }}>

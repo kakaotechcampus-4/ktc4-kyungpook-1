@@ -147,7 +147,7 @@ describe('확정하면 카드가 든 폴더로 돌아가 다음에 할 일 하�
 
     expect(await screen.findByText('카드를 확정했어요')).toBeInTheDocument();
     expect(screen.getByText('상황과 행동이 있어서 바로 쓸 수 있어요.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '카드 보기' })).toHaveClass('btn--outline');
+    expect(screen.getByRole('button', { name: '카드 보기' })).toHaveClass('btn--secondary');
     expect(screen.queryByRole('button', { name: '직접 수정하기' })).not.toBeInTheDocument();
     expect(within(screen.getByRole('navigation', { name: 'breadcrumb' })).getByRole('link', { name: 'auth-service' })).toHaveAttribute('href', '/cards/repo/r_auth');
     fireEvent.click(screen.getByRole('button', { name: '폴더로 돌아가기' }));

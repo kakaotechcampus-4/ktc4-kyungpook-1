@@ -10,7 +10,7 @@ import { assistantSupported } from '@/api/capabilities';
 import { errorView } from '@/api/errorView';
 import { Bubble, ChatFrom, Composer } from '@/components/chat/Chat';
 import { scrollPageTo } from '@/components/chat/chatScroll';
-import { Breadcrumb, Skeleton } from '@/components/ui';
+import { Breadcrumb, ButtonLink, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { composerHint, matchResult, postingMeta, questionsGuide, questionsGuideText, resultLink, stepLine } from './askCopy';
@@ -152,7 +152,7 @@ function AskChat() {
           <section className="ask-guide" aria-labelledby="ask-guide-title">
             <h2 id="ask-guide-title">문항이 아직 없나요?</h2>
             <p>{questionsGuideText(guide.posting)}</p>
-            <Link to={guide.to} className="btn btn--primary ask-go">자소서 화면에서 문항 고르기<ArrowRight size={16} aria-hidden /></Link>
+            <ButtonLink to={guide.to} variant="primary" className="ask-go">자소서 화면에서 문항 고르기<ArrowRight size={16} aria-hidden /></ButtonLink>
           </section>
         )}
         {choices.length > 0 && (
@@ -214,12 +214,12 @@ function Outcome({ items }: { items: AssistantItem[] }) {
           <h2 id={titleId}>{matched.posting.company} · {matched.posting.title}</h2>
           {matched.fit && <p>{matched.fit}</p>}
           <div className="ask-result__actions">
-            <Link to={matched.detailTo} className="btn btn--primary ask-go">공고 보기<ArrowRight size={16} aria-hidden /></Link>
+            <ButtonLink to={matched.detailTo} variant="primary" className="ask-go">공고 보기<ArrowRight size={16} aria-hidden /></ButtonLink>
             <Link to={matched.letterTo} className="ask-result__letter">이 공고로 자소서 쓰기</Link>
           </div>
         </section>
       )}
-      {link && <Link to={link.to} className="btn btn--primary ask-go">{link.label}<ArrowRight size={16} aria-hidden /></Link>}
+      {link && <ButtonLink to={link.to} variant="primary" className="ask-go">{link.label}<ArrowRight size={16} aria-hidden /></ButtonLink>}
     </>
   );
 }

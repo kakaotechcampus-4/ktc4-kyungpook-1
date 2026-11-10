@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Check, ChevronRight } from "lucide-react";
 import { useOverallRecommendation, useStartOverallRecommendation, type MatchTarget, type OverallRecommendation } from "@/api/matching";
 import { errorView } from "@/api/errorView";
-import { Button, Track } from "@/components/ui";
+import { Button, ButtonLink, TitleCount, Track } from "@/components/ui";
 import { CompanyMark } from "./CompanyMark";
 import { DeadlineMark, PostingFacts } from "./PostingParts";
 import { companyLabel, fitNames, fitPostings, fitSummary, type FitPosting } from "./model";
@@ -50,7 +50,7 @@ export function ResultBox({ postings, search, filtered, confirmedCards }: {
   if (filtered && !open && tiles.length > 0 && !computing) {
     return (
       <section className="result-strip" aria-label={BOX_LABEL}>
-        <strong>{BOX_LABEL} {tiles.length}곳</strong>
+        <strong>{BOX_LABEL}<TitleCount n={tiles.length} /></strong>
         {day && <span className="result-strip__day">{day}</span>}
         <Button variant="text" size="sm" aria-expanded={false} onClick={() => setOpen(true)}>펼치기</Button>
       </section>
@@ -65,7 +65,7 @@ export function ResultBox({ postings, search, filtered, confirmedCards }: {
         <div className="result-box__title">
           <h2>
             {computing ? "맞춰 보는 중" : matched ? BOX_LABEL : "내 카드로 공고 맞춰 보기"}
-            {matched && !computing && tiles.length > 0 && <>{" "}<span className="result-box__count">{tiles.length}곳</span></>}
+            {matched && !computing && tiles.length > 0 && <TitleCount n={tiles.length} />}
           </h2>
           {computing ? (
             <Progress progress={data?.progress ?? null} />
@@ -78,10 +78,10 @@ export function ResultBox({ postings, search, filtered, confirmedCards }: {
         <div className="result-box__actions">
           {filtered && open && <Button variant="text" size="sm" aria-expanded onClick={() => setOpen(false)}>접기</Button>}
           {noCards ? (
-            <Link to="/cards" className="btn btn--outline">카드 확정하러 가기</Link>
+            <ButtonLink to="/cards" variant="secondary">카드 확정하러 가기</ButtonLink>
           ) : (
             <Button
-              variant={matched || computing ? "outline" : "primary"}
+              variant={matched || computing ? "secondary" : "primary"}
               onClick={() => start.mutate()}
               disabled={computing || overall.isPending}
               loading={start.isPending}

@@ -119,7 +119,7 @@ body { overflow-x: hidden; }
   color: var(--text-secondary);
   font-size: 11px;
   line-height: 16px;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
 .landing__h1 { max-width: 620px; font-size: clamp(40px, 4vw, 58px); line-height: 1.18; }
 .landing__lead { max-width: 560px; font-size: 16px; line-height: 28px; }
@@ -131,7 +131,7 @@ body { overflow-x: hidden; }
   cursor: pointer;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   list-style-position: inside;
 }
 .landing__permissions[open] summary { margin-bottom: 12px; }
@@ -194,7 +194,7 @@ body { overflow-x: hidden; }
     background: color-mix(in srgb, var(--bg-surface) 96%, transparent);
     backdrop-filter: blur(16px);
   }
-  .mobile-nav a { display: flex; min-width: 0; min-height: 48px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 10px; color: var(--text-tertiary); font-size: 12px; font-weight: 600; }
+  .mobile-nav a { display: flex; min-width: 0; min-height: 48px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 10px; color: var(--text-tertiary); font-size: 12px; font-weight: var(--weight-bold); }
   .mobile-nav a[aria-current="page"] { background: var(--nav-active-bg); color: var(--nav-active-text); }
   .main { --main-px: 16px; --main-pb: 24px; gap: 16px; padding: 20px var(--main-px) var(--main-pb); }
   /* Match the actual padding so the shared footer cannot pull content under itself. */

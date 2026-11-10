@@ -1,7 +1,6 @@
 import '@/styles/profile.css';
-import { Link } from 'react-router-dom';
 import type { Profile } from '@/api/profile';
-import { Button, Note, StickyFooter } from '@/components/ui';
+import { Button, ButtonLink, Note, StickyFooter } from '@/components/ui';
 import { UnsavedChangesDialog } from '@/components/SaveStatus';
 import { isDemo } from '@/mock/browser';
 import { CertificationQuick, InterestPicker, MailSection, SectionEditor } from './ProfileSections';
@@ -38,7 +37,7 @@ export function ProfileForm({ initial }: { initial: Profile }) {
 
       <p className="sr-only" role="status" aria-live="polite">{statusText}</p>
       <StickyFooter strong={statusText}>
-        <Link to="/settings" className="btn btn--text">마이페이지로</Link>
+        <ButtonLink to="/settings" variant="text">마이페이지로</ButtonLink>
         <Button id={SAVE_ID} size="lg" loading={saving} className={!canSave ? 'btn--disabled' : undefined} aria-disabled={!canSave ? true : undefined}
           onClick={() => { if (canSave) void state.submit(); }}>{saveError ? '다시 저장' : '저장'}</Button>
       </StickyFooter>

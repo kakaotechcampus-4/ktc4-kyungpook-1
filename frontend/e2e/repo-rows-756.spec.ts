@@ -42,7 +42,7 @@ test('고른 줄은 파랑 테두리로 보이고, 아래 막대가 고른 레�
   expect(look.ring).toBe(look.want);
   expect(look.dot).toBe(look.want);
   await expect(page.getByText('web-client 을 골랐어요', { exact: true })).toBeVisible();
-  await expect(page.getByText('다음은 읽는 범위 확인이에요', { exact: true })).toBeVisible();
+  await expect(page.getByText('다음은 읽는 범위 확인이에요', { exact: true })).toHaveCount(0); // 다음 단계 이름은 단계 줄이 말한다
 });
 
 test('390px 에서 가로로 밀리지 않고, 줄은 누르기 좋은 높이다', async ({ page }) => {

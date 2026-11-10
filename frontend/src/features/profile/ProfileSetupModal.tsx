@@ -15,6 +15,9 @@ import { useProfileFormState, type Scope } from './useProfileFormState';
  */
 const STEPS: readonly Scope[] = ['interests', 'careers', 'educations', 'languages', 'certifications'];
 const TITLE: Record<Scope, string> = { interests: '관심 분야', careers: '경력', educations: '학력', languages: '어학', certifications: '자격증' };
+/** 아래 줄은 다음 칸 이름 대신 얼마나 왔는지 말한다 — 단계 이름은 위 단계 줄이 이미 보여 주고, 응원이 지루함을 덜어 준다 */
+const CHEER = ['금방 끝나요', '좋아요, 이대로 가요', '절반 넘게 왔어요', '거의 다 왔어요!', '마지막이에요!'] as const;
+const cheer = (step: number) => (step === STEPS.length - 1 ? CHEER[CHEER.length - 1] : CHEER[Math.min(step, CHEER.length - 2)]);
 const SKIPPABLE: readonly SectionKey[] = ['careers', 'languages', 'certifications'];
 
 /**
@@ -62,7 +65,7 @@ function SetupDialog({ initial }: { initial: Profile }) {
 
   return (
     <Modal title={TITLE[scope]} width={720} dismissible={false} onClose={() => undefined}
-      footer={{ strong: last ? '마지막 단계예요' : `다음은 ${TITLE[STEPS[step + 1]]}`, actions }}>
+      footer={{ strong: cheer(step), actions }}>
       <ol className="setup-steps" aria-label="입력 단계">
         {STEPS.map((candidate, index) => (
           <li key={candidate} className={index < step ? 'is-done' : undefined} aria-current={index === step ? 'step' : undefined}><span>{TITLE[candidate]}</span></li>

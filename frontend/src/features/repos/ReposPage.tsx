@@ -101,7 +101,7 @@ export function ReposPage() {
         </div>
       )}
 
-      <StickyFooter strong={selected ? `${selected.name} 을 골랐어요` : '정리할 레포를 고르면 다음으로 넘어가요'} sub={selected ? '다음은 읽는 범위 확인이에요' : undefined}>
+      <StickyFooter strong={selected ? `${selected.name} 을 골랐어요` : '정리할 레포를 고르면 다음으로 넘어가요'}>
         <ButtonLink to="/" variant="secondary">취소</ButtonLink>
         <Button size="lg" disabled={!selected} onClick={openDisclose}>다음</Button>
       </StickyFooter>

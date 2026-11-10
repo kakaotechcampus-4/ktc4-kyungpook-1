@@ -31,7 +31,7 @@ function hasBatchim(name: string): boolean {
   if (code >= 0xac00 && code <= 0xd7a3) return (code - 0xac00) % 28 !== 0;
   return BATCHIM_DIGIT.test(last) || BATCHIM_LATIN.test(last);
 }
-const objectParticle = (name: string) => (hasBatchim(name) ? '을' : '를');
+export const objectParticle = (name: string) => (hasBatchim(name) ? '을' : '를');
 
 /** owner/name 에서 owner 를 뺀 레포 이름 */
 export const shortRepoName = (repoName: string): string => repoName.split('/').pop() || repoName;

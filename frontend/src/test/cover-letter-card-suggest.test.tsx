@@ -8,6 +8,7 @@ import { CardSummary } from '@/api/schemas';
 import { CoverLetterPage } from '@/features/coverLetters/CoverLetterPage';
 import { handle } from '@/mock/router';
 import { db, resetDb } from '@/mock/store';
+import { objectParticle } from '@/lib/notices';
 
 vi.mock('@/lib/track', () => ({ track: vi.fn() }));
 
@@ -71,7 +72,7 @@ describe('자소서 새 카드 안내', () => {
     const card = db.cards.find((c) => c.status === 'CONFIRMED')!;
     mount(l, `/cover-letters/${l.id}?card=${card.id}&question=${l.questions[0].id}`);
     const text = l.questions[0].text;
-    expect(await screen.findByText(`새 카드 '${card.title}'을 ${text.slice(0, 20)}… 문항에 쓸 수 있어요`)).toBeInTheDocument();
+    expect(await screen.findByText(`새 카드 '${card.title}'${objectParticle(card.title)} ${text.slice(0, 20)}… 문항에 쓸 수 있어요`)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '이 카드로 다시 쓰기' })).toBeInTheDocument();
     expect(rewrites(log)).toHaveLength(0);
   });

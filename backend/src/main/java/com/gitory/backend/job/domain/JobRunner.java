@@ -166,7 +166,7 @@ public class JobRunner {
             Boolean startedGrouping = transaction.execute(
                     status -> storeCollection(job.getId(), request, activity, limitResetAt));
             if (Boolean.TRUE.equals(startedGrouping)) {
-                group(job, activity.partialReason(), limitResetAt, progress);
+                group(job, activity, limitResetAt, progress);
             }
         } catch (RuntimeException failure) {
             JobErrorCode errorCode = errorCodeOf(failure);
@@ -239,24 +239,29 @@ public class JobRunner {
 
     /**
      * 저장된 내 커밋에서 손댄 후보의 커밋·PR 을 빼고 AI 경험 그룹화를 불러 만든 후보를 저장한다
-     * 보낼 요청이 지난번 경험 그룹화 때와 같으면 AI 를 부르지 않고 지난 후보를 그대로 둔다
+     * 새로 읽은 것이 없거나 보낼 요청이 지난번 경험 그룹화 때와 같으면 AI 를 부르지 않고 지난 후보를 그대로 둔다
      */
-    private void group(AnalysisJob job, PartialReason partialReason, Instant limitResetAt,
+    private void group(AnalysisJob job, CollectedActivity activity, Instant limitResetAt,
                        Consumer<AiProgress> progress) {
 
         Long userRepositoryId = job.getUserRepositoryId();
+        PartialReason partialReason = activity.partialReason();
         String login = users.loginOf(job.getUserId());
-        LockedSources locked = candidates.lockedSources(userRepositoryId);
-        GroupingMaterial material = materials.load(userRepositoryId, login, locked.commitShas(),
-                locked.pullRequestNumbers());
-        ExperienceGroupingRequest request = GroupingConverter.requestOf(userRepositoryId, login, material,
-                partialReason != null);
-        String fingerprint = candidates.fingerprint(GroupingConverter.jsonOf(request));
+        // 지문은 손댄 후보를 빼기 전의 저장된 재료 전체로 만든다 — 카드로 쓴 것만으로 요청이 달라져 AI 를 다시 부르지 않고,
+        // 지난 그룹화가 실패해 묶이지 못한 채 저장만 된 커밋은 재료가 늘어난 것이라 다시 묶는다
+        GroupingMaterial whole = materials.load(userRepositoryId, login, Set.of(), Set.of());
+        String fingerprint = candidates.fingerprint(GroupingConverter.jsonOf(
+                GroupingConverter.requestOf(userRepositoryId, login, whole, partialReason != null)));
 
         if (candidates.keepIfSameInput(userRepositoryId, fingerprint)) {
             transaction.executeWithoutResult(status -> keepCandidates(job.getId(), partialReason, limitResetAt));
             return;
         }
+        LockedSources locked = candidates.lockedSources(userRepositoryId);
+        GroupingMaterial material = materials.load(userRepositoryId, login, locked.commitShas(),
+                locked.pullRequestNumbers());
+        ExperienceGroupingRequest request = GroupingConverter.requestOf(userRepositoryId, login, material,
+                partialReason != null);
 
         List<GroupedCandidate> grouped = GroupingConverter.candidatesOf(
                 progress == null ? grouping.group(request) : grouping.group(request, progress));

@@ -1,5 +1,5 @@
 /**
- * 인적사항 입력 폼 ↔ 계약(api/profile.ts) 변환과 안내 문구.
+ * 프로필 입력 폼 ↔ 계약(api/profile.ts) 변환과 안내 문구.
  * 입력 중에는 비어 있거나 덜 맞아도 그대로 두고, 저장할 때 한 번에 검사한다.
  * 여기 값은 개인정보라 지표·로그·URL 에 넣지 않는다.
  */
@@ -16,12 +16,8 @@ export const toForm = (profile: Profile): ProfileForm => ({ interests: [...profi
 /** 저장된 것과 같은지(고친 곳이 있는지) 비교할 때 쓴다 */
 export const formSnapshot = (form: ProfileForm): string => JSON.stringify(form);
 
-/**
- * 계약에 맞는 본문 후보. 맞는지는 ProfileInput 이 판단한다.
- * 화면이 받지 않는 네 목록은 빈 배열로 보낸다(목록이 빠지면 400).
- */
+/** 계약에 맞는 본문 후보. 맞는지는 ProfileInput 이 판단한다. */
 export const toDraft = (form: ProfileForm) => ({
-  educations: [], careers: [], languages: [], certifications: [],
   interests: form.interests,
   email: form.email, mailOptIn: form.mailOptIn, // 비워도 항상 보낸다 — 안 보내면 서버가 저장된 주소를 그대로 둔다
 });

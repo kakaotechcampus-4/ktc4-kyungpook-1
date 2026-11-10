@@ -49,14 +49,14 @@ class ProfileMailTest {
 
     private ProfileView save(String email, Boolean mailOptIn) {
 
-        return service.replace(USER, new ProfileInput(List.of(), List.of(), List.of(), List.of(), null, email, mailOptIn));
+        return service.replace(USER, new ProfileInput(null, email, mailOptIn));
 
     }
 
     private void alreadyStored(String email, boolean mailOptIn) {
 
         stored = Profile.of(USER);
-        stored.replace(List.of(), List.of(), List.of(), List.of(), null);
+        stored.replace(null);
         stored.changeMail(email, mailOptIn);
 
     }

@@ -1847,41 +1847,6 @@
         },
         "type" : "object"
       },
-      "Career" : {
-        "properties" : {
-          "company" : {
-            "type" : "string"
-          },
-          "endMonth" : {
-            "type" : "string"
-          },
-          "role" : {
-            "type" : "string"
-          },
-          "startMonth" : {
-            "type" : "string"
-          },
-          "type" : {
-            "enum" : [ "FULL_TIME", "CONTRACT", "INTERN", "PART_TIME", "FREELANCE" ],
-            "type" : "string"
-          }
-        },
-        "type" : "object"
-      },
-      "Certification" : {
-        "properties" : {
-          "acquiredMonth" : {
-            "type" : "string"
-          },
-          "issuer" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          }
-        },
-        "type" : "object"
-      },
       "ChooseCardsRequest" : {
         "description" : "문항의 중심·보조 카드를 바꿀 때 보내는 값",
         "properties" : {
@@ -2516,37 +2481,6 @@
         },
         "type" : "object"
       },
-      "Education" : {
-        "properties" : {
-          "endMonth" : {
-            "type" : "string"
-          },
-          "gpa" : {
-            "type" : "number"
-          },
-          "gpaMax" : {
-            "type" : "number"
-          },
-          "level" : {
-            "enum" : [ "HIGH_SCHOOL", "ASSOCIATE", "BACHELOR", "MASTER", "DOCTOR" ],
-            "type" : "string"
-          },
-          "major" : {
-            "type" : "string"
-          },
-          "school" : {
-            "type" : "string"
-          },
-          "startMonth" : {
-            "type" : "string"
-          },
-          "status" : {
-            "enum" : [ "ENROLLED", "ON_LEAVE", "GRADUATION_EXPECTED", "GRADUATED", "DROPPED_OUT" ],
-            "type" : "string"
-          }
-        },
-        "type" : "object"
-      },
       "EvidenceResponse" : {
         "properties" : {
           "authoredBy" : {
@@ -2984,24 +2918,6 @@
           "total" : {
             "format" : "int32",
             "type" : "integer"
-          }
-        },
-        "type" : "object"
-      },
-      "LanguageScore" : {
-        "properties" : {
-          "acquiredMonth" : {
-            "type" : "string"
-          },
-          "score" : {
-            "type" : "string"
-          },
-          "test" : {
-            "enum" : [ "TOEIC", "TOEIC_SPEAKING", "OPIC", "TOEFL", "IELTS", "TEPS", "JLPT", "JPT", "HSK", "OTHER" ],
-            "type" : "string"
-          },
-          "testName" : {
-            "type" : "string"
           }
         },
         "type" : "object"
@@ -3789,138 +3705,9 @@
         },
         "type" : "object"
       },
-      "ProfileCareerRequest" : {
-        "properties" : {
-          "company" : {
-            "description" : "회사 이름, 50자까지",
-            "type" : "string"
-          },
-          "endMonth" : {
-            "description" : "퇴사 달 YYYY-MM, 재직 중이면 null",
-            "example" : "2024-12",
-            "type" : "string"
-          },
-          "role" : {
-            "description" : "직무, 50자까지. 없으면 null",
-            "type" : "string"
-          },
-          "startMonth" : {
-            "description" : "입사 달 YYYY-MM",
-            "example" : "2024-07",
-            "type" : "string"
-          },
-          "type" : {
-            "description" : "FULL_TIME · CONTRACT · INTERN · PART_TIME · FREELANCE",
-            "type" : "string"
-          }
-        },
-        "type" : "object"
-      },
-      "ProfileCertificationRequest" : {
-        "properties" : {
-          "acquiredMonth" : {
-            "description" : "취득 달 YYYY-MM, 없으면 null",
-            "type" : "string"
-          },
-          "issuer" : {
-            "description" : "발급 기관, 50자까지. 없으면 null",
-            "type" : "string"
-          },
-          "name" : {
-            "description" : "자격증 이름, 50자까지",
-            "example" : "정보처리기사",
-            "type" : "string"
-          }
-        },
-        "type" : "object"
-      },
-      "ProfileEducationRequest" : {
-        "properties" : {
-          "endMonth" : {
-            "description" : "졸업(예정) 달 YYYY-MM, 없으면 null",
-            "example" : "2027-02",
-            "type" : "string"
-          },
-          "gpa" : {
-            "description" : "학점. 만점과 함께 보내거나 둘 다 null",
-            "example" : 3.8,
-            "type" : "number"
-          },
-          "gpaMax" : {
-            "description" : "학점 만점 4.0 · 4.3 · 4.5 · 100",
-            "example" : 4.5,
-            "type" : "number"
-          },
-          "level" : {
-            "description" : "HIGH_SCHOOL · ASSOCIATE · BACHELOR · MASTER · DOCTOR",
-            "type" : "string"
-          },
-          "major" : {
-            "description" : "전공, 50자까지. 없으면 null",
-            "type" : "string"
-          },
-          "school" : {
-            "description" : "학교 이름, 50자까지. 비우면 null",
-            "type" : [ "string", "null" ]
-          },
-          "startMonth" : {
-            "description" : "입학 달 YYYY-MM, 없으면 null",
-            "example" : "2021-03",
-            "type" : "string"
-          },
-          "status" : {
-            "description" : "ENROLLED · ON_LEAVE · GRADUATION_EXPECTED · GRADUATED · DROPPED_OUT",
-            "type" : "string"
-          }
-        },
-        "type" : "object"
-      },
-      "ProfileLanguageRequest" : {
-        "properties" : {
-          "acquiredMonth" : {
-            "description" : "취득 달 YYYY-MM, 없으면 null",
-            "type" : "string"
-          },
-          "score" : {
-            "description" : "점수·등급 20자까지",
-            "example" : "IH",
-            "type" : "string"
-          },
-          "test" : {
-            "description" : "TOEIC · TOEIC_SPEAKING · OPIC · TOEFL · IELTS · TEPS · JLPT · JPT · HSK · OTHER",
-            "type" : "string"
-          },
-          "testName" : {
-            "description" : "OTHER 일 때 시험 이름 50자까지. 그 밖에는 보내도 저장하지 않음",
-            "type" : "string"
-          }
-        },
-        "type" : "object"
-      },
       "ProfileRequest" : {
-        "description" : "인적사항 네 목록을 통째로 보냅니다. 네 목록 모두 꼭 보내고, 없으면 빈 목록([])입니다.",
+        "description" : "프로필을 통째로 보냅니다. 옛 학력·경력·어학·자격증 칸을 같이 보내도 무시합니다.",
         "properties" : {
-          "careers" : {
-            "description" : "경력, 10개까지",
-            "items" : {
-              "$ref" : "#/components/schemas/ProfileCareerRequest"
-            },
-            "type" : "array"
-          },
-          "certifications" : {
-            "description" : "자격증, 20개까지",
-            "items" : {
-              "$ref" : "#/components/schemas/ProfileCertificationRequest"
-            },
-            "type" : "array"
-          },
-          "educations" : {
-            "description" : "학력, 5개까지",
-            "items" : {
-              "$ref" : "#/components/schemas/ProfileEducationRequest"
-            },
-            "type" : "array"
-          },
           "email" : {
             "description" : "새 공고 알림을 받을 메일 주소 — 254자까지, 공백 없이 @ 하나와 그 뒤의 점이 있어야 합니다. 빈 글이면 주소를 지우고, 안 보내면 저장된 값을 그대로 둡니다",
             "type" : [ "string", "null" ]
@@ -3932,13 +3719,6 @@
             },
             "type" : [ "array", "null" ]
           },
-          "languages" : {
-            "description" : "어학, 10개까지",
-            "items" : {
-              "$ref" : "#/components/schemas/ProfileLanguageRequest"
-            },
-            "type" : "array"
-          },
           "mailOptIn" : {
             "description" : "메일 알림 수신 여부. true 이면 주소가 있어야 합니다. 안 보내면 저장된 값을 그대로 둡니다",
             "type" : [ "boolean", "null" ]
@@ -3947,26 +3727,8 @@
         "type" : "object"
       },
       "ProfileResponse" : {
-        "description" : "인적사항. 목록 칸 모양은 요청과 같고, 비운 칸은 null 입니다.",
+        "description" : "프로필. 관심 분야와 메일 수신 설정만 담습니다.",
         "properties" : {
-          "careers" : {
-            "items" : {
-              "$ref" : "#/components/schemas/Career"
-            },
-            "type" : "array"
-          },
-          "certifications" : {
-            "items" : {
-              "$ref" : "#/components/schemas/Certification"
-            },
-            "type" : "array"
-          },
-          "educations" : {
-            "items" : {
-              "$ref" : "#/components/schemas/Education"
-            },
-            "type" : "array"
-          },
           "email" : {
             "description" : "메일 알림을 받을 주소. 적지 않았으면 null",
             "type" : [ "string", "null" ]
@@ -3976,12 +3738,6 @@
             "items" : {
               "enum" : [ "BACKEND", "FRONTEND", "MOBILE", "DEVOPS", "DATA", "AI_ML", "SECURITY", "QA", "ETC" ],
               "type" : "string"
-            },
-            "type" : "array"
-          },
-          "languages" : {
-            "items" : {
-              "$ref" : "#/components/schemas/LanguageScore"
             },
             "type" : "array"
           },
@@ -10427,7 +10183,7 @@
     },
     "/api/profile" : {
       "get" : {
-        "description" : "한 번도 저장하지 않았으면 네 목록이 비고 savedAt 이 null 입니다. 화면은 이것으로 처음 입력을 띄울지 정합니다.",
+        "description" : "한 번도 저장하지 않았으면 관심 분야가 비고 savedAt 이 null 입니다. 화면은 이것으로 처음 입력을 띄울지 정합니다.",
         "operationId" : "get",
         "responses" : {
           "200" : {
@@ -10451,11 +10207,11 @@
             "description" : "Bad Request"
           }
         },
-        "summary" : "내 인적사항",
+        "summary" : "내 프로필",
         "tags" : [ "Profile" ]
       },
       "put" : {
-        "description" : "네 목록을 통째로 바꿉니다. 처음 입력을 건너뛰면 빈 목록 네 개를 보내 저장해, 다음부터 처음 입력을 띄우지 않게 합니다.\n글은 앞뒤 공백을 지우고, 빈 글은 null 로 저장합니다. 목록 순서는 보낸 그대로입니다.\n관심 분야(interests)는 보내면 통째로 바꾸고, 안 보내면 저장된 값을 그대로 둡니다.\n메일 주소(email)와 수신 여부(mailOptIn)도 안 보내면 저장된 값을 그대로 두며, 수신을 새로 켜거나 켠 채 주소를 바꾸면 그 주소로 확인 메일을 한 통 보냅니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "description" : "관심 분야(interests)는 보내면 통째로 바꾸고, 안 보내면 저장된 값을 그대로 둡니다. 옛 학력·경력·어학·자격증 칸은 보내도 무시합니다.\n처음 입력을 건너뛰면 빈 관심 분야([])를 보내 저장해, 다음부터 처음 입력을 띄우지 않게 합니다.\n메일 주소(email)와 수신 여부(mailOptIn)도 안 보내면 저장된 값을 그대로 두며, 수신을 새로 켜거나 켠 채 주소를 바꾸면 그 주소로 확인 메일을 한 통 보냅니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
         "operationId" : "replace",
         "requestBody" : {
           "content" : {
@@ -10476,7 +10232,7 @@
                 }
               }
             },
-            "description" : "저장한 인적사항"
+            "description" : "저장한 프로필"
           },
           "400" : {
             "content" : {
@@ -10486,10 +10242,10 @@
                 }
               }
             },
-            "description" : "INVALID_REQUEST: 목록이 빠짐, 개수를 넘음, 필수 칸이 비었음, 모르는 종류, 달이 YYYY-MM 이 아님, 끝난 달이 시작한 달보다 앞섬, 학점·만점이 맞지 않음, 글이 길거나 U+0000 이 있음, 관심 분야가 4개 이상이거나 겹치거나 모르는 값임, 메일 주소가 254자를 넘거나 모양이 틀림, 수신을 켰는데 저장될 주소가 없음. 메시지에 어느 목록의 몇 번째인지 적습니다"
+            "description" : "INVALID_REQUEST: 관심 분야가 4개 이상이거나 겹치거나 모르는 값임, 메일 주소가 254자를 넘거나 모양이 틀림, 수신을 켰는데 저장될 주소가 없음. 메시지에 몇 번째 칸인지 적습니다"
           }
         },
-        "summary" : "내 인적사항 저장",
+        "summary" : "내 프로필 저장",
         "tags" : [ "Profile" ]
       }
     },
@@ -12006,9 +11762,6 @@
     "description" : "본인 카드 작성과 조회",
     "name" : "Cards"
   }, {
-    "description" : "학력·경력·어학·자격증 인적사항",
-    "name" : "Profile"
-  }, {
     "description" : "화면 사용 지표",
     "name" : "Events"
   }, {
@@ -12023,6 +11776,9 @@
   }, {
     "description" : "확정 카드로 쓰는 자소서",
     "name" : "Cover letters"
+  }, {
+    "description" : "관심 분야·메일 수신 프로필",
+    "name" : "Profile"
   }, {
     "description" : "선택한 저장소의 분석 Job 접수",
     "name" : "Repositories"

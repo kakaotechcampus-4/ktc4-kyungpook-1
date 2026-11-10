@@ -49,7 +49,6 @@ test.describe('시나리오 1: 로그인부터 카드 자동 확정과 되묻기
 
       const profile = await dataOf(await page.request.get('/api/profile'));
       expect(profile.interests).toEqual(['BACKEND']);
-      expect(profile.educations).toEqual([]);
     });
 
     await test.step('2. 저장소 고르기와 개수', async () => {

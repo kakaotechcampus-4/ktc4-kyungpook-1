@@ -730,10 +730,14 @@ export function rewriteCoverLetterQuestion(id: string, questionId: string, body:
   const card = typeof body?.cardId === 'string' ? confirmedCards().find((c: Any) => c.id === body.cardId) : null;
   if (!card) return fail(404, 'NOT_FOUND', '확정한 카드를 찾을 수 없습니다.');
   const sentences = REWRITTEN.split(/(?<=[.])\s+/);
-  Object.assign(q, { primaryCardId: card.id, assignedBy: 'USER', pickReason: null });
-  q.draft = { text: REWRITTEN, aiText: REWRITTEN, sentences: sentences.map((x, i) => ({ seq: i + 1, text: x })), marks: [], source: 'LLM' };
+  const kept = q.primaryCardId && q.primaryCardId !== card.id ? q.primaryCardId : null;
+  if (kept) Object.assign(q, { supportingCardId: card.id, assignedBy: 'USER', pickReason: null });
+  else Object.assign(q, { primaryCardId: card.id, supportingCardId: null, assignedBy: 'USER', pickReason: null });
+  const text = kept ? `${q.draft?.text ?? REWRITTEN} ${card.title} 경험도 함께 살려 결과를 설명했습니다.` : REWRITTEN;
+  const parts = kept ? text.split(/(?<=[.])\s+/) : sentences;
+  q.draft = { text, aiText: kept ? q.draft?.aiText ?? text : text, sentences: parts.map((x: string, i: number) => ({ seq: i + 1, text: x })), marks: [], source: 'LLM' };
   q._turn = undefined;
-  pushTurn(l, q, 'AI', `Q${q.seq} 을 '${card.title}' 카드로 다시 썼어요`, null, 'DONE');
+  pushTurn(l, q, 'AI', kept ? `Q${q.seq} 에 '${card.title}' 카드 내용을 더해 썼어요` : `Q${q.seq} 을 '${card.title}' 카드로 다시 썼어요`, null, 'DONE');
   l.updatedAt = now();
   return turnReply(l, q);
 }

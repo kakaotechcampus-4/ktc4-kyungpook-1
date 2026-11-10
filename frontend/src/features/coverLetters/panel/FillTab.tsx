@@ -10,7 +10,7 @@ import { scrollChatTo } from '@/components/chat/chatScroll';
 import { Button } from '@/components/ui';
 import { ITEM_LABEL, THEME_LABEL } from '@/lib/coverLetterCopy';
 import { splitSentences } from '@/lib/draftPaper';
-import { blanksIn } from '@/lib/draftText';
+import { blanksIn, blankCount } from '@/lib/draftText';
 import { useReducedMotion } from '@/lib/useLiveText';
 import { SuggestionBox } from './SuggestionBox';
 
@@ -259,7 +259,7 @@ export function FillTab({ letter, activeId, texts, onText, talk, onTalked, onSho
         )}
         <Composer areaRef={areaRef} value={draft} onChange={setDraft} onSend={() => void send(draft)} canSend={canSend && !!draft.trim()} disabled={!waiting}
           label="한 줄로 답하기" maxLength={TURN_TEXT_MAX}
-          placeholder={waiting ? (example ? `예: ${example}` : '한 줄로 알려 주세요') : '채울 곳이 생기면 다시 물어볼게요'} />
+          placeholder={waiting ? (example ? `예: ${example}` : '한 줄로 알려 주세요') : blankCount(texts[active.id] ?? active.draft?.text ?? '') > 0 ? `Q${active.seq} 얘기하기를 누르면 남은 칸을 물어요` : '채울 곳이 생기면 다시 물어볼게요'} />
         <div className="clp-reply__sub">
           <span>알려 준 사실로 그 자리를 다시 써요</span>
           <span className="clp-reply__meta">

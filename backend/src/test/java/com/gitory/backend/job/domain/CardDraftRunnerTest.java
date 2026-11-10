@@ -57,11 +57,13 @@ import com.gitory.backend.support.CandidateCardFixtures;
 import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -72,6 +74,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -84,6 +87,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
@@ -94,6 +99,8 @@ import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.atMost;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -1158,6 +1165,142 @@ class CardDraftRunnerTest {
         assertThat(areasOf(cardId)).isEmpty();
         assertThat(techsOf(cardId)).isEmpty();
 
+    }
+
+    /** 설정한 장수만 카드를 같이 채우는 시험으로, 나머지 시험은 카드를 순서대로 한 장씩 채운다고 보고 쓴 것이라 장수를 1 로 둔다 */
+    @Nested
+    @TestPropertySource(properties = "gitory.job.draft-parallel=2")
+    class DraftingTwoAtATime {
+
+        @MockitoSpyBean
+        CardDraftRunner cardDrafts;
+
+        @Test
+        @DisplayName("카드 두 장이 동시에 AI 를 부르고, 둘 다 초안을 담아 Job 을 완료로 끝낸다")
+        void callsAiForTwoCardsAtTheSameTime() {
+
+            Long first = cardWithCommits(commit(SHA_A, 10, 0));
+            Long second = cardWithCommits(commit(SHA_B, 10, 0));
+            givenEvidenceForEveryCommit();
+            CountDownLatch bothInFlight = new CountDownLatch(2);
+            AtomicInteger metTheOther = new AtomicInteger();
+            given(star.draft(any(), any())).willAnswer(invocation -> {
+                bothInFlight.countDown();
+                if (bothInFlight.await(3, TimeUnit.SECONDS)) {
+                    metTheOther.incrementAndGet();
+                }
+                return allFilled(firstShaOf(invocation.getArgument(0)));
+            });
+
+            runNext();
+
+            assertThat(metTheOther.get()).isEqualTo(2);
+            assertThat(statementsOf(first)).hasSize(4);
+            assertThat(statementsOf(second)).hasSize(4);
+            assertThat(job().getState()).isEqualTo(JobState.SUCCEEDED);
+
+        }
+
+        @Test
+        @DisplayName("뒤 카드가 먼저 끝나도 Job 에 넘기는 카드 결과는 카드 순서대로다")
+        void keepsResultsInCardOrder() {
+
+            cardWithCommits(commit(SHA_A, 10, 0));
+            cardWithCommits(commit(SHA_B, 10, 0));
+            given(activities.diffEvidence(any())).willAnswer(invocation -> {
+                DiffEvidenceRequest request = invocation.getArgument(0);
+                return request.commitShas().contains(SHA_A) ? evidenceOf(SHA_A) : evidenceOf();
+            });
+            given(star.draft(any(), any())).willAnswer(invocation -> {
+                awaitFinishedCards(1);
+                return allFilled(SHA_A);
+            });
+
+            runNext();
+
+            ArgumentCaptor<List<CardDraftResult>> results = ArgumentCaptor.captor();
+            verify(cardDrafts).finish(any(), results.capture());
+            assertThat(results.getValue()).containsExactly(CardDraftResult.DRAFTED, CardDraftResult.NO_EVIDENCE);
+
+        }
+
+        @Test
+        @DisplayName("진행 숫자는 읽기 시작한 장수와 끝난 장수로 올라가, 한 장이 끝났을 때 1 장 끝남이고 마지막에는 모두 끝남이다")
+        void countsStartedAndFinishedCards() {
+
+            cardWithCommits(commit(SHA_A, 10, 0));
+            cardWithCommits(commit(SHA_B, 10, 0));
+            given(activities.diffEvidence(any())).willAnswer(invocation -> {
+                DiffEvidenceRequest request = invocation.getArgument(0);
+                return request.commitShas().contains(SHA_A) ? evidenceOf(SHA_A) : evidenceOf();
+            });
+            AtomicReference<List<JobStep>> whileOneFinished = new AtomicReference<>();
+            given(star.draft(any(), any())).willAnswer(invocation -> {
+                awaitFinishedCards(1);
+                whileOneFinished.set(job().getSteps());
+                return allFilled(SHA_A);
+            });
+
+            runNext();
+
+            assertThat(whileOneFinished.get()).containsExactly(
+                    new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 2, 2),
+                    new JobStep(JobStepKey.PR_REVIEW, JobStepState.SKIPPED, 0, null),
+                    new JobStep(JobStepKey.COMPRESS, JobStepState.RUNNING, 1, 2),
+                    new JobStep(JobStepKey.REASON, JobStepState.RUNNING, 1, 2));
+            assertThat(job().getSteps()).containsExactly(
+                    new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 2, 2),
+                    new JobStep(JobStepKey.PR_REVIEW, JobStepState.SKIPPED, 0, null),
+                    new JobStep(JobStepKey.COMPRESS, JobStepState.DONE, 2, 2),
+                    new JobStep(JobStepKey.REASON, JobStepState.DONE, 2, 2));
+
+        }
+
+        @Test
+        @DisplayName("같이 채우던 중 Job 이 취소되면 아직 시작하지 않은 카드는 AI 를 부르지 않고 Job 을 끝내지 않는다")
+        void startsNoMoreCardsOnceJobIsNoLongerRunning() {
+
+            for (int i = 0; i < 4; i++) {
+                cardWithCommits(commit(String.format("%040x", i + 1), 10, 0));
+            }
+            givenEvidenceForEveryCommit();
+            given(star.draft(any(), any())).willAnswer(invocation -> {
+                cancelService.cancel(jobId, userId, LOGIN);
+                return allFilled(firstShaOf(invocation.getArgument(0)));
+            });
+
+            runNext();
+
+            verify(star, atMost(2)).draft(any(), any());
+            verify(activities, atMost(2)).diffEvidence(any());
+            verify(cardDrafts, never()).finish(any(), any());
+            assertThat(job().getState()).isEqualTo(JobState.CANCELED);
+
+        }
+
+        private void givenEvidenceForEveryCommit() {
+
+            given(activities.diffEvidence(any())).willAnswer(invocation -> {
+                DiffEvidenceRequest request = invocation.getArgument(0);
+                return evidenceOf(request.commitShas().toArray(String[]::new));
+            });
+
+        }
+
+        private static String firstShaOf(StarDraftRequest request) {
+
+            return request.evidence().get(0).sha();
+
+        }
+
+        // 앞 카드가 끝난 뒤의 모습을 보려고, 다른 카드가 그만큼 끝날 때까지 기다린다
+        private void awaitFinishedCards(int finished) throws InterruptedException {
+
+            for (int i = 0; i < 300 && job().getSteps().get(2).done() < finished; i++) {
+                Thread.sleep(10);
+            }
+
+        }
     }
 
     private Long prCandidate() {

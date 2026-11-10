@@ -6,8 +6,10 @@ import { errorView } from '@/api/errorView';
 import { Breadcrumb, Button, ButtonLink, Note, PageTitle, Skeleton, buttonClass } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { FAILED_STEP_LABEL, flowStep } from '@/lib/coverLetterCopy';
+import { elapsed } from '@/lib/format';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { useNow } from '@/lib/useNow';
 import { CoverLetterDeleteAction } from './CoverLetterDeleteAction';
 import { DraftEditor } from './DraftEditor';
 import { DraftPaper } from './paper/DraftPaper';
@@ -90,13 +92,15 @@ export function CoverLetterPage() {
   }
   if (!l) return <main className="main main--tight"><Breadcrumb items={crumbs} /><Skeleton h={36} w="60%" /><Skeleton h={220} /></main>;
 
+  // 쓰는 동안의 '문항 고치기'는 이 자소서가 아니라 문항을 채운 새 자소서를 만들어 버려서 쓰는 동안에는 두지 않고, 지우기는 '쓰기 그만두기'로 말한다
+  const writing = l.stage !== 'DRAFTED' && l.stage !== 'FAILED';
   return (
     <main className="main main--tight">
       <div className="cl-crumbbar">
         <Breadcrumb items={crumbs} />
         <div className="row" style={{ gap: 8 }}>
-          <ButtonLink to={`/cover-letters/new?from=${encodeURIComponent(l.id)}`} variant="secondary" size="sm" className="cl-edit-trigger"><PenLine size={16} aria-hidden />문항 고치기</ButtonLink>
-          <CoverLetterDeleteAction letter={l} label="자소서 삭제" onDeleted={() => nav('/cover-letters', { replace: true })} />
+          {!writing && <ButtonLink to={`/cover-letters/new?from=${encodeURIComponent(l.id)}`} variant="secondary" size="sm" className="cl-edit-trigger"><PenLine size={16} aria-hidden />문항 고치기</ButtonLink>}
+          <CoverLetterDeleteAction letter={l} label={writing ? '쓰기 그만두기' : '자소서 삭제'} onDeleted={() => nav('/cover-letters', { replace: true })} />
         </div>
       </div>
       <Stepper current={flowStep(l.stage, l.failedStep)} />
@@ -104,7 +108,7 @@ export function CoverLetterPage() {
       {l.stage === 'ASSIGNING' && <AssignWait letter={l} />}
       {l.stage === 'FAILED' && <Failed letter={l} />}
       {(l.stage === 'ASSIGNED' || l.stage === 'ASKING') && <AskWait letter={l} failure={failure} />}
-      {(l.stage === 'ASKED' || l.stage === 'DRAFTING') && <DraftWait letter={l} failure={failure} />}
+      {(l.stage === 'ASKED' || l.stage === 'DRAFTING') && <DraftWait letter={l} failure={failure} checkedAt={letter.dataUpdatedAt} />}
       {l.stage === 'DRAFTED' && returning && <PageTitle sub={<WaitNote />}>고른 카드로 다시 쓰고 있어요</PageTitle>}
       {l.stage === 'DRAFTED' && !returning && returnFailed && <Note strong="고른 카드로 다시 쓰지 못했어요" tone="danger">글은 그대로예요. 대화 탭의 제안에서 다시 고를 수 있어요.</Note>}
       {l.stage === 'DRAFTED' && !returning && <DraftEditor key={l.id} letter={l} />}
@@ -185,11 +189,21 @@ function AskWait({ letter, failure }: { letter: CoverLetter; failure: Failure | 
   );
 }
 
+/**
+ * 쓰는 동안 멈추지 않았다는 증거 두 가지 — 이 화면이 쓰는 중(DRAFTING)을 처음 본 뒤로 흐른 시간과 서버에서 마지막으로 응답을 받은 뒤로 흐른 시간.
+ * 서버가 쓰기 시작한 시각을 주지 않아 앞의 것은 이 화면이 열린 때부터 센다. 매초 바뀌는 글이라 낭독 영역으로 두지 않는다
+ */
+function DraftLiveness({ checkedAt }: { checkedAt: number }) {
+  const [since] = useState(() => Date.now());
+  const now = useNow(true);
+  return <span className="cl-wait-note cl-wait-live">{elapsed((now - since) / 1000)}째 쓰고 있어요 · 마지막 확인 {elapsed((now - checkedAt) / 1000)} 전</span>;
+}
+
 /** ⑤ 문항마다 쓰고 검사하는 동안(ASKED·DRAFTING) — 종이 위에 글이 써지고, 문항마다 상태 한 줄과 여백 메모가 붙는다(#618) */
-function DraftWait({ letter, failure }: { letter: CoverLetter; failure: Failure | null }) {
+function DraftWait({ letter, failure, checkedAt }: { letter: CoverLetter; failure: Failure | null; checkedAt: number }) {
   return (
     <>
-      <PageTitle sub={<WaitNote />}>초안을 쓰고 있어요</PageTitle>
+      <PageTitle sub={<><WaitNote />{letter.stage === 'DRAFTING' && <DraftLiveness checkedAt={checkedAt} />}</>}>초안을 쓰고 있어요</PageTitle>
       {failure && <StepFailure {...failure} />}
       <DraftPaper letter={letter} mode="live" />
     </>

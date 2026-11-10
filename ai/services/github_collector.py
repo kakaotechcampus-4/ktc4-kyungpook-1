@@ -44,8 +44,8 @@ GITHUB_API_VERSION = "2022-11-28"
 GITHUB_API_BASE_URL_ENV = "GITORY_GITHUB_API_BASE_URL"
 DEFAULT_GITHUB_API_BASE_URL = "https://api.github.com"
 GITHUB_ACCEPT = "application/vnd.github+json"
-#: PR·커밋 상세를 한 번에 읽는 수. 8 이면 같은 토큰의 REST 2차 한도(1분 900번)를 넘을 수 있어 4로 묶는다.
-MAX_CONCURRENT_READS = 4
+#: PR·커밋 상세를 한 번에 읽는 수. 4개씩일 때 분당 약 580번(실측)이었고 5개씩이면 약 725번으로 REST 2차 한도(1분 900번) 아래다. 8 이면 넘을 수 있다.
+MAX_CONCURRENT_READS = 5
 ISSUE_REFERENCE = re.compile(r"(?<![\w/])#(\d+)")
 LOCKFILES = {
     "package-lock.json",

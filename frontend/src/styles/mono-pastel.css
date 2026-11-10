@@ -69,6 +69,8 @@
 .landing-card__field[data-slot='R'] { background: var(--pastel-yellow); }
 .landing-card__field p { font-size: 12px; line-height: 1.7; }
 .landing-card__field .star-key { background: var(--bg-surface); }
+/* 흰 상자 위라 기본 글자색(흰색)을 그대로 두면 S·T·A 가 안 보인다. 빈 칸(R)은 흐린 글자를 지킨다 */
+.landing-card__field .star-key:not(.star-key--dropped) { color: var(--text-strong); }
 .landing-card__evidence { background: var(--bg-surface); }
 
 .experience-item.gcard { border-radius: 20px; box-shadow: none; }

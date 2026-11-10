@@ -30,3 +30,6 @@ export const blanksIn = (text: string): MaterialItem[] =>
 /** AI 가 넣은 '더 쓸 거리' — 무엇을 쓰면 되는지 문구만 */
 export const moreToWrite = (text: string): string[] =>
   [...text.matchAll(MORE)].map((m) => m[0].slice('[더 쓸 거리: '.length, -1));
+
+/** 글에 남은 빈칸 수 — 항목 빈칸과 '더 쓸 거리'를 함께 센다 */
+export const blankCount = (text: string): number => blanksIn(text).length + moreToWrite(text).length;

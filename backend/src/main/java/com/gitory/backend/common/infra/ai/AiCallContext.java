@@ -27,6 +27,18 @@ public final class AiCallContext {
 
     }
 
+    public static <T> T callForJob(Long jobId, Supplier<T> work) {
+
+        Long previous = JOB.get();
+        JOB.set(jobId);
+        try {
+            return work.get();
+        } finally {
+            restore(JOB, previous);
+        }
+
+    }
+
     public static <T> T callForCard(Long cardId, Supplier<T> work) {
 
         Long previous = CARD.get();

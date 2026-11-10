@@ -1,9 +1,11 @@
 package com.gitory.backend.card.domain;
 
 import com.gitory.backend.audit.domain.AuditAction;
+import com.gitory.backend.card.domain.interview.InterviewTurn;
 import com.gitory.backend.card.infra.CardSlotNoteRepository;
 import com.gitory.backend.card.infra.CardStatementRepository;
 import com.gitory.backend.card.infra.CardVersionRepository;
+import com.gitory.backend.card.infra.InterviewTurnRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,7 @@ public class DraftSaveService {
     private final CardVersionReader reader;
     private final CardVersionWriter writer;
     private final CardThemeSuggester themeSuggester;
+    private final InterviewTurnRepository turns;
 
     @Transactional
     public SavedDraft save(UUID publicId, Long userId, Map<StarField, String> texts) {
@@ -40,6 +43,7 @@ public class DraftSaveService {
 
         CardVersion current = versions.findByCardIdAndVersionNo(card.getId(), card.getCurrentVersion()).orElseThrow();
         VersionSlots currentSlots = reader.read(card.getId(), current.getVersionNo());
+        skipOpenTurnsOfChangedSlots(card.getId(), currentSlots, sent);
 
         // 저장이 실패한 뒤 화면이 같은 글을 다시 보내도, 덮어쓸 수 없는 버전 위에 같은 내용의 새 버전이 생기지 않게 한다
         if (sameTexts(currentSlots, sent)) {
@@ -55,6 +59,18 @@ public class DraftSaveService {
         themeSuggester.settle(card, reader.read(card.getId(), next.getVersionNo()));
 
         return new SavedDraft(card.getPublicId(), next.getVersionNo(), sent, next.getUpdatedAt());
+
+    }
+
+    // 저장은 네 칸을 늘 다 보내므로, 글이 있는 칸이 아니라 이번에 손으로 바꾼 칸의 열린 질문만 넘긴 것으로 닫는다
+    private void skipOpenTurnsOfChangedSlots(Long cardId, VersionSlots currentSlots, Map<StarField, String> sent) {
+
+        for (InterviewTurn turn : turns.findByCardIdOrderBySeqAsc(cardId)) {
+            String text = sent.get(turn.getStarSlot());
+            if (!turn.isClosed() && text != null && !text.equals(currentSlots.textOf(turn.getStarSlot()))) {
+                turn.skip();
+            }
+        }
 
     }
 

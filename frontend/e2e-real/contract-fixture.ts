@@ -66,6 +66,7 @@ export async function installContractFixture(page: Page, options: { card?: Card;
       return ok(route, card);
     }
     if (method === 'GET' && path === `/cards/${card?.id}`) return ok(route, card);
+    if (method === 'GET' && path === `/cards/${card?.id}/interview`) return ok(route, []); // 카드 화면이 답을 기다리는 질문을 읽는다 — 이 계약 시험에는 질문이 없다
     if (method === 'PATCH' && path === `/cards/${card?.id}/draft`) {
       const fields = body as DraftFields;
       // PATCH acknowledgement intentionally has no version source, evidence, or card updatedAt.

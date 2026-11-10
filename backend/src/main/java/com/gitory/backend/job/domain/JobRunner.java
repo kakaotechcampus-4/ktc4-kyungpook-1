@@ -246,25 +246,22 @@ public class JobRunner {
 
         Long userRepositoryId = job.getUserRepositoryId();
         PartialReason partialReason = activity.partialReason();
-        // 새로 읽은 것이 없으면 묶을 것도 그대로라, 손댄 후보 때문에 요청이 달라져도 AI 를 다시 부르지 않는다
-        boolean nothingNew = activity.commits().isEmpty() && activity.pullRequests().isEmpty()
-                && activity.issues().isEmpty();
-        if (nothingNew && candidates.keepIfNothingNew(userRepositoryId)) {
-            transaction.executeWithoutResult(status -> keepCandidates(job.getId(), partialReason, limitResetAt));
-            return;
-        }
         String login = users.loginOf(job.getUserId());
-        LockedSources locked = candidates.lockedSources(userRepositoryId);
-        GroupingMaterial material = materials.load(userRepositoryId, login, locked.commitShas(),
-                locked.pullRequestNumbers());
-        ExperienceGroupingRequest request = GroupingConverter.requestOf(userRepositoryId, login, material,
-                partialReason != null);
-        String fingerprint = candidates.fingerprint(GroupingConverter.jsonOf(request));
+        // 지문은 손댄 후보를 빼기 전의 저장된 재료 전체로 만든다 — 카드로 쓴 것만으로 요청이 달라져 AI 를 다시 부르지 않고,
+        // 지난 그룹화가 실패해 묶이지 못한 채 저장만 된 커밋은 재료가 늘어난 것이라 다시 묶는다
+        GroupingMaterial whole = materials.load(userRepositoryId, login, Set.of(), Set.of());
+        String fingerprint = candidates.fingerprint(GroupingConverter.jsonOf(
+                GroupingConverter.requestOf(userRepositoryId, login, whole, partialReason != null)));
 
         if (candidates.keepIfSameInput(userRepositoryId, fingerprint)) {
             transaction.executeWithoutResult(status -> keepCandidates(job.getId(), partialReason, limitResetAt));
             return;
         }
+        LockedSources locked = candidates.lockedSources(userRepositoryId);
+        GroupingMaterial material = materials.load(userRepositoryId, login, locked.commitShas(),
+                locked.pullRequestNumbers());
+        ExperienceGroupingRequest request = GroupingConverter.requestOf(userRepositoryId, login, material,
+                partialReason != null);
 
         List<GroupedCandidate> grouped = GroupingConverter.candidatesOf(
                 progress == null ? grouping.group(request) : grouping.group(request, progress));

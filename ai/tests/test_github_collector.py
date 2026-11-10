@@ -19,6 +19,7 @@ from schemas.collection import (
     RepositoryCollectionRequest,
 )
 from services.github_collector import (
+    MAX_CONCURRENT_READS,
     CollectionLimits,
     GithubApiError,
     GithubCollector,
@@ -1231,8 +1232,8 @@ def _finishing_backwards(pulls: list[int], shas: list[str], events: list[tuple])
     return answer
 
 
-def test_reads_pull_requests_and_commits_four_at_a_time() -> None:
-    """PR 상세와 커밋 상세는 4개까지 동시에 읽고 그보다 많이 읽지 않는다."""
+def test_reads_pull_requests_and_commits_five_at_a_time() -> None:
+    """PR 상세와 커밋 상세는 5개까지 동시에 읽고 그보다 많이 읽지 않는다."""
     in_flight = {"pulls": 0, "commits": 0}
     peak = {"pulls": 0, "commits": 0}
 
@@ -1251,7 +1252,7 @@ def test_reads_pull_requests_and_commits_four_at_a_time() -> None:
 
     result = _collect_listening(collector, []).result
 
-    assert peak == {"pulls": 4, "commits": 4}
+    assert peak == {"pulls": 5, "commits": 5}
     assert len(result.pull_requests) == 6
     assert len(result.commits) == 6
 
@@ -1318,7 +1319,7 @@ def test_rate_limit_stops_new_reads_and_keeps_finished_ones_in_list_order(readin
     requested = {key_of(path) for path in calls} - {None}
     assert collected == keys[:2]
     assert result.partial_reason == PartialReason.GITHUB_RATE_LIMITED
-    assert requested.isdisjoint(keys[6:])
+    assert requested.isdisjoint(keys[MAX_CONCURRENT_READS + 2 :])
     assert "/repos/grow22/gitory/issues" not in calls
 
 
@@ -1337,7 +1338,7 @@ def test_rejected_token_while_reading_together_fails_the_whole_collection() -> N
         _collect_listening(_detail_collector([], shas, answer, calls), [])
 
     requested = {path.removeprefix(COMMIT_DETAIL_PREFIX) for path in calls if path.startswith(COMMIT_DETAIL_PREFIX)}
-    assert requested.isdisjoint(shas[4:])
+    assert requested.isdisjoint(shas[MAX_CONCURRENT_READS :])
 
 
 # 커밋 목록 값으로 내용을 받을지 가르는 규칙(#699)

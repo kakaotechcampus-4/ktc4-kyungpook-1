@@ -48,9 +48,9 @@ function StatusLine({ status }: { status: PaperStatus }) {
  * 메모는 여백(옆 칸)이나 문항 아래(inline)에 둔다. 두 칸(문항·여백)은 같은 그리드 줄이라 세로 위치가 맞는다.
  * 초안(edit)에는 메모를 두지 않는다 — 짐작 확인과 첨삭은 오른쪽 패널(#727)이 맡고, 종이에는 칠하기와 칩만 남는다.
  */
-export function PaperQuestion({ letterId, q, draftSteps, assignSteps, mode, layout, assigning, pollMs, last, text, onText, inView, focusRequest, flash }: {
+export function PaperQuestion({ letterId, q, draftSteps, assignSteps, mode, layout, assigning, othersWriting, pollMs, last, text, onText, inView, focusRequest, flash }: {
   letterId: string; q: CoverLetterQuestion; draftSteps: DraftStep[]; assignSteps: AssignStep[];
-  mode: PaperMode; layout: PaperLayout; assigning: boolean; pollMs: number; last: boolean;
+  mode: PaperMode; layout: PaperLayout; assigning: boolean; othersWriting: boolean; pollMs: number; last: boolean;
   text?: string; onText?: (id: string, text: string) => void; inView?: boolean;
   /** 패널의 '살펴볼 곳'에서 고른 메모 — n 이 바뀔 때마다 그 문장을 다시 칠하고 그 자리로 간다 */
   focusRequest?: { key: string; n: number } | null;
@@ -69,10 +69,10 @@ export function PaperQuestion({ letterId, q, draftSteps, assignSteps, mode, layo
 
   const notes = useMemo(() => {
     if (mode === 'ask') return { threads: [] as NoteThread[], questionNotes: [] as NoteThread[], checklist: null, phase: null };
-    if (mode !== 'assign') return buildQuestionNotes(q, draftSteps, current, mode === 'edit' ? 'edit' : 'live');
+    if (mode !== 'assign') return buildQuestionNotes(q, draftSteps, current, mode === 'edit' ? 'edit' : 'live', othersWriting);
     const a = buildAssignNotes(q, assignSteps, assigning);
     return { threads: [] as NoteThread[], questionNotes: a.questionNote ? [a.questionNote] : [], checklist: null, phase: a.phase };
-  }, [mode, q, assignSteps, assigning, draftSteps, current]);
+  }, [mode, q, assignSteps, assigning, othersWriting, draftSteps, current]);
   const all = useMemo(() => [...notes.threads, ...notes.questionNotes], [notes]);
   const onShown = useCallback((t: string) => setShown(t), []);
   const editing = useDraftEditing(letterId, q, current);

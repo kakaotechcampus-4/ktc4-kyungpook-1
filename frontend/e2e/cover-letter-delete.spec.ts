@@ -36,10 +36,10 @@ test('목록에서 삭제하면 확인 창이 먼저 열리고, 지운 뒤에는
   await expect(page.getByText('아직 쓴 자소서가 없어요')).toBeVisible();
 });
 
-test('자소서 화면 위의 자소서 삭제는 지운 뒤 목록으로 돌아간다', async ({ page }) => {
+test('자소서 화면 위의 쓰기 그만두기(쓰는 중인 자소서의 삭제)는 지운 뒤 목록으로 돌아간다', async ({ page }) => {
   await loginAsDemo(page);
   await createLetter(page);
-  await page.getByRole('button', { name: '자소서 삭제', exact: true }).click();
+  await page.getByRole('button', { name: '쓰기 그만두기', exact: true }).click();
   await page.getByRole('dialog', { name: '자소서를 삭제할까요?' }).getByRole('button', { name: '삭제', exact: true }).click();
   await expect(page).toHaveURL(/\/cover-letters$/);
   await expect(page.getByText('아직 쓴 자소서가 없어요')).toBeVisible();
@@ -62,6 +62,6 @@ for (const width of [390, 320]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.goto(new URL((await row.getByRole('link').getAttribute('href'))!, page.url()).toString());
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    expect((await page.getByRole('button', { name: '자소서 삭제', exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    expect((await page.getByRole('button', { name: '쓰기 그만두기', exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
   });
 }

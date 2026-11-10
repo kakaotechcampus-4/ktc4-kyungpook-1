@@ -48,6 +48,7 @@ export function noticeTitle(notice: Notice): string | null {
     case 'CARDS_DRAFTED': return `${repo}의 ${cardCountText(notice.cardCount)} 다 썼어요`;
     case 'REPO_REFRESHED': return `${repo}에서 새로 한 일로 ${cardCountText(notice.cardCount)} 써 뒀어요`;
     case 'ANALYSIS_FAILED': return `${repo}${objectParticle(repo)} 읽다가 멈췄어요`;
+    case 'LETTER_CARD_SUGGESTED': return `자소서 '${notice.letterTitle ?? '작성한 자소서'}'에 쓸 만한 새 카드가 생겼어요: '${notice.cardTitle ?? '새 카드'}'`;
     case 'POSTINGS_MATCHED': return `새 공고 중 잘 맞는 곳을 ${notice.postings.length}곳 찾았어요`;
     default: return null;
   }
@@ -66,6 +67,11 @@ export function noticeAction(notice: Notice, matching: boolean): { label: string
     case 'POSTINGS_MATCHED': {
       const first = notice.postings[0];
       return { label: '공고 보기', to: first ? `/match/${encodeURIComponent(first.postingId)}` : '/match' };
+    }
+    case 'LETTER_CARD_SUGGESTED': {
+      const { letterId, questionId, cardId } = notice;
+      if (!letterId || !questionId || !cardId) return null;
+      return { label: '보러 가기', to: `/cover-letters/${encodeURIComponent(letterId)}?card=${encodeURIComponent(cardId)}&question=${encodeURIComponent(questionId)}` };
     }
     case 'ANALYSIS_FAILED': {
       if (!repoId) return { label: '다시 보기', to: '/repos' };
@@ -95,7 +101,7 @@ export function noticeView(notice: Notice, env: Env = {}): NoticeView | null {
   // 맞는 기업 고르기는 대화에 도구가 없어서 공고 하나만 보게 되므로 레포 카드 전체로 고르는 매칭 화면으로 보낸다
   const pick = notice.kind === 'CARDS_DRAFTED' && notice.repoId && matching
     ? [{ text: `${repo} 카드로 맞는 기업 골라 줘`, to: `/cards/repo/${encodeURIComponent(notice.repoId)}/match` }] : [];
-  const asks = !assistant || notice.kind === 'ANALYSIS_FAILED' ? []
+  const asks = !assistant || notice.kind === 'ANALYSIS_FAILED' || notice.kind === 'LETTER_CARD_SUGGESTED' ? []
     : matched ? [...new Set(notice.postings.slice(0, 2).map((p) => p.companyName))].map((company) => chat(`${company} 공고로 자소서 써 줘`))
     : [...pick, chat(`${repo} 카드로 자소서 써 줘`)];
   return {

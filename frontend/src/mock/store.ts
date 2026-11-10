@@ -7,7 +7,7 @@ import { seedActivities, seedCards, seedCandidates, seedInterview, seedRecall, s
 import { draftPlans, draftSchedule, draftStepsOf, draftTexts, liveDraftOf, type DraftPlan } from './draftLive';
 import { Profile, emptyProfile } from '@/api/profile';
 import { resetMatchState } from './matchState';
-import { draftedNotice, failedNotice, pushNotice } from './notifications';
+import { draftedNotice, failedNotice, letterCardNotices, pushNotice } from './notifications';
 
 type Any = Record<string, any>;
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -712,6 +712,7 @@ export function settleThemes(c: Any) {
   const text = [c.title, ...STAR.map((f) => v[FIELD_KEY[f]] ?? '')].join(' ');
   const picked = THEME_WORDS.filter(([, word]) => word.test(text)).map(([theme]) => theme).slice(0, 2);
   c.themes = picked.length ? picked : ['GROWTH'];
+  letterCardNotices(db.coverLetters, c).forEach((notice) => pushNotice(db.notifications, notice));
 }
 export function chooseThemes(c: Any, themes: string[]) { c.themes = themes; c.themesByUser = true; delete c.themesDueAt; }
 

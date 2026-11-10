@@ -20,6 +20,10 @@
   .cl-steps__pill { display: inline-flex; }
 }
 
+/* 알림에서 온 새 카드 안내 — 눌러야 다시 쓴다 */
+.cl-suggest { align-items: center; flex-wrap: wrap; justify-content: space-between; font-size: 14px; line-height: 21px; }
+.cl-suggest__actions { display: flex; align-items: center; gap: 8px; }
+
 /* ① 입력 — 번호 붙은 두 묶음(어디에 내나요 · 문항)과 아래 막대 */
 .cl-group { display: flex; flex-direction: column; gap: 20px; }
 .cl-group__top { display: flex; align-items: center; gap: 10px; }

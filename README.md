@@ -277,7 +277,7 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
     </td>
     <td align="center" width="16%">
       <a href="https://github.com/hyukjin0324"><img src="https://github.com/hyukjin0324.png?size=120" width="96" alt="권혁진" /><br /><strong>권혁진</strong></a><br />
-      <sub>AI 리드 · AI</sub><br /><sub><a href="https://github.com/hyukjin0324">@hyukjin0324</a></sub>
+      <sub>AI 리드</sub><br /><sub><a href="https://github.com/hyukjin0324">@hyukjin0324</a></sub>
     </td>
     <td align="center" width="16%">
       <a href="https://github.com/ganggang-0605"><img src="https://github.com/ganggang-0605.png?size=120" width="96" alt="김경무" /><br /><strong>김경무</strong></a><br />
@@ -285,11 +285,11 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
     </td>
     <td align="center" width="16%">
       <a href="https://github.com/TaeHuiKKIM"><img src="https://github.com/TaeHuiKKIM.png?size=120" width="96" alt="김태희" /><br /><strong>김태희</strong></a><br />
-      <sub>FE 리드 · Frontend</sub><br /><sub><a href="https://github.com/TaeHuiKKIM">@TaeHuiKKIM</a></sub>
+      <sub>FE 리드</sub><br /><sub><a href="https://github.com/TaeHuiKKIM">@TaeHuiKKIM</a></sub>
     </td>
     <td align="center" width="16%">
       <a href="https://github.com/Grow22"><img src="https://github.com/Grow22.png?size=120" width="96" alt="장성준" /><br /><strong>장성준</strong></a><br />
-      <sub>BE 리드 · Backend · AI · 인프라</sub><br /><sub><a href="https://github.com/Grow22">@Grow22</a></sub>
+      <sub>BE 리드</sub><br /><sub><a href="https://github.com/Grow22">@Grow22</a></sub>
     </td>
     <td align="center" width="16%">
       <a href="https://github.com/chxisoei"><img src="https://github.com/chxisoei.png?size=120" width="96" alt="최민서" /><br /><strong>최민서</strong></a><br />

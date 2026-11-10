@@ -46,7 +46,7 @@ describe('맞는 기업 고르기 화면', () => {
     expect(screen.getByText('auth-service 레포의 카드 5장을 지금 지원할 수 있는 공고와 맞춰 보고 있어요. 보통 1~2분 걸려요.')).toBeInTheDocument();
     const picks = screen.getByRole('region', { name: /지금까지 고른 곳/ });
     expect(within(picks).getByText('회사 1')).toBeInTheDocument();
-    expect(within(picks).getByText('필수 1개 · 우대 1개')).toBeInTheDocument();
+    expect(within(picks).getByText('필수 1개, 우대 1개')).toBeInTheDocument();
     expect(within(picks).getByText('고르는 중')).toBeInTheDocument();
     expect(within(picks).getAllByRole('listitem')).toHaveLength(3); // 위 3곳 자리 가운데 둘은 아직 비어 있다
     expect(within(picks).queryByRole('link')).not.toBeInTheDocument();
@@ -80,7 +80,7 @@ describe('맞는 기업 고르기 화면', () => {
     const picks = screen.getByRole('region', { name: '고른 기업 3곳' });
     expect(within(picks).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual(['/match/p_1', '/match/p_2', '/match/p_3']);
     expect(within(picks).getByRole('link', { name: '회사 1 공고 보기' })).toHaveTextContent('공고 보기');
-    expect(within(picks).getByText('필수 2개 · 우대 1개 조건이 맞아요. 「결제 롤백 대응」 「N+1 정리」 카드로 채웠어요.')).toBeInTheDocument();
+    expect(within(picks).getByText('필수 2개, 우대 1개 조건이 맞아요. 「결제 롤백 대응」 「N+1 정리」 카드로 채웠어요.')).toBeInTheDocument();
     expect(within(picks).getByText('확정하지 않은 카드도 함께 봤어요. 카드를 확정하면 공고에서도 같은 조건이 맞는 걸로 보여요.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '폴더로 가기' })).toHaveClass('btn--primary');
     expect(screen.getByRole('link', { name: '폴더로 가기' })).toHaveAttribute('href', FOLDER);
@@ -130,7 +130,7 @@ describe('맞는 기업 고르기 화면', () => {
     open();
 
     await heading('맞는 기업 2곳을 골랐어요');
-    expect(screen.getByText('필수 2개 · 우대 1개 조건이 맞아요. 카드의 Spring, JPA 기술로 채웠어요.')).toBeInTheDocument();
+    expect(screen.getByText('필수 2개, 우대 1개 조건이 맞아요. 카드의 Spring, JPA 기술로 채웠어요.')).toBeInTheDocument();
     expect(screen.queryByRole('log')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '한 일' })).not.toBeInTheDocument();
     expect(document.querySelectorAll('.rp-co')).toHaveLength(2);

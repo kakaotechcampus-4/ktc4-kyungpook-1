@@ -9,7 +9,6 @@
 .rp-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
 .rp-head .page-lead { max-width: none; font-size: 15px; line-height: 24px; }
 .rp-head__act { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.rp-head__hint { font-size: 13px; line-height: 18px; color: var(--text-tertiary); }
 .rp-head__act .btn { min-height: 48px; padding: 0 20px; border-radius: 14px; font-size: 15px; font-weight: var(--weight-bold); }
 
 .rp-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
@@ -102,7 +101,8 @@
 .rp-wait { margin-top: 10px; font-size: 14px; line-height: 22px; color: var(--text-secondary); }
 
 .rp-feed { max-height: 296px; margin-top: 10px; padding-right: 4px; overflow-y: auto; scroll-behavior: smooth; }
-.rp-feed.is-scrolled { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 30px); mask-image: linear-gradient(to bottom, transparent 0, #000 30px); }
+/* 맨 위 줄이 반쯤 잘린 채 보이지 않게 한 줄 높이만큼 흐린다(#919) */
+.rp-feed.is-scrolled { -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 56px); mask-image: linear-gradient(to bottom, transparent 0, black 56px); }
 @media (prefers-reduced-motion: reduce) { .rp-feed { scroll-behavior: auto; } }
 .rp-feed ol { display: flex; flex-direction: column; }
 .rp-line { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 9px 0; border-top: 1px solid var(--border-default); font-size: 14px; line-height: 22px; color: var(--text-strong); animation: rp-rise .28s ease-out; }

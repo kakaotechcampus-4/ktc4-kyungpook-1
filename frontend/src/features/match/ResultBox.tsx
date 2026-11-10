@@ -72,7 +72,7 @@ export function ResultBox({ postings, search, filtered, confirmedCards }: {
           ) : matched ? (
             day && <p className="result-box__meta"><MetaLine day={day} cards={confirmedCards} checked={data.checked} /></p>
           ) : (
-            <p className="result-box__meta">{noCards ? NO_CARDS : `${cards} 인적사항으로, 기술이 겹치는 공고의 필수·우대 조건을 확인해요. 1분쯤 걸려요.`}</p>
+            <p className="result-box__meta">{noCards ? NO_CARDS : `${cards} 인적사항으로, 기술이 겹치는 공고의 필수, 우대 조건을 확인해요. 1분쯤 걸려요.`}</p>
           )}
         </div>
         <div className="result-box__actions">
@@ -130,7 +130,7 @@ export function ResultBox({ postings, search, filtered, confirmedCards }: {
 function MetaLine({ day, cards, checked }: { day: string; cards: number | undefined; checked: number }) {
   return (
     <>
-      {day} · {cards === undefined ? "확정 카드와" : <>확정 카드 <b>{cards}장</b>과</>} 인적사항으로{" "}
+      {day}, {cards === undefined ? "확정 카드와" : <>확정 카드 <b>{cards}장</b>과</>} 인적사항으로{" "}
       {checked > 0 ? <>기술이 겹치는 <b>{checked}곳</b>을 확인했어요</> : "맞춰 봤어요"}
     </>
   );
@@ -171,12 +171,13 @@ function ResultTile({ tile: { item, company }, rank, search }: { tile: FitPostin
       <p className="result-tile__count">
         {summary.done && <Check size={15} strokeWidth={2.5} aria-hidden />}
         {summary.text}
-        {summary.extra && <span className="result-tile__pref"> · {summary.extra}</span>}
+        {summary.extra && <span className="result-tile__pref">, {summary.extra}</span>}
       </p>
       {names && (
-        <p className="result-tile__names">
-          <b className={names.lacking ? "is-lacking" : undefined}>{names.names}</b>
-          {names.tail}
+        <p className={`result-tile__names${names.lacking ? " is-lacking" : ""}`}>
+          <span className="result-tile__label">{names.label}</span>
+          {names.names.map((name) => <span key={name} className="result-tile__chip">{name}</span>)}
+          {names.more > 0 && <span className="result-tile__more">외 {names.more}개</span>}
         </p>
       )}
       <div className="posting-tile__foot">

@@ -65,7 +65,8 @@ export function mockMatchDetail(id: string, judge = false): MatchDetail | null {
   const confirmed = db.cards.filter((c) => c.status === "CONFIRMED");
   const signature = confirmed.map((c) => c.id).sort().join(",");
   if (judge) markJudged(id, signature);
-  const judged = isJudged(id, signature);
+  // 전체 맞춰 보기가 끝난 공고도 실서버처럼 판단이 저장된 것으로 본다 — 홈 '지원할 곳'이 맞춰 본 뒤에도 '아직 맞춰 보지 않은 조건'을 보이지 않게(#919)
+  const judged = isJudged(id, signature) || (confirmed.length > 0 && overallJudged(id));
   const metBy = confirmed.flatMap((c) => metByOf(c) ?? []);
   const filled = judged ? filledBy(id, now) : new Map<string, MetBy>();
   const seed = MatchDetail.parse(detailExample.data);
@@ -342,6 +343,14 @@ export function mockMatchedPostings() {
     repoPicks(repoId)?.companies.forEach((c) => ids.add(c.posting.id)));
   return { matchedPostings: ids.size };
 }
+// 전체 결과의 기업 목록은 목록(상세)에서 다시 만들어지므로, 그 안에서 다시 부르면 끝없이 돈다 — 만드는 동안은 판단 전으로 본다
+let readingOverall = false;
+const overallJudged = (id: string) => {
+  const state = db.overall;
+  if (!state || readingOverall || (Date.now() - state.startedAt) / 1000 < OVERALL_SEC) return false;
+  readingOverall = true;
+  try { return overallCompanies().some((c) => c.posting.id === id); } finally { readingOverall = false; }
+};
 /** Mock server only: 실서버처럼 누르면 배경에서 기업을 하나씩 확인하고(진행 개수), 다시 계산하는 동안에는 지난 기업을 그대로 준다 */
 export function mockOverall() {
   const state = db.overall;

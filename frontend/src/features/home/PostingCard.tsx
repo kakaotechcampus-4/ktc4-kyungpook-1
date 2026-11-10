@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useMatch } from '@/api/matching';
 import { applyAction, conditionRows, deadlineLabel, statusSentence, type ApplyItem } from './homeApply';
 import { ButtonLink } from '@/components/ui';
@@ -55,7 +55,7 @@ function Conditions({ postingId }: { postingId: string }) {
         {view.rows.map((row) => (row.cardTitle
           ? (
             <li key={row.id} className="home3-req">
-              <span className="home3-mk" role="img" aria-label="채웠어요"><Check size={18} aria-hidden /></span>
+              <span className="home3-mk home3-mk--met" role="img" aria-label="채웠어요" />
               <span className="home3-req__c">{row.text}</span>
               <span className="home3-req__ev" title={row.cardTitle}>{row.cardTitle}</span>
             </li>
@@ -64,7 +64,7 @@ function Conditions({ postingId }: { postingId: string }) {
             <li key={row.id} className="home3-req home3-req--miss">
               <span className="home3-mk home3-mk--miss" role="img" aria-label="아직 없어요" />
               <span className="home3-req__c">{row.text}</span>
-              <span className="home3-req__ev">내 카드에 아직 없어요 · <Link to={detailPath(postingId)}>채울 경험 찾기</Link></span>
+              <span className="home3-req__ev"><Link to={detailPath(postingId)}>채울 경험 찾기</Link></span>
             </li>
           )))}
       </ul>
@@ -84,7 +84,7 @@ export function PostingCard({ item, active, readDetail, panelProps }: Props) {
     <article className="home3-lead" {...panelProps} aria-hidden={active ? undefined : true} inert={!active}>
       <div className="home3-lead__hd">
         <div className="home3-lead__who">
-          <div className="home3-meta"><span>{pick.company}</span><span className="home3-meta__sep" aria-hidden>·</span><span>{statusSentence(item)}</span></div>
+          <div className="home3-meta"><span>{pick.company}</span><span>{statusSentence(item)}</span></div>
           <h2>{pick.title}</h2>
         </div>
         <div className="home3-dd">

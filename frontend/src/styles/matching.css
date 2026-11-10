@@ -1041,18 +1041,40 @@
   color: var(--text-secondary);
   font-weight: var(--weight-regular);
 }
+/* 조건 줄 — 이름표 + 칩. 빈 조건은 마감 색, 맞은 조건은 기본 칩(#919) */
 .result-tile__names {
-  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 2px 0 0;
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 20px;
 }
-.result-tile__names b {
+.result-tile__label {
+  margin-right: 2px;
+  color: var(--text-secondary);
+}
+.result-tile__chip {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 1px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
   color: var(--text-primary);
   font-weight: var(--weight-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.result-tile__names b.is-lacking {
+.result-tile__names.is-lacking .result-tile__chip {
+  border-color: transparent;
+  background: var(--state-open-bg);
   color: var(--state-open-text);
+}
+.result-tile__more {
+  color: var(--text-tertiary);
 }
 .result-tile .posting-tile__foot {
   flex-wrap: wrap;
@@ -1069,6 +1091,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+/* 폰에서는 칩이 네 줄로 늘어져 공고를 밀어내지 않게 한 줄로 넘겨 본다. 끝 흐림이 넘길 수 있다고 알려 준다(#919) */
+@media (max-width: 767px) {
+  .match-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .match-chips::-webkit-scrollbar { display: none; }
+  .match-chip { flex: none; white-space: nowrap; }
 }
 .match-chip {
   min-height: var(--control-touch-size);

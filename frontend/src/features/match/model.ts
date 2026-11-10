@@ -121,10 +121,11 @@ const NAMES_SHOWN = 2;
 const techName = (tech: string) => (techLabels as Record<string, string>)[tech] ?? tech;
 // 서버의 text 는 공고에 적힌 조건 문장이라 '…경험' 으로 끝나는 일이 많고, 문장 끝에 '경험이' 를 다시 붙이므로 겹치지 않게 뗀다
 const conditionName = (condition: OverallCompany["met"][number]) =>
-  condition.techs.length > 0 ? condition.techs.map(techName).join("·") : condition.text.replace(/\s*경험$/, "").trim() || condition.text;
+  condition.techs.length > 0 ? condition.techs.map(techName).join(" / ") : condition.text.replace(/\s*경험$/, "").trim() || condition.text;
 
 /**
- * 결과 타일의 이름 줄 — 필수를 다 채웠으면 맞은 조건, 아니면 모자란 조건을 2개까지 이름으로 쓰고 남으면 '등 N개' 로 줄인다(조건 사이는 쉼표, 한 조건의 기술 사이는 가운뎃점)
+ * 결과 타일의 조건 줄 — 필수를 다 채웠으면 '맞은 조건', 아니면 '빈 조건' 이름표 뒤에 조건을 2개까지 칩으로 두고 남으면 '외 N개'(#919).
+ * 영어 기술 이름을 문장에 이어 붙이면 한 문장으로 읽히지 않아 칩으로 나눈다. 한 조건의 기술 사이는 ' / '.
  * N 은 이름 목록(서버가 3개까지만 준다)이 아니라 필수 개수에서 센다, 이름을 못 받은 옛 응답은 줄을 그리지 않는다(null)
  */
 export function fitNames(c: FitNames) {
@@ -134,10 +135,10 @@ export function fitNames(c: FitNames) {
   if (conditions.length === 0) return null;
   const shown = conditions.slice(0, NAMES_SHOWN);
   const total = Math.max(done ? c.requiredMet : c.requiredTotal - c.requiredMet, conditions.length);
-  const verb = done ? "맞아요" : "아직 없어요";
   return {
-    names: shown.map(conditionName).join(", "),
-    tail: total > shown.length ? ` 등 ${total}개가 ${verb}` : ` 경험이 ${verb}`,
+    label: done ? "맞은 조건" : "빈 조건",
+    names: shown.map(conditionName),
+    more: Math.max(0, total - shown.length),
     lacking: !done,
   };
 }

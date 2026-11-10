@@ -234,3 +234,8 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .mine-chip > svg { flex: none; align-self: center; }
 .match-meta, .match-card__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
 .match-card__go { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: var(--text-accent); font-weight: var(--weight-bold); }
+
+/* 가로로 넘겨 보는 줄의 끝 흐림 — useScrollEdges 가 data-edge 를 단다(#919) */
+.scroll-edges[data-edge="end"] { -webkit-mask-image: linear-gradient(to right, black calc(100% - 40px), transparent); mask-image: linear-gradient(to right, black calc(100% - 40px), transparent); }
+.scroll-edges[data-edge="start"] { -webkit-mask-image: linear-gradient(to left, black calc(100% - 40px), transparent); mask-image: linear-gradient(to left, black calc(100% - 40px), transparent); }
+.scroll-edges[data-edge="both"] { -webkit-mask-image: linear-gradient(to right, transparent, black 40px, black calc(100% - 40px), transparent); mask-image: linear-gradient(to right, transparent, black 40px, black calc(100% - 40px), transparent); }

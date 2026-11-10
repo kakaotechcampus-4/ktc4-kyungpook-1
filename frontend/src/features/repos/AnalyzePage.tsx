@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useActiveJobs, useCandidates, useCards, useCreateCards, useJob, useMe, useRepo, useStartAnalysis, useCancelJob } from '@/api/queries';
 import { isGithubUnauthorized, reconnectGithub, reconnectGithubTo } from '@/lib/githubReconnect';
 import { QueryFailure } from '@/components/ui/QueryFailure';
-import { Badge, Breadcrumb, Button, ButtonLink, PageTitle, RepoContext, Skeleton } from '@/components/ui';
+import { Breadcrumb, Button, ButtonLink, PageTitle, RepoContext, Skeleton } from '@/components/ui';
 import { JobLiveness } from '@/components/JobLiveness';
 import { AiWait } from '@/components/ui/AiWait';
 import { agentHeadline, agentLine } from '@/lib/agentNarration';
-import { stepLines, useActivityFeed, type ActivityLine } from '@/lib/agentActivity';
+import { foldedJudgeCount, stepLines, useActivityFeed, type ActivityLine } from '@/lib/agentActivity';
 import { elapsed, minutes } from '@/lib/format';
 import { jobErrorHint, jobErrorTitle, jobStepLabel, jobStepUnit } from '@/lib/labels';
 import { isTerminal, type Job, type JobStep } from '@/api/schemas';
@@ -47,8 +47,9 @@ export function AnalyzePage() {
     : `${subject}정리 중`);
   const { waitSec, canRetry } = useJobRetry(j);
   const feed = useActivityFeed(j);
-  const autoCards = j?.state === 'SUCCEEDED' && !j.partial;
-  const [plan, setPlan] = useState<'draft' | 'folder' | null>(null);
+  const autoCards = j?.state === 'SUCCEEDED';
+  const [plan, setPlan] = useState<{ kind: 'draft'; count: number } | { kind: 'folder' } | null>(null);
+  const onPlan = (kind: 'draft' | 'folder', count = 0) => setPlan(kind === 'draft' ? { kind, count } : { kind });
 
   // 새로고침으로 ?job= 을 잃어도 서버가 진행 중인 작업을 안다 — 그걸 다시 붙인다
   useEffect(() => {
@@ -155,7 +156,7 @@ export function AnalyzePage() {
         <PageTitle>{jobErrorTitle[code]}</PageTitle>
         <RunSub name={name}><span className="run-sub__item">{took(j)} 진행</span></RunSub>
         <p className="run-goal">{agentHeadline(j)}</p>
-        <Timeline job={j} lines={feed.lines} />
+        <Timeline job={j} lines={feed.lines} repoId={repoId} />
         <div className="fail-card" role="alert">
           <span className="fail-card__bang">!</span>
           <div className="stack" style={{ gap: 6 }}>
@@ -185,61 +186,46 @@ export function AnalyzePage() {
     );
   }
 
-  if (j?.state === 'SUCCEEDED' && j.partial) {
-    const code = j.errorCode;
-    return (
-      <main className="main main--tight">
-        <Breadcrumb items={[...crumbs, { label: '후보 보드' }]} />
-        <PageTitle>읽은 데까지 정리했어요</PageTitle>
-        <RunSub name={name}><span className="run-sub__item">{took(j)} 진행</span></RunSub>
-        <p className="run-goal">{agentHeadline(j)}</p>
-        <Timeline job={j} lines={feed.lines} />
-        {requiresRetryRefresh(j) && <RetryTimeNotice refresh={() => job.refetch()} pending={job.isFetching} />}
-        <div className="card partial-card">
-          <Badge kind="NEUTRAL">부분 결과</Badge>
-          <div className="partial-card__body">
-            <span className="partial-card__title">{code ? jobErrorTitle[code] : '일부 기록만 정리했어요'}</span>
-            <span className="partial-card__note">{readNote(j)} {code && jobErrorHint[code]}</span>
-          </div>
-          {(canRetry || waitSec > 0) && (
-            <Button variant="secondary" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>
-              {waitSec > 0 ? `${minutes(waitSec)} 뒤 이어 읽기` : '이어 읽기'}
-            </Button>
-          )}
-        </div>
-        <div className="row" style={{ gap: 8 }}>
-          <Button onClick={() => nav(`/repos/${repoId}/candidates?job=${encodeURIComponent(jobId)}`)}>읽은 범위의 후보 보기</Button>
-          <ButtonLink to="/repos" variant="secondary">다른 레포</ButtonLink>
-        </div>
-      </main>
-    );
-  }
-
   // B3 — 진행. 누를 것이 없다. 떠나도 된다.
   // 다 읽었어도 고른 이유가 차례로 나오는 동안은 이 화면에 남는다 — 그때는 "읽고 있어요"라고 하지 않고 취소도 막는다
   const finished = j?.state === 'SUCCEEDED';
+  const partialCode = j?.partial ? j.errorCode : null;
   return (
     <main className="main">
       <Breadcrumb items={[...crumbs, { label: finished ? '정리 완료' : '정리 중' }]} />
-      <PageTitle right={finished ? undefined : '떠나도 돼요'}>{finished ? '레포를 다 읽었어요' : '레포를 읽고 있어요'}</PageTitle>
+      <PageTitle right={finished ? undefined : '떠나도 돼요'}>{finished ? (j.partial ? '읽은 데까지 정리했어요' : '레포를 다 읽었어요') : '레포를 읽고 있어요'}</PageTitle>
       <RunSub name={name}>{j && <JobLiveness job={j} checkedAt={job.dataUpdatedAt} />}</RunSub>
       {!j ? <AiWait label="레포를 읽을 준비를 하고 있어요. 곧 PR부터 읽기 시작해요." /> : (
         <>
           {/* 지금 무엇을 하려는지 한 문장으로 — 단계 이름보다 먼저 눈에 걸리게 */}
           <p className="run-goal" aria-live="polite">{agentHeadline(j, repo.data?.name)}</p>
-          <Timeline job={j} lines={feed.lines} />
+          <Timeline job={j} lines={feed.lines} repoId={repoId} />
+          {j.partial && requiresRetryRefresh(j) && <RetryTimeNotice refresh={() => job.refetch()} pending={job.isFetching} />}
+          {j.partial && (
+            <p className="run-capnote">
+              <span className="run-capnote__text">
+                <span>{(partialCode && jobErrorTitle[partialCode]) ?? '일부 기록만 정리했어요'}</span>
+                <span>{(partialCode && jobErrorHint[partialCode]) ?? ''}</span>
+              </span>
+              {(canRetry || waitSec > 0) && (
+                <Button variant="secondary" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>
+                  {waitSec > 0 ? `${minutes(waitSec)} 뒤 이어 읽기` : '이어 읽기'}
+                </Button>
+              )}
+            </p>
+          )}
         </>
       )}
-      {autoCards && feed.drained && <AutoDraft key={`${repoId}:${jobId}`} repoId={repoId} finishedAt={j.finishedAt} onPlan={setPlan} />}
+      {autoCards && feed.drained && <AutoDraft key={`${repoId}:${jobId}`} repoId={repoId} finishedAt={j.finishedAt} onPlan={onPlan} />}
       <div className="run-foot">
         {autoCards ? (
           <>
-            <span>{plan === 'draft' ? '카드를 쓰기 시작했어요' : plan === 'folder' ? '만들어 둔 카드가 있어서 카드 폴더로 가요' : '추천 경험으로 카드까지 이어서 써요'}</span>
-            {!plan && (
-              <div className="run-foot__right">
-                <ButtonLink to={`/repos/${repoId}/candidates`} replace variant="secondary">후보 직접 고르기</ButtonLink>
-              </div>
-            )}
+            {plan?.kind === 'draft'
+              ? <span className="run-foot__go"><span className="run-foot__pulse" aria-hidden />{`추천 후보 ${plan.count}개로 카드 초안을 쓰러 가요`}</span>
+              : <span>{plan?.kind === 'folder' ? '만들어 둔 카드가 있어서 카드 폴더로 가요' : '추천 경험으로 카드까지 이어서 써요'}</span>}
+            <div className="run-foot__right">
+              <ButtonLink to={`/repos/${repoId}/candidates`} replace variant="secondary">후보 직접 고르기</ButtonLink>
+            </div>
           </>
         ) : (
           <>
@@ -260,7 +246,7 @@ export function AnalyzePage() {
  * 카드가 이미 있으면 만들지 않고 카드 폴더로 보내고, 만들 후보가 없거나 읽기가 실패하면 후보 보드로 보낸다.
  * 만들기가 실패해도 다시 시도하지 않고 후보 보드로 보낸다(실패 알림은 공통 오류 알림이 띄운다)
  */
-function AutoDraft({ repoId, finishedAt, onPlan }: { repoId: string; finishedAt: string | null; onPlan: (plan: 'draft' | 'folder') => void }) {
+function AutoDraft({ repoId, finishedAt, onPlan }: { repoId: string; finishedAt: string | null; onPlan: (plan: 'draft' | 'folder', count?: number) => void }) {
   const nav = useNavigate();
   const board = useCandidates(repoId);
   const cards = useCards();
@@ -289,7 +275,7 @@ function AutoDraft({ repoId, finishedAt, onPlan }: { repoId: string; finishedAt:
       }
       const picks = next.ids;
       if (!mounted.current) return;
-      onPlan('draft');
+      onPlan('draft', picks.length);
       const made = await create.mutateAsync(picks).catch(() => null);
       if (!mounted.current) return;
       if (!made) {
@@ -313,9 +299,9 @@ const DOT: Record<TimelineView, string> = { done: '✓', now: '', wait: '', skip
 
 /**
  * 단계 4개를 점과 선으로 그린다. 지금 읽는 단계만 상자로 펼쳐 큰 숫자와 방금 읽은 줄을 보이고,
- * 묶음·고른 이유 같은 판단 줄은 단계가 끝나도 메모로 남는다(읽기 줄은 숫자로 접힌다).
+ * 묶음·고른 이유 같은 판단 줄은 몇 줄 이하일 때만 메모로 남고, 많으면 한 줄로 접는다(읽기 줄은 숫자로 접힌다).
  */
-function Timeline({ job, lines }: { job: Job; lines: ActivityLine[] }) {
+function Timeline({ job, lines, repoId }: { job: Job; lines: ActivityLine[]; repoId: string }) {
   return (
     <ol className="tl">
       {job.steps.map((s) => {
@@ -323,6 +309,7 @@ function Timeline({ job, lines }: { job: Job; lines: ActivityLine[] }) {
         const mine = stepLines(lines, s.key, view === 'now');
         const reads = mine.filter((l) => l.tone !== 'judge');
         const notes = mine.filter((l) => l.tone === 'judge');
+        const folded = foldedJudgeCount(lines, s.key, view === 'now');
         return (
           <li key={s.key} className={`tl__item tl__item--${view}`}>
             <span className="tl__dot" aria-hidden>{DOT[view]}</span>
@@ -347,6 +334,11 @@ function Timeline({ job, lines }: { job: Job; lines: ActivityLine[] }) {
                     : <li key={l.seq} className="tl-note tl-note--one">{l.text}</li>)}
                 </ul>
               )}
+              {folded > 0 && (view === 'now'
+                ? <p className="tl__fold">{`앞의 ${folded}개는 접었어요`}</p>
+                : s.key === 'REASON'
+                  ? <p className="tl__fold"><span>{`추천 이유 ${folded}개를 붙였어요`}</span><Link to={`/repos/${repoId}/candidates`}>후보 보드에서 보기</Link></p>
+                  : <p className="tl__fold">{`${folded}개를 접었어요`}</p>)}
             </div>
           </li>
         );

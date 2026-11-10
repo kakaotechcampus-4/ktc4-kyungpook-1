@@ -106,4 +106,13 @@ describe('고른 이유 재생', () => {
     for (let i = 0; i < 5; i++) act(() => { vi.advanceTimersByTime(700); });
     expect(result.current.drained).toBe(true);
   });
+
+  it('고른 이유가 20줄 밀려 있어도 앞은 건너뛰고 마지막 3줄만 보인 뒤 2초 안에 끝난다', () => {
+    vi.useFakeTimers();
+    const many = { jobId: 'j1', state: 'SUCCEEDED', finishedAt: new Date().toISOString(), activity: Array.from({ length: 20 }, (_, i) => ({ seq: i + 1, step: 'REASON', kind: 'DESCRIBED', title: `이유 ${i + 1}`, reason: null })) } as unknown as Job;
+    const { result } = renderHook(() => useActivityFeed(many));
+    for (let i = 0; i < 3; i++) act(() => { vi.advanceTimersByTime(500); });
+    expect(result.current.drained).toBe(true);
+    expect(result.current.lines).toHaveLength(20);
+  });
 });

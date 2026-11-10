@@ -65,6 +65,7 @@ AI 가 무엇을 스스로 정하는지는 [에이전트 설계](AGENT_DESIGN.md
 |---|---|---|---|
 | 걸음이 끝없이 이어지는 것 | 한 실행에 도구는 6번까지 부르고, 이미 성공한 일을 같은 값으로 또 고르면 멈춘다 | `ai/services/assistant_step.py:_repeats`, `assistant/domain/AssistantRunner.java:callTool`, `AssistantProperties.java` | `test_assistant_step.py::test_no_steps_left_turns_a_tool_call_into_finish`, `::test_repeating_a_successful_step_is_asked_again_once`, `AssistantRunnerTest` |
 | 없는 공고·레포나 사용자가 쓰지 않은 문항을 지어내는 것 | 도구마다 받을 수 있는 값을 정해 두고, 보낸 적 없는 이름표와 사용자가 적지 않은 자소서 문항은 받지 않는다 | `assistant_step.py:_check_values`·`invented_questions` | `test_assistant_step.py::test_unknown_ref_is_asked_again_once`, `::test_a_question_the_user_did_not_write_is_asked_again_once` |
+| 맞춰 보지 않은 공고의 모자란 조건을 채우거나, 없는 카드·자소서를 고르는 것 | 모자란 조건 채우기는 이 실행에서 맞춰 본 공고(`match.missing` 이 있는 것)만 받고, 카드·자소서도 이름표(`c1`, `l1`)로만 고르며 보낸 적 없는 이름표는 한 번 다시 묻고 그래도 어기면 정해 둔 문장으로 끝낸다 | `assistant_step.py:_check_values` | `test_assistant_step.py` (FILL·ASK·POLISH 사례) |
 | 답하는 말에 주소·이메일이 실리는 것 | 말은 200자 안쪽이고 주소와 이메일이 없어야 한다. 어기면 한 번 다시 묻고, 그래도 어기면 정해 둔 문장으로 바꾼다 | `assistant_step.py:_say_ok` | `test_assistant_step.py::test_say_must_exist_fit_200_chars_and_hold_no_url_or_email`, `::test_say_that_stays_wrong_becomes_a_fixed_sentence` |
 
 ### 자소서와 매칭
@@ -106,7 +107,7 @@ AI 가 무엇을 스스로 정하는지는 [에이전트 설계](AGENT_DESIGN.md
 |---|---|---|---|
 | 남의 데이터를 읽거나 바꾸는 것 | 소유권을 쿼리 조건(`findByPublicIdAndUserId`)으로 확인하고, 남의 것은 없는 것과 똑같이 404 로 답하면서 거절 기록을 남긴다 | `card/domain/CardOwnershipService.java`, `ingest/domain/RepositoryOwnershipService.java`, `job/domain/JobQueryService.java`, `audit/domain/AuditLog.java` | `CardOwnershipServiceTest`, `RepositoryOwnershipServiceTest`, `JobQueryServiceTest`, `AuditTrailTest` |
 | 로그인 없이 쓰거나 다른 사이트가 대신 요청하는 것 | `/api/**` 는 로그인이 필요하고 상태를 바꾸는 요청은 CSRF 토큰이 필요하다(사용 지표 전송 한 곳만 제외) | `consent/api/SecurityConfig.java` | `CardConfirmApiTest`·`DraftSaveApiTest`·`InterviewAskApiTest` 등의 401·403 시험 |
-| 홈 한 줄 명령이 남의 공고·레포를 건드리는 것 | AI 에는 이름표(`p1`, `r1`)만 주고 진짜 값은 서버가 바꾼다. 도구는 실행을 만든 사용자 기준으로만 돌고, 이 실행에 없는 이름표면 실행하지 않는다 | `assistant/domain/ToolCall.java:resolvable`, `AssistantTools.java`, `AssistantRunService.java` | `AssistantRunnerTest`, `AssistantRunApiTest` |
+| 홈 한 줄 명령이 남의 공고·레포·카드·자소서를 건드리는 것 | AI 에는 이름표(`p1`, `r1`, `c1`, `l1`)만 주고 진짜 값은 서버가 바꾼다. 도구는 실행을 만든 사용자 기준으로만 돌고, 이 실행에 없는 이름표면 실행하지 않는다 | `assistant/domain/ToolCall.java:resolvable`, `AssistantTools.java`, `AssistantRunService.java` | `AssistantRunnerTest`, `AssistantRunApiTest` |
 | GitHub 토큰이 새는 것 | DB 에는 암호화해서 저장하고, AI 에는 `X-GitHub-Token` 헤더로만 보내며 본문에는 싣지 않는다. 헤더에 못 넣는 토큰은 보내기 전에 거절한다 | `consent/infra/TokenCipher.java`, `common/infra/ai/AiHttpClient.java:collect`·`postWithGithubToken`·`requireHeaderSafe` | `TokenCipherTest`, `AiHttpClientPostTest` ("토큰을 X-GitHub-Token 헤더에만 싣고 본문에는 넣지 않는다", "예외 메시지에 토큰을 남기지 않는다") |
 | 모델이 근거 검증을 대신하는 것 | `ingest`·`recommend` 와 근거 sha 확인(`card.domain.evidence`)은 `agent` 를 참조할 수 없고, `agent` 는 다른 업무 모듈을 참조할 수 없으며, `AiHttpClient` 는 `common`·`consent`·`agent` 만 쓴다 | `backend/src/test/.../architecture/ModuleBoundaryTest.java` | `ruleLayerDoesNotCallTheModel`, `evidenceInsideCardDoesNotCallTheModel`, `agentDependsOnNoOtherModule`, `onlyBoundaryModulesUseAiHttpClient` |
 | 요청 id 를 보낸 사람이 정하는 것 | 요청 id 는 들어온 `X-Request-Id` 를 쓰지 않고 서버가 요청마다 만든 UUID 로 정한다 | `common/api/RequestIdFilter.java` | `RequestIdFilterTest`, `AuditTrailTest` |

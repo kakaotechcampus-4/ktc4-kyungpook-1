@@ -11,7 +11,7 @@ const NO_PROFILE = '/?demoScenario=no-profile';
 async function seedInterests(page: Page) {
   await page.goto('/settings');
   await page.evaluate(async () => {
-    await fetch('/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ educations: [], careers: [], languages: [], certifications: [], interests: ['BACKEND'] }) });
+    await fetch('/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interests: ['BACKEND'] }) });
   });
 }
 const status = (page: Page) => page.locator('.sticky-footer strong');
@@ -32,7 +32,6 @@ test('first entry: the dialog asks only for 관심 분야 over the home page, th
   await expect(dialog(page)).toHaveCount(0);
   const afterSetup = await savedProfile(page);
   expect(afterSetup.interests).toEqual(['BACKEND']);
-  expect([afterSetup.educations, afterSetup.careers, afterSetup.languages, afterSetup.certifications]).toEqual([[], [], [], []]);
   await page.reload();
   await expect(page.getByRole('heading', { name: '지원할 곳', level: 1 })).toBeVisible();
   await expect(dialog(page)).toHaveCount(0);

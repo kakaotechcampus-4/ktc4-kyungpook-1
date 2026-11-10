@@ -15,7 +15,7 @@ const noOverflow = (page: Page) => page.evaluate(() => document.documentElement.
 async function seedInterests(page: Page) {
   await page.goto('/settings');
   await page.evaluate(async () => {
-    await fetch('/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ educations: [], careers: [], languages: [], certifications: [], interests: ['BACKEND'] }) });
+    await fetch('/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interests: ['BACKEND'] }) });
   });
 }
 

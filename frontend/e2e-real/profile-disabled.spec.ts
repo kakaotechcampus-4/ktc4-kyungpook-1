@@ -20,7 +20,7 @@ test('unreleased profile is hidden: no home prompt, no MyPage row, a direct rout
   const guarded = await page.evaluate(async () => {
     const source = '/src/api/profile.ts';
     const { profileApi } = await import(/* @vite-ignore */ source);
-    const empty = { educations: [], careers: [], languages: [], certifications: [] };
+    const empty = { interests: ['BACKEND'] };
     return Promise.all([profileApi.get(), profileApi.save(empty)].map((p: Promise<unknown>) => p.catch((e: { code: string }) => e.code)));
   });
   expect(guarded).toEqual(['FEATURE_UNAVAILABLE', 'FEATURE_UNAVAILABLE']);

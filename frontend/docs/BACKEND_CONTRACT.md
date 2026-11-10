@@ -42,20 +42,12 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 ### 인적사항 (#516, 구현됨)
 | | 요청 | 응답 `data` |
 |---|---|---|
-| `GET /profile` | | `Profile` — 한 번도 저장하지 않았으면 네 목록이 `[]` 이고 `savedAt: null` |
-| `PUT /profile` | `{ educations[], careers[], languages[], certifications[], interests[]?, email?, mailOptIn? }` **네 목록 모두 필수**(없으면 `[]`). `interests`·`email`·`mailOptIn` 은 보내면 바꾸고 안 보내면 그대로 둠 | `Profile` — 네 목록을 통째로 바꿈 |
+| `GET /profile` | | `Profile` — 한 번도 저장하지 않았으면 `interests` 가 `[]` 이고 `savedAt: null` |
+| `PUT /profile` | `{ interests[]?, email?, mailOptIn? }` — 보내면 바꾸고 안 보내면 그대로 둠. 옛 클라이언트가 보내는 학력·경력·어학·자격증 목록은 무시함(#1005) | `Profile` |
 
 ```jsonc
-// Profile — 요청 항목도 같은 모양(savedAt 빼고)이고, 비운 칸은 null
-{ "educations": [{ "level": "HIGH_SCHOOL|ASSOCIATE|BACHELOR|MASTER|DOCTOR", "school": "경북대학교" | null, "major": "컴퓨터학부" | null,
-                   "status": "ENROLLED|ON_LEAVE|GRADUATION_EXPECTED|GRADUATED|DROPPED_OUT",
-                   "startMonth": "2021-03" | null, "endMonth": "2027-02" | null, "gpa": 3.8 | null, "gpaMax": 4.5 | null }],  // 5개까지
-  "careers": [{ "company": "카카오", "role": "백엔드" | null, "type": "FULL_TIME|CONTRACT|INTERN|PART_TIME|FREELANCE",
-                "startMonth": "2025-07", "endMonth": "2025-12" | null }],  // 10개까지, endMonth null = 재직 중
-  "languages": [{ "test": "TOEIC|TOEIC_SPEAKING|OPIC|TOEFL|IELTS|TEPS|JLPT|JPT|HSK|OTHER", "testName": "TOPIK" | null,
-                  "score": "IH", "acquiredMonth": "2025-05" | null }],  // 10개까지, testName 은 OTHER 일 때만 필수·저장
-  "certifications": [{ "name": "정보처리기사", "issuer": "한국산업인력공단" | null, "acquiredMonth": "2026-06" | null }],  // 20개까지
-  "interests": ["BACKEND", "DEVOPS"],   // 관심 분야 = 공고 직무 분류 이름(BACKEND·FRONTEND·MOBILE·DEVOPS·DATA·AI_ML·SECURITY·QA·ETC), 3개까지, 겹치지 않게. 아직 안 골랐으면 []
+// Profile — 요청 항목도 같은 모양(savedAt 빼고). 관심 분야만 받는다(#1005)
+{ "interests": ["BACKEND", "DEVOPS"],   // 관심 분야 = 공고 직무 분류 이름(BACKEND·FRONTEND·MOBILE·DEVOPS·DATA·AI_ML·SECURITY·QA·ETC), 3개까지, 겹치지 않게. 아직 안 골랐으면 []
   "email": "me@example.com" | null,   // 새 공고 알림을 받을 메일 주소. 요청에서 빈 글이면 지움(응답은 null)
   "mailOptIn": false,                  // 메일 알림 수신 여부. 한 번도 저장하지 않았으면 false
   "savedAt": "ISO" | null }

@@ -9,8 +9,8 @@
  *  - 화면에 보이는 글은 서버가 준 글의 앞부분뿐이다. 글자를 만들어 내지 않는다.
  *  - 한 카드를 한 번에 한 칸씩(상황, 과제, 행동, 결과 순) 쓴다. 커서는 지금 쓰는 칸 하나에만 있다.
  *  - 서버는 카드를 두 장씩 동시에 쓰므로 뒤 카드가 먼저 쓰기 시작할 수 있다. 그래도 화면은 한 장씩 차례로 보인다:
- *    보이는 카드가 서버에서 끝났는데(DONE·FAILED) 뒤 카드가 이미 쓰기 시작했으면(WRITING 이상) 남은 글은 바로 마치고 넘어가고,
- *    보이는 카드가 아직 쓰는 중이면 뒤 카드가 시작했어도 그 카드를 끝까지 펼친 뒤 넘어간다. 뒤 카드가 아직 읽는 중(READING)이면 DWELL_MS 쉬고 넘어간다.
+ *    보이는 카드는 서버에서 끝났든(DONE·FAILED) 뒤 카드가 시작했든 끝까지 펼친 뒤 DWELL_MS 쉬고 넘어간다.
+ *    뒤에 끝난 카드가 CATCH_UP_BACKLOG 장 이상 밀려 있을 때만 남은 글을 바로 마치고 따라잡는다.
  *  - 칸의 round 가 오르거나 글이 앞부분을 이어 쓰지 않고 바뀌면 달라진 곳까지 지우고 새 글을 쓴다.
  *    지우는 데 ERASE_MAX_MS, 지우고 다시 쓰는 데 REWRITE_MAX_MS 를 넘기지 않는다. 이 시간은 칸마다 그 칸의 차례가 온 때부터 센다
  *    (뒤 칸의 시간이 앞 칸을 쓰는 동안 흘러가 버리면 뒤 칸이 한꺼번에 나타난다). 상한이 가까우면 한꺼번에 보이지 않고 속도를 올려 맞춘다.
@@ -26,6 +26,8 @@ export const REWRITE_MAX_MS = 3_000;
 export const ENDED_MAX_MS = 15_000;
 /** 카드 하나를 다 쓴 뒤 다음 카드로 넘어가기(또는 완료 화면으로 가기) 전에 쉬는 시간 */
 export const DWELL_MS = 1_500;
+/** 보이는 카드 뒤에 끝난 카드가 이만큼 밀려 있으면 펼치기를 끊고 따라잡는다 — 두 장씩 쓰는 서버보다 화면이 느릴 때만 */
+export const CATCH_UP_BACKLOG = 2;
 
 export const LIVE_FIELDS: readonly StarField[] = ['S', 'T', 'A', 'R'];
 
@@ -374,14 +376,14 @@ export class DraftPlayback {
       else if (!done && run.completedAt !== null) run.completedAt = null; // 글이 더 와서 다시 쓰는 중
       const next = this.cards[index + 1];
       if (!next) return;
-      // 앞 카드가 서버에서 끝났고 뒤 카드가 글을 쓰기 시작했다 — 앞 카드의 남은 글은 바로 마치고 넘어간다
-      // (서버가 두 장씩 동시에 쓰므로 뒤 카드가 시작했다고 앞 카드가 끝난 것은 아니다)
-      if (isOver(card) && this.cards.slice(index + 1).some(hasStarted)) {
+      // 뒤 카드가 쓰기 시작했다고 앞 카드를 끊지 않는다 — 서버가 두 장씩 쓰면 뒤 카드는 늘 먼저 시작해 있어서,
+      // 끊으면 글이 한 글자씩 펼쳐지지 않고 한꺼번에 보인다. 끝난 카드가 많이 밀렸을 때만 따라잡는다
+      if (isOver(card) && this.cards.slice(index + 1).filter(isOver).length >= CATCH_UP_BACKLOG) {
         this.flush(run);
         this.start(index + 1);
         continue;
       }
-      // 뒤 카드가 아직 읽는 중이면 보이는 카드를 끝까지 펼친 뒤 잠깐 두고 넘어간다. Job 이 끝났는데 뒤 카드가 쓰인 적 없으면 넘어갈 곳이 없다
+      // 보이는 카드를 끝까지 펼친 뒤 잠깐 두고 넘어간다. Job 이 끝났는데 뒤 카드가 쓰인 적 없으면 넘어갈 곳이 없다
       const waited = this.instant || (run.completedAt !== null && now - run.completedAt >= DWELL_MS);
       if (done && isOver(card) && waited && !(this.ended && !hasStarted(next))) {
         this.start(index + 1);

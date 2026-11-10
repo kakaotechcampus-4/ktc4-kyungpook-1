@@ -13,6 +13,7 @@ import { useNow } from '@/lib/useNow';
 import { CoverLetterDeleteAction } from './CoverLetterDeleteAction';
 import { CardSuggestBanner } from './CardSuggestBanner';
 import { DraftEditor } from './DraftEditor';
+import { NextSteps } from './NextSteps';
 import { DraftPaper } from './paper/DraftPaper';
 import { Stepper } from './Stepper';
 import './coverLetters.css';
@@ -117,6 +118,7 @@ export function CoverLetterPage() {
       {l.stage === 'DRAFTED' && !returning && returnFailed && <Note strong="고른 카드로 다시 쓰지 못했어요" tone="danger">글은 그대로예요. 대화 탭의 제안에서 다시 고를 수 있어요.</Note>}
       {l.stage === 'DRAFTED' && !returning && <CardSuggestBanner letter={l} />}
       {l.stage === 'DRAFTED' && !returning && <DraftEditor key={l.id} letter={l} />}
+      {l.stage === 'DRAFTED' && !returning && l.posting && <NextSteps posting={l.posting} />}
     </main>
   );
 }

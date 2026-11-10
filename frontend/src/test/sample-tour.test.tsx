@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { assistantSupported } from '@/api/capabilities';
 import { SampleBand } from '@/components/layout/SampleBand';
-import { SampleTourLink } from '@/features/auth/SampleTourLink';
+import { StartActions } from '@/features/auth/landing/StartActions';
 import { installDemoApi } from '@/mock/browser';
 import { SAMPLE_KEY, demoEnabled } from '@/mock/sampleTour';
 
@@ -22,10 +22,9 @@ it('T1 turns the demo on for a production build only while the sample flag is se
   expect(demoEnabled({}, empty())).toBe(true);
 });
 
-it('T2 starts the tour from the landing link: flag and session set, db dropped, reload at /', () => {
+it('T2 starts the tour from the landing button: flag and session set, db dropped, reload at /', () => {
   sessionStorage.setItem('gitory.demo.db', '{}');
-  render(<SampleTourLink />);
-  expect(screen.getByText('샘플 데이터로 먼저 써 보기')).toBeInTheDocument();
+  render(<StartActions label="GitHub로 시작" pending={false} onStart={() => {}} />);
   fireEvent.click(screen.getByRole('button', { name: '둘러보기' }));
   expect(sessionStorage.getItem(SAMPLE_KEY)).toBe('1');
   expect(sessionStorage.getItem('gitory.demo.session')).toBe('1');

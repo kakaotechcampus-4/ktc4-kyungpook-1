@@ -580,7 +580,7 @@ class AssistantToolsTest {
     private static InterviewTurnView turn(StarField field, String question) {
 
         return new InterviewTurnView(1, field, TriggerSource.USER, InterviewSourceType.DIRECT_CARD,
-                QuestionType.EVIDENCE_GAP, question, null, AnswerMode.TEXT, List.of(), null, null, 5, 6);
+                QuestionType.EVIDENCE_GAP, question, null, null, AnswerMode.TEXT, List.of(), null, null, 5, 6);
 
     }
 

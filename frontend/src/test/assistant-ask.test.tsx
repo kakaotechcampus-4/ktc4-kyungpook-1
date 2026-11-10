@@ -302,9 +302,10 @@ describe('문항을 모를 때 고르기', () => {
     advance(10);
     const done = read(made.id);
     expect(done.items.find((i) => i.tool === 'START_COVER_LETTER')).toMatchObject({ defaultQuestions: true, questionCount: 3 });
-    expect(await screen.findByText('자주 나오는 문항 3개로 자소서를 쓰기 시작했어요', SEEN)).toBeInTheDocument();
+    // 끝난 실행은 다음 확인(폴링) 때 화면에 오므로 기본 1초보다 길게 기다린다
+    expect(await screen.findByText('자주 나오는 문항 3개로 자소서를 쓰기 시작했어요', SEEN, { timeout: 5000 })).toBeInTheDocument();
     // 지켜본 실행이라 자소서가 저절로 열린다 — 머무르면 열기 링크가 남는다
-    expect(await screen.findByText('자소서를 열고 있어요', SEEN)).toBeInTheDocument();
+    expect(await screen.findByText('자소서를 열고 있어요', SEEN, { timeout: 5000 })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '여기 머무르기' }));
     expect(await screen.findByRole('link', { name: '자소서 열기' })).toBeInTheDocument();
   });

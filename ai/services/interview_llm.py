@@ -72,6 +72,8 @@ QUESTION_PROMPT = """당신은 개발자가 STAR(상황·책임·행동·결과)
   MEASURE 면 재지 않았을 때 고를 수 있게 수치 없는 답 하나를 씁니다. 쓸 만한 후보가 없으면 빈 배열.
   source_type 이 DIRECT_CARD 나 ACTIVITY 면 읽을 기록이 없으므로, 앞 답(previous_turns 의 answer)에 이미 있는 내용만 쓰고 없으면 빈 배열입니다.
   사용자가 채울 빈칸(___)이 있는 틀은 쓰지 않습니다.
+- example_answer: 그 질문에 맞는 예시 답 한 줄. '예:' 로 시작하고 40자 안쪽, 사용자가 말하듯 쓴 해요체 문장입니다.
+  카드 근거에 없는 숫자·날짜·이름은 넣지 않습니다. 질문을 낼 때는 늘 씁니다(질문이 없을 때만 null).
 - reason: 사용자에게 보일 판단 이유 한 문장, 해요체 60자 이내. ASK 면 왜 그 칸을 묻는지, END 면 왜 그만 묻는지 씁니다.
   앞 답이 모자라 같은 칸을 다시 고르면 앞 답에서 무엇이 빠졌는지 짚습니다. 입력에 없는 사실·수치를 쓰지 않습니다.
   칸은 S, T, A, R 글자 대신 '상황, 맡은 일, 행동, 결과'로 부르고, '근거 신뢰도' 같은 입력 속 말은 쓰지 않습니다.
@@ -160,6 +162,7 @@ class QuestionOutput(BaseModel):
     question: Optional[str] = None
     answer_mode: AnswerMode = "TEXT"
     suggested_answers: list[str] = Field(default_factory=list)
+    example_answer: Optional[str] = None
     reason: Optional[str] = None
     themes: list[CardTheme] = Field(default_factory=list)
 
@@ -209,6 +212,7 @@ class InterviewLLMLimits:
     max_commits: int = 10
     max_text_chars: int = 500
     max_reason_chars: int = 60
+    max_example_chars: int = 60
     max_themes: int = 2
     #: Spring 이 답을 저장하는 칸 길이(interview_turn.answer_text)를 넘는 다듬은 문장은 쓸 수 없다.
     max_answer_chars: int = 1_000
@@ -221,6 +225,7 @@ class WrittenQuestion:
     answer_mode: AnswerMode
     suggested_answers: list[str]
     reason: Optional[str] = None
+    example_answer: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -281,6 +286,7 @@ class InterviewLLM:
             answer_mode="MEASURE" if output.answer_mode == "MEASURE" and output.star_slot == "R" else "TEXT",
             suggested_answers=self._suggestions(output.suggested_answers, source),
             reason=reason,
+            example_answer=self._example(output.example_answer),
         )
 
     async def polish(self, request: PolishedSentenceRequest) -> PolishedSentence:
@@ -496,6 +502,15 @@ class InterviewLLM:
                 continue
             kept.append(text)
         return kept[: self._limits.max_suggestions]
+
+    def _example(self, written: Optional[str]) -> Optional[str]:
+        """예시는 곁들이는 글이라 모양이 틀려도 질문은 그대로 쓰고, 비밀값을 가린 뒤 '예:' 를 붙여 자른다."""
+        text = mask_emails(redact_secrets(" ".join((written or "").split())))
+        if not text:
+            return None
+        if not text.startswith("예:"):
+            text = "예: " + text
+        return text[: self._limits.max_example_chars].rstrip()
 
     @staticmethod
     def _repeats_input(output: QuestionOutput, payload: dict[str, Any]) -> bool:

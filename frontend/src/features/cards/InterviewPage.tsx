@@ -19,7 +19,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { useReducedMotion } from '@/lib/useLiveText';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges';
-import { cardFolderPath, folderPath } from '@/lib/cardFolders';
+import { cardFolderPath, folderPath, returnToOf } from '@/lib/cardFolders';
 import { StarRow } from '@/components/ui/StarRow';
 import { UnsavedChangesDialog } from '@/components/SaveStatus';
 import { AiJudgement, AiLive } from './AiJudgement';
@@ -38,6 +38,7 @@ export function InterviewPage() {
   const [sp] = useSearchParams();
   const location = useLocation();
   const nav = useNavigate();
+  const returnTo = returnToOf(location.state);
   const { card: q } = useCard(cardId);
   const turns = useInterview(cardId);
   const ask = useAskInterview(cardId);
@@ -314,7 +315,7 @@ export function InterviewPage() {
             <div className="iv__dock">
               <Composer value={text} onChange={(next) => { setText(next); if (picked && next !== picked) setPicked(null); }}
                 onSend={() => void submit()} canSend={!!text.trim() && !busy} disabled={busy}
-                label="답변" sendLabel="답 보내기" placeholder={starFieldSpoken[open.field]} maxLength={500} />
+                label="답변" sendLabel="답 보내기" placeholder={open.exampleAnswer ? `편하게 말하듯 적어 주세요. ${open.exampleAnswer}` : starFieldSpoken[open.field]} maxLength={500} />
               <div className="iv__sub">
                 <span>{text ? `${text.length}/500` : ''}</span>
                 <Button variant="secondary" size="sm" loading={skip.isPending} disabled={busy} onClick={skipOpen}>건너뛰기</Button>
@@ -336,7 +337,7 @@ export function InterviewPage() {
               )}
               <div className="row" style={{ gap: 8 }}>
                 {settledHere
-                  ? <Button onClick={() => nav(cardFolderPath(card), { state: { confirmed: cardId } })}>폴더로 돌아가기</Button>
+                  ? <Button onClick={() => (returnTo ? nav(returnTo) : nav(cardFolderPath(card), { state: { confirmed: cardId } }))}>{returnTo ? '공고로 돌아가기' : '폴더로 돌아가기'}</Button>
                   : confirmed
                   ? <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드로 돌아가기</Button>
                   : ended || capReached

@@ -140,3 +140,9 @@ export function folderLabel(folder: CardFolder): string {
   if (folder.techs.length) parts.push(`기술 ${folder.techs.map((tech) => techLabels[tech] ?? tech).join(', ')}`);
   return parts.join(', ');
 }
+
+/** 공고에서 채우러 온 카드 화면이 끝난 뒤 돌아갈 곳 — 이동 상태에 문자열로 실려 오지 않으면 카드 폴더가 대신한다 */
+export const returnToOf = (state: unknown): string | null => {
+  const to = (state as { returnTo?: unknown } | null)?.returnTo;
+  return typeof to === 'string' ? to : null;
+};

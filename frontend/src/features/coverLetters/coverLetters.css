@@ -129,6 +129,7 @@
 .cl-posting-line { display: flex; align-items: center; gap: 8px; margin: -4px 0; font-size: 13px; line-height: 20px; color: var(--text-secondary); min-width: 0; }
 .cl-posting-line__text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
 .cl-posting-line__text b { font-weight: var(--weight-bold); }
+.cl-next { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .cl-posting-line__link { flex: 0 0 auto; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 2px; }
 @media (max-width: 640px) {
   .cl-posting { flex-wrap: wrap; row-gap: 8px; }

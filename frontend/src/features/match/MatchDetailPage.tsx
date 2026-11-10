@@ -187,7 +187,7 @@ export function MatchDetailPage() {
   const query = useMatch(matchId);
   const judge = useJudgeMatch(matchId);
   const gapFill = useGapFill(matchId);
-  const proceed = useProceed();
+  const proceed = useProceed(matchId);
   const cards = useCards();
   const letters = useCoverLetters();
   const detail = query.data;

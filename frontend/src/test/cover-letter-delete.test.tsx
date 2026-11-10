@@ -87,7 +87,7 @@ describe('자소서 지우기', () => {
 
   it('AI가 도는 단계면 그 결과를 버린다고 알리고, 끝난 자소서에는 알리지 않는다', async () => {
     const summary = (over: Record<string, unknown>) => CoverLetterSummary.parse({
-      id: 'a', stage: 'DRAFTED', jobRole: '백엔드 개발', posting: null, questionCount: 1, firstQuestion: '지원 동기',
+      id: 'a', stage: 'DRAFTED', jobRole: '백엔드 개발', posting: null, questionCount: 1, emptyQuestionCount: 0, firstQuestion: '지원 동기',
       createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-01T00:00:00Z', ...over,
     });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });

@@ -55,8 +55,14 @@ public class CoverLetterQueryService {
     private static CoverLetterSummary summary(CoverLetter letter, List<CoverLetterQuestion> loaded) {
 
         return new CoverLetterSummary(letter.getPublicId(), letter.getStage(), letter.getJobRole(),
-                CoverLetterPosting.refOf(letter), loaded.size(),
+                CoverLetterPosting.refOf(letter), loaded.size(), emptyCount(loaded),
                 loaded.getFirst().getText(), letter.getCreatedAt(), letter.getUpdatedAt());
+
+    }
+
+    private static int emptyCount(List<CoverLetterQuestion> loaded) {
+
+        return (int) loaded.stream().filter(q -> q.getCharCount() != null && q.getCharCount() == 0).count();
 
     }
 }

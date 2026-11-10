@@ -201,7 +201,7 @@ export const TURN_TEXT_MAX = 500;
 
 export const CoverLetterSummary = z.object({
   id: z.string(), stage: CoverLetterStage, jobRole: z.string(), posting: nullable(Posting), questionCount: z.number(),
-  firstQuestion: text, createdAt: z.string(), updatedAt: z.string(),
+  emptyQuestionCount: z.number(), firstQuestion: text, createdAt: z.string(), updatedAt: z.string(),
 });
 export type CoverLetterSummary = z.infer<typeof CoverLetterSummary>;
 

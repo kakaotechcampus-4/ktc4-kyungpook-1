@@ -5,7 +5,7 @@ import { Button, PageTitle } from '@/components/ui';
 import { copyText } from '@/lib/clipboard';
 import { copiedExtras } from '@/lib/coverLetterCopy';
 import { unconfirmedInferences } from '@/lib/coverLetterNotes';
-import { blanksIn } from '@/lib/draftText';
+import { blanksIn, countableLength } from '@/lib/draftText';
 import { track } from '@/lib/track';
 import { useReducedMotion } from '@/lib/useLiveText';
 import { DraftPanel } from './panel/DraftPanel';
@@ -53,10 +53,14 @@ export function DraftEditor({ letter }: { letter: CoverLetter }) {
     setCopied(extra ? `모든 문항을 복사했어요. ${extra}` : '모든 문항을 복사했어요');
     track('cover_letter_copied', { coverLetterId: letter.id, scope: 'all', blanks, inferred });
   };
+  // 맞는 카드가 없어 빈칸 틀만 남은 문항 — 글이 없는데 '초안이 나왔어요' 라고 하지 않으려고 센다
+  const empty = letter.questions.filter((q) => q.draft != null && countableLength(texts[q.id] ?? q.draft.text) === 0);
+  const emptyTitle = letter.questions.length > 1 ? `문항 ${empty.length}개는 재료가 더 필요해요` : `Q${empty[0]?.seq} 은 재료가 더 필요해요`;
   return (
     <>
-      <PageTitle sub={`${letter.jobRole}, 문항 ${letter.questions.length}개. 고친 글은 저장하면 남고, 처음 초안도 언제든 다시 볼 수 있어요.`}
-        right={<Button variant="secondary" size="sm" onClick={copyAll}><Copy size={14} aria-hidden /> 전체 복사</Button>}>초안이 나왔어요</PageTitle>
+      <PageTitle sub={empty.length > 0 ? '맞는 카드가 없어 아직 쓰지 못했어요. 오른쪽에서 카드를 고르거나 한 줄로 알려 주세요.'
+        : `${letter.jobRole}, 문항 ${letter.questions.length}개. 고친 글은 저장하면 남고, 처음 초안도 언제든 다시 볼 수 있어요.`}
+        right={<Button variant="secondary" size="sm" onClick={copyAll}><Copy size={14} aria-hidden /> 전체 복사</Button>}>{empty.length > 0 ? emptyTitle : '초안이 나왔어요'}</PageTitle>
       {copied && <p className="t-13 c-2" role="status">{copied}</p>}
       <div className={`cl-draft${mobile ? ' cl-draft--sheet' : ''}`}>
         <div className="cl-draft__paper" ref={paperRef}>

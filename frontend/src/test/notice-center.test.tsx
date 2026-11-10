@@ -491,7 +491,7 @@ describe('이어서 맡길 말 칩', () => {
 describe('자소서 진행 표시', () => {
   const FAR = 4_100;
   const row = (stage: string, extra: Record<string, unknown> = {}) => ({
-    id: 'cl_1', stage, jobRole: '백엔드', posting: { id: 'p1', company: '가온소프트', title: '서버 개발자' }, questionCount: 1, firstQuestion: '지원 동기', createdAt: minutesAgo(5), updatedAt: minutesAgo(1), ...extra,
+    id: 'cl_1', stage, jobRole: '백엔드', posting: { id: 'p1', company: '가온소프트', title: '서버 개발자' }, questionCount: 1, emptyQuestionCount: 0, firstQuestion: '지원 동기', createdAt: minutesAgo(5), updatedAt: minutesAgo(1), ...extra,
   });
   /** 자소서 목록 응답만 바꿔 가며 돌려 주는 서버 */
   function serve(first: Record<string, unknown>[]) {

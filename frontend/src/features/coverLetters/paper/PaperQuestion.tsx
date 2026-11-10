@@ -95,9 +95,12 @@ export function PaperQuestion({ letterId, q, draftSteps, assignSteps, mode, layo
   const count = countableLength(mode === 'edit' ? current : shown);
   const over = Math.max(0, count - q.charLimit);
   // 점검표와 글자 수는 초안(edit)에만 — 쓰는 동안에는 상태 한 줄이 대신한다(#745)
+  const blankOnly = mode === 'edit' && q.draft != null && count === 0;
   const foot = (
     <div className="pq__foot">
-      {notes.checklist && <Checklist checklist={notes.checklist} onFocus={focusGroup} compact />}
+      {blankOnly
+        ? <p className="pq__empty">맞는 카드가 없어 아직 쓰지 못했어요. 오른쪽에서 카드를 고르거나 한 줄로 알려 주세요.</p>
+        : notes.checklist && <Checklist checklist={notes.checklist} onFocus={focusGroup} compact />}
       <span className={`pq__count${over ? ' pq__count--over' : ''}`} aria-live="polite">
         {count.toLocaleString()} / {q.charLimit.toLocaleString()}자{over ? `, ${over.toLocaleString()}자 넘음` : ''}
       </span>

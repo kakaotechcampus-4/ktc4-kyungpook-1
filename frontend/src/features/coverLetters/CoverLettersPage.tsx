@@ -46,7 +46,9 @@ export function CoverLettersPage() {
                       {company
                         ? <span className="cl-sheet__company"><CompanyMark name={company} size={40} /><span>{company}</span></span>
                         : <span className="cl-sheet__company cl-sheet__company--none"><span className="cl-sheet__nomark" aria-hidden="true"><FileText size={20} /></span><span>공고 없이 쓴 자소서</span></span>}
-                      <Badge kind={l.stage === 'DRAFTED' ? 'CONFIRMED' : 'NEUTRAL'}>{STAGE_LABEL[l.stage]}</Badge>
+                      {l.stage === 'DRAFTED' && l.emptyQuestionCount > 0
+                        ? <Badge kind="CAUTION">재료 필요</Badge>
+                        : <Badge kind={l.stage === 'DRAFTED' ? 'CONFIRMED' : 'NEUTRAL'}>{STAGE_LABEL[l.stage]}</Badge>}
                     </div>
                     <h2 className="cl-sheet__role">{l.jobRole}</h2>
                     {postingTitle && <p className="cl-sheet__posting">{postingTitle}</p>}

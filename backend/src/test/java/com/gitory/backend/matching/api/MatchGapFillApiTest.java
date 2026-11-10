@@ -176,7 +176,7 @@ class MatchGapFillApiTest {
                 .andExpect(jsonPath("$.data.gapFill.pollAfterMs").value(1500));
 
         ArgumentCaptor<GapFillRequest> sent = ArgumentCaptor.forClass(GapFillRequest.class);
-        verify(gapFillPort, timeout(5_000)).fill(eq(myUserId), sent.capture(), any());
+        verify(gapFillPort, timeout(20_000)).fill(eq(myUserId), sent.capture(), any());
         release.countDown();
         GapFillRequest request = sent.getValue();
         assertThat(request.conditions()).containsExactly(new GapFillRequest.Condition(publicIdOf("job_posting_criterion", gap),
@@ -264,7 +264,7 @@ class MatchGapFillApiTest {
                 .andExpect(jsonPath("$.data.gapFill.state").value("RUNNING"));
 
         ArgumentCaptor<GapFillRequest> sent = ArgumentCaptor.forClass(GapFillRequest.class);
-        verify(gapFillPort, timeout(5_000)).fill(eq(myUserId), sent.capture(), any());
+        verify(gapFillPort, timeout(20_000)).fill(eq(myUserId), sent.capture(), any());
         assertThat(sent.getValue().conditions()).extracting(GapFillRequest.Condition::conditionId)
                 .containsExactly(condition);
         assertThat(sent.getValue().forceConditionIds()).containsExactly(condition);

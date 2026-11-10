@@ -1,0 +1,6242 @@
+{
+ "cases": [
+  {
+   "case_id": "ko-01",
+   "body": "대용량 트래픽이 몰리는 서버의 응답 속도를 줄였습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5046757003",
+     11
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     9
+    ],
+    [
+     "GREENHOUSE:daangn-5282170003",
+     5
+    ],
+    [
+     "GREENHOUSE:daangn-5296522003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5781885003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-5781885003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     1
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     0
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7498021003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7644271003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-7668837003",
+     15
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     1
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     6
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     5
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     8
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005786201",
+     10
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006955201",
+     1
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     7
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     11
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     4
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     4
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     6
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     7
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     7
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     10
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     19
+    ],
+    [
+     "GREENHOUSE:moloco-8007407003",
+     0
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-02",
+   "body": "자주 조회되는 데이터를 캐시에 올려 데이터베이스 부하를 줄였습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5046759003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-5296522003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5296522003",
+     9
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-7498021003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     9
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     6
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     6
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     7
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     11
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-03",
+   "body": "Spring Boot 와 JPA 로 게시판 REST API 를 설계하고 구현했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5046759003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     9
+    ],
+    [
+     "GREENHOUSE:daangn-5296522003",
+     2
+    ],
+    [
+     "GREENHOUSE:daangn-5296522003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-7498021003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     2
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     21
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     6
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     3
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     6
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     2
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     7
+    ],
+    [
+     "GREENHOUSE:moloco-8007407003",
+     0
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-04",
+   "body": "느린 조회 쿼리에 색인을 추가해 목록 화면의 응답 시간을 3초에서 0.3초로 줄였습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5046759003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     14
+    ],
+    [
+     "GREENHOUSE:daangn-5296522003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5296522003",
+     9
+    ],
+    [
+     "GREENHOUSE:daangn-5781885003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-6285317003",
+     14
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-7498021003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7498021003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     9
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     6
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     8
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     7
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     4
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     6
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     7
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     11
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-05",
+   "body": "주문이 동시에 몰릴 때 재고가 음수가 되는 문제를 잠금으로 해결했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5046759003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-5296522003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5781885003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7498021003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     6
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     6
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     7
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-06",
+   "body": "알림 발송을 메시지 큐로 넘겨 비동기로 처리하게 바꿨습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5046759003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-5296522003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5781885003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7498021003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7668837003",
+     2
+    ],
+    [
+     "GREENHOUSE:daangn-7668837003",
+     12
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     1
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     6
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     6
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     7
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-07",
+   "body": "Kafka 로 주문 이벤트를 발행하고 소비하는 구조를 만들었습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5046757003",
+     15
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     1
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-5296522003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5781885003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7498021003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     1
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     6
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     10
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     6
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     7
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     20
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-08",
+   "body": "소셜 로그인과 토큰 기반 인증을 붙이고 사용자 권한을 나눴습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5046759003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     5
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     13
+    ],
+    [
+     "GREENHOUSE:daangn-5296522003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7498021003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     6
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     8
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005791201",
+     1
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     6
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     20
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     7
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-09",
+   "body": "GitHub Actions 로 테스트와 배포를 자동화하는 CI/CD 파이프라인을 만들었습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-6081125003",
+     11
+    ],
+    [
+     "GREENHOUSE:daangn-6285317003",
+     11
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     1
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     13
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006986201",
+     2
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006986201",
+     8
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006986201",
+     9
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006986201",
+     13
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     0
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     10
+    ],
+    [
+     "GREENHOUSE:moloco-8003052003",
+     5
+    ],
+    [
+     "GREENHOUSE:moloco-8003052003",
+     7
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-10",
+   "body": "도커 이미지로 서비스를 묶고 쿠버네티스에 배포해 운영했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-4300801003",
+     9
+    ],
+    [
+     "GREENHOUSE:daangn-5004587003",
+     11
+    ],
+    [
+     "GREENHOUSE:daangn-5046757003",
+     15
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     2
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     16
+    ],
+    [
+     "GREENHOUSE:daangn-5781885003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     11
+    ],
+    [
+     "GREENHOUSE:daangn-7644271003",
+     7
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005786201",
+     7
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     5
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     9
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-11",
+   "body": "서버 지표를 대시보드로 모니터링하고 장애가 나면 알림이 오도록 만들었습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-7689088003",
+     12
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     1
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     10
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005786201",
+     0
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005786201",
+     1
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005786201",
+     9
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     8
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     14
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     4
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     17
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-12",
+   "body": "장애가 났을 때 원인을 분석하고 재발 방지 대책을 정리해 같은 장애가 다시 나지 않게 했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-6043519003",
+     2
+    ],
+    [
+     "GREENHOUSE:daangn-7498021003",
+     5
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     1
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005786201",
+     3
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005786201",
+     9
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     2
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     8
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     14
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     22
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-13",
+   "body": "하나로 묶여 있던 서비스를 여러 개의 작은 서비스로 나누고 서비스끼리 통신하는 구조를 설계했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5046757003",
+     11
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-5296522003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-5296522003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5781885003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-7498021003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     2
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     6
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     5
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     8
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005786201",
+     10
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     3
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     4
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     6
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     2
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     7
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     9
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     19
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-14",
+   "body": "단위 테스트와 통합 테스트를 작성해 테스트 커버리지를 80%까지 올렸습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5282170003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-6285317003",
+     0
+    ],
+    [
+     "GREENHOUSE:daangn-6285317003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-6285317003",
+     5
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     8
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006986201",
+     15
+    ],
+    [
+     "GREENHOUSE:moloco-8003052003",
+     1
+    ],
+    [
+     "GREENHOUSE:moloco-8003052003",
+     9
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-15",
+   "body": "Selenium 으로 화면 테스트를 자동화해 회귀 테스트 시간을 하루에서 한 시간으로 줄였습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-6285317003",
+     0
+    ],
+    [
+     "GREENHOUSE:daangn-6285317003",
+     2
+    ],
+    [
+     "GREENHOUSE:daangn-6285317003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-6285317003",
+     5
+    ],
+    [
+     "GREENHOUSE:daangn-6285317003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-6285317003",
+     10
+    ],
+    [
+     "GREENHOUSE:moloco-8003052003",
+     1
+    ],
+    [
+     "GREENHOUSE:moloco-8003052003",
+     4
+    ],
+    [
+     "GREENHOUSE:moloco-8003052003",
+     9
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-16",
+   "body": "코드 리뷰 규칙을 정하고 팀원들의 코드를 꼼꼼히 리뷰했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-6640363003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7452525003",
+     11
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     5
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     4
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     16
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-17",
+   "body": "React 와 TypeScript 로 여러 화면에서 쓰는 공통 컴포넌트를 만들었습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5296522003",
+     12
+    ],
+    [
+     "GREENHOUSE:daangn-5781885003",
+     14
+    ],
+    [
+     "GREENHOUSE:daangn-6081125003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-6081125003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7668837003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7689088003",
+     2
+    ],
+    [
+     "GREENHOUSE:daangn-7689088003",
+     5
+    ],
+    [
+     "GREENHOUSE:daangn-7689088003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7689088003",
+     13
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     22
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     9
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-18",
+   "body": "첫 화면이 빨리 뜨도록 서버에서 화면을 미리 그려 보내는 방식으로 바꿨습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-6081125003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-7668837003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7668837003",
+     15
+    ],
+    [
+     "GREENHOUSE:daangn-7689088003",
+     5
+    ],
+    [
+     "GREENHOUSE:daangn-7689088003",
+     16
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     22
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     4
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     9
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-19",
+   "body": "접근성 기준에 맞게 화면을 고치고 화면 낭독기로 직접 확인했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-6081125003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-7668837003",
+     6
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-20",
+   "body": "앱 안의 웹 화면과 앱 화면이 서로 데이터를 주고받도록 연결했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-4496730003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-7689088003",
+     9
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     3
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     9
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-21",
+   "body": "Kotlin 과 Jetpack Compose 로 안드로이드 앱 화면을 만들었습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-4300801003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     5
+    ],
+    [
+     "GREENHOUSE:daangn-6285317003",
+     9
+    ],
+    [
+     "GREENHOUSE:daangn-7644271003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7644271003",
+     17
+    ],
+    [
+     "GREENHOUSE:daangn-7980543003",
+     3
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     7
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     13
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     8
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-22",
+   "body": "아이폰 앱에 의존성 주입을 적용해 테스트하기 쉬운 구조로 바꿨습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5282170003",
+     0
+    ],
+    [
+     "GREENHOUSE:daangn-5282170003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5282170003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     13
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-23",
+   "body": "앱이 갑자기 꺼지는 비율을 측정하고 원인을 고쳐 앱 안정성을 높였습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-4496730003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-4496730003",
+     13
+    ],
+    [
+     "GREENHOUSE:daangn-7498021003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7689088003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-7689088003",
+     12
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     10
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005786201",
+     9
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     13
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-24",
+   "body": "직접 만든 앱을 스토어에 출시하고 사용자 의견을 받아 개선했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-4496730003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-4496730003",
+     12
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     12
+    ],
+    [
+     "GREENHOUSE:daangn-5781885003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-7644271003",
+     9
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     12
+    ],
+    [
+     "GREENHOUSE:daangn-7980543003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-7990084003",
+     6
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     13
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-25",
+   "body": "매일 쌓이는 사용 기록을 모아 집계하는 배치 작업을 만들었습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-4300801003",
+     0
+    ],
+    [
+     "GREENHOUSE:daangn-4300801003",
+     1
+    ],
+    [
+     "GREENHOUSE:daangn-4300801003",
+     2
+    ],
+    [
+     "GREENHOUSE:daangn-4300801003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-5046757003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     14
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     8
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006955201",
+     0
+    ],
+    [
+     "GREENHOUSE:moloco-5820201003",
+     1
+    ],
+    [
+     "GREENHOUSE:moloco-5820201003",
+     10
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     0
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     4
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     12
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     19
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-26",
+   "body": "BigQuery 와 Airflow 로 매일 도는 데이터 파이프라인을 구축했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-4300801003",
+     0
+    ],
+    [
+     "GREENHOUSE:daangn-4300801003",
+     1
+    ],
+    [
+     "GREENHOUSE:daangn-4300801003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-4300801003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-5248527003",
+     11
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     14
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     8
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006955201",
+     0
+    ],
+    [
+     "GREENHOUSE:moloco-5820201003",
+     1
+    ],
+    [
+     "GREENHOUSE:moloco-5820201003",
+     10
+    ],
+    [
+     "GREENHOUSE:moloco-7452525003",
+     2
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     0
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     9
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     10
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     4
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     9
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     11
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     19
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     20
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-27",
+   "body": "사용자 행동 기록으로 추천 모델을 학습시켜 클릭률을 높였습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5046757003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-5046757003",
+     12
+    ],
+    [
+     "GREENHOUSE:daangn-5248527003",
+     2
+    ],
+    [
+     "GREENHOUSE:daangn-5248527003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-5248527003",
+     5
+    ],
+    [
+     "GREENHOUSE:daangn-5248527003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-5248527003",
+     9
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     0
+    ],
+    [
+     "GREENHOUSE:daangn-6610455003",
+     0
+    ],
+    [
+     "GREENHOUSE:daangn-6610455003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     12
+    ],
+    [
+     "GREENHOUSE:moloco-5820201003",
+     0
+    ],
+    [
+     "GREENHOUSE:moloco-5820201003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7452525003",
+     5
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-28",
+   "body": "화면 두 가지 안을 나눠 보여 주는 실험으로 전환율 차이를 검증했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5046757003",
+     1
+    ],
+    [
+     "GREENHOUSE:daangn-5046757003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-5046757003",
+     13
+    ],
+    [
+     "GREENHOUSE:daangn-5046759003",
+     5
+    ],
+    [
+     "GREENHOUSE:daangn-5248527003",
+     1
+    ],
+    [
+     "GREENHOUSE:daangn-5781885003",
+     1
+    ],
+    [
+     "GREENHOUSE:daangn-6081125003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-6610455003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-7668837003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7668837003",
+     13
+    ],
+    [
+     "GREENHOUSE:daangn-7689088003",
+     11
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     20
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005374201",
+     9
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006955201",
+     4
+    ],
+    [
+     "GREENHOUSE:moloco-5820201003",
+     9
+    ],
+    [
+     "GREENHOUSE:moloco-7452525003",
+     1
+    ],
+    [
+     "GREENHOUSE:moloco-7790487003",
+     14
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-29",
+   "body": "자연어 처리 모델로 상품 설명에서 카테고리를 자동으로 분류했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5248527003",
+     5
+    ],
+    [
+     "GREENHOUSE:daangn-6610455003",
+     1
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     0
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     13
+    ],
+    [
+     "GREENHOUSE:moloco-5820201003",
+     8
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-30",
+   "body": "학습한 모델을 서버에 올려 실시간으로 예측 결과를 돌려주게 했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5248527003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-6610455003",
+     2
+    ],
+    [
+     "GREENHOUSE:daangn-6610455003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-6610455003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-7498021003",
+     8
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     6
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005788201",
+     7
+    ],
+    [
+     "GREENHOUSE:moloco-5820201003",
+     2
+    ],
+    [
+     "GREENHOUSE:moloco-5820201003",
+     10
+    ],
+    [
+     "GREENHOUSE:moloco-7452525003",
+     3
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-31",
+   "body": "LLM API 를 서비스에 붙이고 프롬프트를 고쳐 답변 품질을 높였습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-4496730003",
+     11
+    ],
+    [
+     "GREENHOUSE:daangn-6081125003",
+     1
+    ],
+    [
+     "GREENHOUSE:daangn-7498021003",
+     8
+    ],
+    [
+     "GREENHOUSE:daangn-7980543003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7990084003",
+     9
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-7995038003",
+     10
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     6
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     11
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005788201",
+     4
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-32",
+   "body": "문서를 잘게 나눠 벡터로 바꾸고 질문과 비슷한 문서를 찾아 답변에 넣는 검색 기능을 만들었습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5823087003",
+     0
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     2
+    ],
+    [
+     "GREENHOUSE:daangn-6610455003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     4
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005374201",
+     2
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005374201",
+     10
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-33",
+   "body": "필요한 도구를 스스로 골라 호출하는 인공지능 에이전트를 만들었습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-7990084003",
+     9
+    ],
+    [
+     "GREENHOUSE:daangn-7990084003",
+     11
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     0
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     1
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     2
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     7
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     10
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005370201",
+     11
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005374201",
+     2
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005374201",
+     10
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-34",
+   "body": "Claude Code 같은 AI 코딩 도구로 반복 작업을 자동화해 개발 속도를 높였습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-4496730003",
+     5
+    ],
+    [
+     "GREENHOUSE:daangn-5046757003",
+     9
+    ],
+    [
+     "GREENHOUSE:daangn-5296522003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-6043519003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-6081125003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-6285317003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-7644271003",
+     12
+    ],
+    [
+     "GREENHOUSE:daangn-7689088003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     15
+    ],
+    [
+     "GREENHOUSE:daangn-7980543003",
+     2
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005786201",
+     11
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     6
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     10
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     12
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     16
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-35",
+   "body": "클라우드 비용을 분석해 쓰지 않는 서버를 정리하고 월 비용을 30% 줄였습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-4300801003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     1
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     11
+    ],
+    [
+     "GREENHOUSE:daangn-7644271003",
+     15
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005786201",
+     7
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     10
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     5
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     1
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     9
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     17
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     20
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     22
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-36",
+   "body": "테라폼으로 클라우드 인프라를 코드로 관리했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-4300801003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-4300801003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-5004587003",
+     16
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     11
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005786201",
+     7
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     13
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     10
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     5
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     9
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     20
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-37",
+   "body": "웹 서비스의 보안 취약점을 점검하고 입력값 검증을 추가해 막았습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:furiosaai-4005791201",
+     3
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005791201",
+     9
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006986201",
+     15
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     20
+    ],
+    [
+     "GREENHOUSE:moloco-8003052003",
+     13
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-38",
+   "body": "접속 기록을 분석해 비정상적인 로그인 시도를 찾아내고 차단했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5004587003",
+     14
+    ],
+    [
+     "GREENHOUSE:daangn-6043519003",
+     0
+    ],
+    [
+     "GREENHOUSE:daangn-6043519003",
+     1
+    ],
+    [
+     "GREENHOUSE:daangn-6043519003",
+     2
+    ],
+    [
+     "GREENHOUSE:daangn-6043519003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-6043519003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-6043519003",
+     5
+    ],
+    [
+     "GREENHOUSE:daangn-6043519003",
+     6
+    ],
+    [
+     "GREENHOUSE:daangn-6043519003",
+     11
+    ],
+    [
+     "GREENHOUSE:daangn-6043519003",
+     13
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005791201",
+     5
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     20
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-39",
+   "body": "기획자, 디자이너와 매주 회의하며 요구사항을 정리하고 일정에 맞춰 기능을 출시했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-4496730003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-5282170003",
+     3
+    ],
+    [
+     "GREENHOUSE:daangn-6285317003",
+     7
+    ],
+    [
+     "GREENHOUSE:daangn-6640363003",
+     13
+    ],
+    [
+     "GREENHOUSE:daangn-7668837003",
+     5
+    ],
+    [
+     "GREENHOUSE:daangn-7668837003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-7689088003",
+     0
+    ],
+    [
+     "GREENHOUSE:daangn-7762062003",
+     0
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005374201",
+     7
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005788201",
+     6
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006985201",
+     10
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     11
+    ],
+    [
+     "GREENHOUSE:moloco-7717799003",
+     3
+    ],
+    [
+     "GREENHOUSE:moloco-7790487003",
+     2
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     13
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     1
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     4
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     14
+    ],
+    [
+     "GREENHOUSE:moloco-8007407003",
+     3
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-40",
+   "body": "반복되는 배포 작업을 스크립트로 자동화해 손으로 하던 일을 없앴습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-4496730003",
+     2
+    ],
+    [
+     "GREENHOUSE:daangn-6043519003",
+     10
+    ],
+    [
+     "GREENHOUSE:daangn-6285317003",
+     14
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005786201",
+     4
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005786201",
+     11
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006955201",
+     0
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     1
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     13
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006986201",
+     2
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006986201",
+     6
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     16
+    ],
+    [
+     "GREENHOUSE:moloco-8003052003",
+     7
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-41",
+   "body": "Python 으로 성능 측정 스크립트를 만들어 처리량과 지연 시간을 비교했습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-4300801003",
+     4
+    ],
+    [
+     "GREENHOUSE:daangn-5823087003",
+     5
+    ],
+    [
+     "GREENHOUSE:daangn-6285317003",
+     14
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005786201",
+     6
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006955201",
+     0
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006955201",
+     1
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006955201",
+     4
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     4
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006969201",
+     7
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006985201",
+     15
+    ],
+    [
+     "GREENHOUSE:furiosaai-4006986201",
+     6
+    ],
+    [
+     "GREENHOUSE:furiosaai-4007040201",
+     7
+    ],
+    [
+     "GREENHOUSE:moloco-5820201003",
+     11
+    ],
+    [
+     "GREENHOUSE:moloco-7452525003",
+     2
+    ],
+    [
+     "GREENHOUSE:moloco-7519526003",
+     7
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     8
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     6
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     8
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-42",
+   "body": "리눅스 커널 모듈을 직접 작성해 장치 드라이버를 만들었습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:furiosaai-4005793201",
+     0
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005793201",
+     5
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005793201",
+     6
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005793201",
+     9
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-43",
+   "body": "자료구조와 알고리즘 문제를 꾸준히 풀어 문제 해결 능력을 길렀습니다.",
+   "relevant": [
+    [
+     "GREENHOUSE:daangn-5823087003",
+     7
+    ],
+    [
+     "GREENHOUSE:furiosaai-4005788201",
+     5
+    ],
+    [
+     "GREENHOUSE:moloco-7711666003",
+     2
+    ],
+    [
+     "GREENHOUSE:moloco-7982204003",
+     11
+    ],
+    [
+     "GREENHOUSE:moloco-8002090003",
+     9
+    ],
+    [
+     "GREENHOUSE:moloco-8007407003",
+     5
+    ]
+   ]
+  },
+  {
+   "case_id": "ko-44",
+   "body": "유니티로 2D 퍼즐 게임의 레벨 편집기를 만들었습니다.",
+   "relevant": []
+  },
+  {
+   "case_id": "ko-46",
+   "body": "동아리 회계 장부를 정리하고 행사 예산을 관리했습니다.",
+   "relevant": []
+  }
+ ],
+ "conditions": [
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 0,
+   "text": "당근의 Service/Office Network Architecture를 설계하고 운영해요.(Cloud, Wired, Wireless)",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 1,
+   "text": "Network Security Architecture를 설계하고 운영해요.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 2,
+   "text": "Network Observability 플랫폼과 Automation 플랫폼을 개발하고 운영해요.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 3,
+   "text": "Network Engineering 실무 경험이 3~8년이신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 4,
+   "text": "OSPF, BGP 등 Dynamic Routing Protocol에 대한 이해와 운영 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 5,
+   "text": "AWS 또는 GCP 클라우드 네트워크 환경에 대한 이해와 운영 경험이 있으신 분(VPC, TGW, NAT Gateway, Cloud-WAN, Direct Connect, Cloud Router, Interconnect)",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 6,
+   "text": "Firewall 또는 SASE 운영 경험이 있으신 분(AWS Network Firewall, PaloAlto, Fortinet 등)",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 7,
+   "text": "네트워크 모니터링 시스템 구축 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 8,
+   "text": "네트워크 패킷 분석을 통한 Troubleshooting이 가능하신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 9,
+   "text": "해외 출장의 결격 사유가 없으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 10,
+   "text": "IT기업 또는 대규모 클라우드 서비스 환경에서의 네트워크 운영 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 11,
+   "text": "Kubernetes 환경에 대한 이해가 깊으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 12,
+   "text": "유/무선 네트워크 장비 운영 경험이 있으신 분(Router, Switch, Wireless Controller, Access Point)",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 13,
+   "text": "제로트러스트 프레임워크에 대한 이해가 깊으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 14,
+   "text": "네트워크 패킷을 분석하여 패턴 및 시그니처 기반 보안 위협을 차단한 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 15,
+   "text": "네트워크 모니터링 플랫폼 개발이나 자동화에 관심이 많으신 분(Go, Python 등)",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5004587003",
+   "index": 16,
+   "text": "Ansible 또는 Terraform 같은 IaC에 능숙하신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6043519003",
+   "index": 0,
+   "text": "대고객 서비스 환경과 내부 오피스 환경 전반에서 발생하는 보안 이벤트를 분석하고 대응해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6043519003",
+   "index": 1,
+   "text": "침해사고 및 보안 이슈를 효과적으로 탐지하기 위한 탐지 체계와 관련 활동을 설계·운영·고도화해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6043519003",
+   "index": 2,
+   "text": "보안 이벤트 탐지 또는 침해사고 발생 시 조사를 수행하여 침해 경로와 발생 원인을 분석하고 재발 방지 대책을 수립·이행해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6043519003",
+   "index": 3,
+   "text": "사고 대응 과정에서 도출된 개선 사항을 바탕으로 탐지 룰, 자동화, 운영 프로세스를 지속적으로 개선해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6043519003",
+   "index": 4,
+   "text": "침해사고 또는 보안 이벤트 대응 실무 경험 3년 이상이신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6043519003",
+   "index": 5,
+   "text": "멀티 클라우드 및 SaaS 등 복합적인 서비스 환경에서 보안 이벤트 분석과 침해사고 대응을 수행한 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6043519003",
+   "index": 6,
+   "text": "주어진 범위 내의 대응에 그치지 않고, 침해사고 대응과 운영 개선을 주도적으로 추진할 수 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6043519003",
+   "index": 7,
+   "text": "다양한 이해관계자와 협업하며 사고 대응 및 개선을 이끌어갈 수 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6043519003",
+   "index": 8,
+   "text": "외부 보안 사고 및 보안 이슈에 대해 지속적으로 관심을 가지고, CVE, 보안 동향 리포트 등을 참고하며 업무에 반영해 온 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6043519003",
+   "index": 9,
+   "text": "OSINT, CTI, Attack Surface 정보 활용 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6043519003",
+   "index": 10,
+   "text": "업무 효율화를 위한 자동화, AI를 활용해 분석·대응 업무를 개선해 본 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6043519003",
+   "index": 11,
+   "text": "IT기업 또는 대규모 서비스 환경에서의 침해사고 대응 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6043519003",
+   "index": 12,
+   "text": "SIEM 또는 오케스트레이션 플랫폼 구축 및 운영 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6043519003",
+   "index": 13,
+   "text": "서비스 어뷰징 대응 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7990084003",
+   "index": 0,
+   "text": "사내의 다양한 Agent, AI 기능, AI 파이프라인과 사용 사례를 깊이 이해하고 새로운 문제와 기회를 주도적으로 발견해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7990084003",
+   "index": 1,
+   "text": "LLM Router, Prompt Studio, KarrotChat 등 AI Platform 전반을 설계하고 개발하며 지속적으로 발전시켜요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7990084003",
+   "index": 2,
+   "text": "Frontend, Backend, Agent Runtime, Data, Infrastructure의 경계를 두지 않고 문제를 푸는 데 필요한 영역을 자유롭게 넘나들어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7990084003",
+   "index": 3,
+   "text": "새로운 AI 기술과 아이디어를 빠르게 실험하고 프로토타입에서 프로덕션까지 이어가요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7990084003",
+   "index": 4,
+   "text": "기술과 제품 양쪽의 관점에서 고민하며 AI Platform이 나아갈 다음 방향을 찾고 현실로 만들어가요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7990084003",
+   "index": 5,
+   "text": "요청된 작업에 맞는 최적의 모델을 자동으로 탐색해서 라우팅하고 성능 비용 트레이드오프를 최적화해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7990084003",
+   "index": 6,
+   "text": "아이디어나 논의에 머무르지 않고 직접 만들어 빠르게 검증하고, 사용자 피드백을 바탕으로 반복적으로 개선해 실제로 쓰이는 제품과 시스템으로 발전시켜 나가는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7990084003",
+   "index": 7,
+   "text": "모호하거나 필요한 것이 충분히 갖춰져 있지 않은 상황에서도 답을 기다리기보다 필요한 정보를 찾고, 사람을 연결하고, 장애물을 해결하며 스스로 다음 단계를 만들어가는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7990084003",
+   "index": 8,
+   "text": "해보지 않은 영역이나 익숙하지 않은 문제에도 주저하지 않고 용기있게 도전하며, 필요한 것을 빠르게 학습하고 실험해 결국 해결해내는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7990084003",
+   "index": 9,
+   "text": "LLM, Agentic Workflow, MCP, A2A 등 AI 기술의 특성과 한계를 이해하고, 품질을 체계적으로 측정하고 개선하며 실제 서비스로 만들어본 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7990084003",
+   "index": 10,
+   "text": "Full-stack, 데이터, 시스템 아키텍처, 보안과 신뢰성, 프로덕션 운영에 대한 탄탄한 기본기를 바탕으로 제품과 기술의 선택지와 트레이드오프를 이해하고 상황에 맞는 결정을 내릴 수 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7990084003",
+   "index": 11,
+   "text": "Agent의 작동 방식과 한계를 이해하고, 적절한 맥락과 도구, 검증 과정을 설계해 더 잘 동작하게 만들며 필요한 워크플로우도 직접 만들고 개선할 수 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7990084003",
+   "index": 12,
+   "text": "주어진 요구사항을 구현하는 데 그치지 않고 사용자와 비즈니스의 맥락을 이해해 풀어야 할 문제를 발견하고, 무엇을 만들어야 하는지 판단하며 제품과 기술의 방향을 만들어가는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4496730003",
+   "index": 0,
+   "text": "당근의 다양한 서비스를 만들어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4496730003",
+   "index": 1,
+   "text": "Client Platform을 만들어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4496730003",
+   "index": 2,
+   "text": "Developer Experience를 개선해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4496730003",
+   "index": 3,
+   "text": "App Health와 성능을 지켜요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4496730003",
+   "index": 4,
+   "text": "문제의 본질을 스스로 정의하고, 해결책을 설계해 출시와 운영까지 주도적으로 이끌어본 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4496730003",
+   "index": 5,
+   "text": "AI 코딩 도구를 일상적인 개발 흐름에 녹여 생산성을 높이고, AI로 빠르게 프로토타입을 만들어 아이디어를 검증해보신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4496730003",
+   "index": 8,
+   "text": "Android에만 머무르지 않고, 플랫폼의 경계를 넘나들며 문제를 해결해본 경험이 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4496730003",
+   "index": 9,
+   "text": "새로운 기술을 빠르게 익혀 실제 문제에 적용하고, 그 결과를 팀과 나누는 것을 즐기는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4496730003",
+   "index": 10,
+   "text": "자기 주도적으로 일하고, 다양한 직군과 원활하게 커뮤니케이션하며 협업하시는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4496730003",
+   "index": 11,
+   "text": "온디바이스 AI, LLM 등 AI 기반 기능을 실제 프로덕트에 녹여본 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4496730003",
+   "index": 12,
+   "text": "AI 도구를 활용해 프로토타입을 실제 사용자가 쓰는 프로덕트로 이어가 보셨거나, 실제 사용자가 있는 서비스를 0부터 100까지 만들고 운영해본 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4496730003",
+   "index": 13,
+   "text": "대규모 사용자가 쓰는 앱의 안정성·성능 지표를 직접 측정하고 개선해보신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4496730003",
+   "index": 14,
+   "text": "여러 팀이 함께 쓰는 SDK나 공통 모듈을 설계·구현해보셨거나, 오픈소스에 기여해보신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4496730003",
+   "index": 15,
+   "text": "채팅, 미디어(이미지·비디오) 처리, 실험 플랫폼 등 관련 도메인 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4496730003",
+   "index": 16,
+   "text": "당근 앱을 사용해보면서 개선 포인트를 발견하신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7980543003",
+   "index": 0,
+   "text": "당근의 다양한 서비스를 만들어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7980543003",
+   "index": 1,
+   "text": "주어진 일에 머무르지 않고, 스스로 개선할 문제를 발견해 제안하고 직접 만들어보는 것을 즐기는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7980543003",
+   "index": 2,
+   "text": "Claude Code, Cursor 같은 AI 도구를 활용해 문제를 탐색하고, 아이디어를 구체화해 구현하고 검증하는 과정을 경험해보신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7980543003",
+   "index": 3,
+   "text": "Kotlin과 Jetpack Compose로 동작하는 화면과 기능을 직접 만들어보신 분 (수업 과제, 동아리, 개인 프로젝트 모두 좋아요)",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7980543003",
+   "index": 4,
+   "text": "새로운 기술을 배우면 직접 적용해보며 내 것으로 만드는 과정을 즐기는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7980543003",
+   "index": 5,
+   "text": "궁금한 점은 적극적으로 묻고, 피드백을 주고받으며 동료와 함께 더 나은 답을 찾아가는 것을 즐기는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7980543003",
+   "index": 6,
+   "text": "온디바이스 AI, LLM 등 AI 기술을 활용한 기능을 직접 만들어보신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7980543003",
+   "index": 7,
+   "text": "직접 만든 앱이나 서비스를 스토어 · 커뮤니티에 공개해 실제 사용자의 반응을 받아보고 개선해보신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7980543003",
+   "index": 8,
+   "text": "앱 화면 안의 경험뿐 아니라, 앱 안팎에서 사용자를 만나는 새로운 형태의 Android 경험에 관심이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7980543003",
+   "index": 9,
+   "text": "당근 앱을 직접 사용해보며 개선 포인트를 발견하고, 나라면 어떻게 바꿀지 고민해보신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7980543003",
+   "index": 10,
+   "text": "오픈소스 코드를 분석해보셨거나, 작게라도 기여해보신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6640363003",
+   "index": 0,
+   "text": "대규모 광고 트래픽을 다루는 전문가로 성장할 수 있어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6640363003",
+   "index": 1,
+   "text": "데이터 기반의 의사결정과 최적화 경험을 쌓을 수 있어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6640363003",
+   "index": 2,
+   "text": "지속적으로 성장하는 서비스의 기술적 도전을 해결하는 경험을 할 수 있어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6640363003",
+   "index": 3,
+   "text": "마이크로서비스 아키텍처를 직접 설계하고 운영하는 경험을 할 수 있어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6640363003",
+   "index": 4,
+   "text": "5년 이상의 서버 개발 경험, 혹은 이에 준하는 역량을 보유하신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6640363003",
+   "index": 5,
+   "text": "하나 이상의 프로그래밍 언어에 능숙하신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6640363003",
+   "index": 6,
+   "text": "스스로 데이터베이스를 설계하고 개발/운영해 본 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6640363003",
+   "index": 7,
+   "text": "마이크로서비스 아키텍쳐와 REST, gRPC 등 서비스 간 통신에 대한 높은 이해가 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6640363003",
+   "index": 8,
+   "text": "코드 리뷰에 긍정적이고, 테스트 및 이해하기 쉬운 좋은 코드 작성에 관심이 많으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6640363003",
+   "index": 9,
+   "text": "Code Level Architecture (layered architecture, clean architecture 등)에 대한 이해가 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6640363003",
+   "index": 10,
+   "text": "대용량 데이터 처리를 위한 효율적인 애플리케이션 아키텍처 및 데이터베이스 구성에 대한 이해도가 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6640363003",
+   "index": 11,
+   "text": "Kubernetes, AWS, GCP 등 클라우드 환경에서의 운영 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6640363003",
+   "index": 12,
+   "text": "간단한 백오피스 개발이 가능하신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6640363003",
+   "index": 13,
+   "text": "자기주도성, 적극적인 커뮤니케이션, 빠른 실행력을 갖추신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6640363003",
+   "index": 14,
+   "text": "데이터 파이프라인 구축/운영을 실제로 경험했거나 높은 이해도가 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 0,
+   "text": "당근에서 가장 큰 지면인 홈 피드의 전체 시스템을 만들고 운영해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 1,
+   "text": "피드의 다음 성장 곡선을 그리는 실험을 주도해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 2,
+   "text": "실험 한 번의 비용을 낮추는 시스템을 만들어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 3,
+   "text": "피드와 추천 개선의 재료가 되는 사용자 행동 데이터를 발굴하고 수집해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 4,
+   "text": "기술을 목적이 아닌 수단으로 바라보고, '무엇을 만들면 사용자에게 가치가 있을까'를 스스로 질문하는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 5,
+   "text": "직접 문제를 정의하고 가설을 세워 해결까지 밀고 나가는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 6,
+   "text": "빠르게 만들어 실험으로 검증하고, 데이터를 근거로 다음 판단을 내리는 과정을 즐기는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 7,
+   "text": "직군의 경계에 얽매이지 않는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 8,
+   "text": "기획, 디자인, ML까지 직접 파고드는 걸 주저하지 않는 분이요. AI 덕분에 한 사람이 넘나들 수 있는 영역이 훨씬 넓어진 시대라고 믿어요",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 9,
+   "text": "AI 도구를 적극적으로 활용해 만들고 검증하는 속도를 높이고 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 10,
+   "text": "하나 이상의 프로그래밍 언어와 웹 애플리케이션 프레임워크에 능숙하신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 11,
+   "text": "대규모 트래픽 환경에서 분산 시스템 또는 마이크로서비스를 설계·운영해 본 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 12,
+   "text": "피드, 추천, 개인화 등 콘텐츠 서빙 도메인을 경험해 본 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 13,
+   "text": "A/B 테스트 등 데이터 기반 실험을 설계하고 검증해 본 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 14,
+   "text": "직군을 넘나들며 프로덕트를 처음부터 끝까지 만들어 본 분 (사이드 프로젝트도 좋아요)",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046757003",
+   "index": 15,
+   "text": "Go, Kafka, Kubernetes 등 팀의 기술 스택을 깊게 사용해 본 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5781885003",
+   "index": 0,
+   "text": "시장과 제품 방향에 맞춰 서비스를 개선하고 비즈니스 성장을 이끌어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5781885003",
+   "index": 1,
+   "text": "문제 발견과 가설 수립부터 실험, 출시, 성과 분석까지 전 과정에 참여해 비즈니스 지표와 사용자 행동의 변화를 만들어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5781885003",
+   "index": 2,
+   "text": "GraphQL API를 단순한 엔드포인트가 아닌, 유연하고 강력한 인터페이스로 설계하고 구축해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5781885003",
+   "index": 3,
+   "text": "초당 수천 개의 요청과 메시지 트래픽을 효율적이고 안정적으로 처리하는 Event-Driven 아키텍처를 고민해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5781885003",
+   "index": 4,
+   "text": "복잡한 인프라 환경에서 일어나는 동시성 이슈, 지연 시간 최적화, 당근 내 다양한 Microservice 간 연결, Downtime 없는 migration 등 어려운 문제들을 해결해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5781885003",
+   "index": 5,
+   "text": "OOP, FP, Resolver 패턴을 적재적소에 활용하여 구인·구직 도메인의 복잡한 문제를 해결해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5781885003",
+   "index": 6,
+   "text": "내가 만드는 제품을 통해 유저에게 가치를 전달하는 것에 동기부여가 되시는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5781885003",
+   "index": 7,
+   "text": "서비스를 직접 만들고 운영해 본 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5781885003",
+   "index": 8,
+   "text": "제품 중심으로 생각하며 그에 맞는 문제 정의 및 해결책을 도출하시는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5781885003",
+   "index": 9,
+   "text": "자기주도적이며 빠른 실행력을 가지신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5781885003",
+   "index": 10,
+   "text": "하나 이상의 프로그래밍 언어를 깊게 탐구해 보신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5781885003",
+   "index": 11,
+   "text": "엔지니어링 경력이 5년 이상 혹은 그에 준하는 경험을 가지신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5781885003",
+   "index": 12,
+   "text": "Node.js, Go를 활용해 본 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5781885003",
+   "index": 13,
+   "text": "GraphQL을 활용해 본 경험이 있으시거나 관심이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5781885003",
+   "index": 14,
+   "text": "React 기반 클라이언트 개발이 가능하신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5296522003",
+   "index": 0,
+   "text": "사용자가 부동산 매물에 대해 양질의 정보를 많이 얻고, 이를 바탕으로 합리적인 의사결정을 하도록 돕기 위해 데이터를 모으고 정제해서 전달해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5296522003",
+   "index": 1,
+   "text": "사용자가 편리하게 부동산 직거래를 하기 위해 자동화 할 수 있는 부분을 찾고 개선해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5296522003",
+   "index": 2,
+   "text": "개발자들과 협업하기 좋은 API를 디자인하고 Interface와 스키마로 원활하게 소통해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5296522003",
+   "index": 3,
+   "text": "당근의 MSA환경에서 다양한 팀과 협업하고 여러 서비스와 통신해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5296522003",
+   "index": 4,
+   "text": "TypeScript, Go, Java, Kotlin, Python, Ruby 중 하나 이상의 프로그래밍 언어를 이용해 서버 애플리케이션을 5년 이상 개발해본 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5296522003",
+   "index": 5,
+   "text": "내가 만드는 제품을 통해 유저에게 가치를 전달하는 것에 동기부여가 되시는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5296522003",
+   "index": 6,
+   "text": "제품 중심으로 생각하며 그에 맞는 문제 정의 및 해결책을 도출 하시는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5296522003",
+   "index": 7,
+   "text": "AI를 활용하여 생산성을 x10배 이상 끌어내실 수 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5296522003",
+   "index": 8,
+   "text": "단순히 정해진 대로 구현하는 것이 아닌, 문제 해결을 위해 고민하기도 하고, 더 좋은 구현 방식에 대해서 아이디어를 제시하며 나아가실 수 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5296522003",
+   "index": 9,
+   "text": "RDBMS, NoSQL 등 데이터베이스를 활용해본 경험이 있으며 이에 대한 이해가 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5296522003",
+   "index": 10,
+   "text": "Node.js, Go를 활용해본 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5296522003",
+   "index": 11,
+   "text": "GraphQL을 활용해본 경험이 있으시거나 관심이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5296522003",
+   "index": 12,
+   "text": "React 기반 클라이언트 개발이 가능하신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 0,
+   "text": "당근 개발자들이 전사적으로 사용하는 이미지·동영상 플랫폼을 직접 개발하고 개선해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 1,
+   "text": "전사 이미지 플랫폼과 동영상 플랫폼의 업로드, 변환, 서빙 전 과정을 설계하고 운영해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 2,
+   "text": "이미지 동적 리사이즈, 서비스 특성에 맞는 영상 인코딩 및 트랜스코딩 파이프라인 구축처럼 서비스팀의 요구를 플랫폼 기능으로 풀어내요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 3,
+   "text": "대규모 트래픽 환경에서도 콘텐츠가 안정적으로 전달되는 구조를 만들어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 4,
+   "text": "여러 클라우드와 CDN에 걸친 멀티 CDN 아키텍처를 운영하며, 특정 CDN 장애 시에도 서비스가 멈추지 않도록 킬 스위치 같은 장애 격리 구조를 설계해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 5,
+   "text": "글로벌 리전 확장에 맞춰 각 국가에서 같은 품질의 콘텐츠 전달을 보장해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 6,
+   "text": "Kotlin, Go",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 7,
+   "text": "Kubernetes, GCP, AWS",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 8,
+   "text": "소프트웨어 개발 경험이 5년 이상이거나 그에 준하는 엔지니어링 역량을 가지신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 9,
+   "text": "사용자 니즈를 파악하고 이를 기반으로 서비스를 지속적으로 개선해본 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 10,
+   "text": "동료 엔지니어와 협업 경험이 풍부하고, 협업 생산성을 높이는 일에 기여해오신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 11,
+   "text": "레거시 시스템과 그 뒤에 있는 과거의 선택을 존중하면서, 더 나은 방향으로 개선하는 방법을 고민할 수 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 12,
+   "text": "AI 도구를 적극적으로 활용해 만들고 검증하는 속도를 높이고 계신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 13,
+   "text": "이미지 및 동영상 전달을 위한 CDN 파이프라인 구축/운영에 익숙하신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 14,
+   "text": "이미지/동영상 처리(리사이즈, 트랜스코딩, 인코딩 등) 도메인을 경험해 보신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 15,
+   "text": "멀티 클라우드 환경에서 인프라 비용을 분석하고 최적화해 보신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 16,
+   "text": "사내 플랫폼, 개발자 도구 등 개발자를 고객으로 하는 제품을 만들어 보신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7644271003",
+   "index": 17,
+   "text": "Kotlin 혹은 Go 언어 생태계 경험을 보유하신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 0,
+   "text": "동네 이웃의 문제에서 출발해, 사용자에게 실제로 가치를 주는 기능을 기획 단계부터 함께 만들어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 1,
+   "text": "초당 수천 건의 요청과 메시지를 효율적이고 안정적으로 처리하는 서버를 구축하고, 직접 배포하고 모니터링하며 장애까지 책임져요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 2,
+   "text": "기능 하나의 API와 도메인 모델부터 서비스 전체의 구조와 시스템 간 연동까지, 아키텍처를 직접 설계하고 구현해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 3,
+   "text": "데이터베이스 스키마를 설계하고 안전하게 마이그레이션하며, 데이터가 늘어나도 빠르게 동작하도록 쿼리와 캐시, 인덱스를 두루 최적화해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 4,
+   "text": "동네 이웃이 알려주는 찐 정보가 꼭 필요한 사람에게 닿도록, 콘텐츠를 임베딩하고 인덱싱해 각 지면에 맞는 콘텐츠를 AI로 제안해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 5,
+   "text": "커뮤니티 서비스 전체가 그 위에서 돌아가는 공통 플랫폼(프레임워크, 공통 모듈 등)을 만들고 운영해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 6,
+   "text": "서버 애플리케이션 개발 경험 3년 이상 또는 이에 준하는 실력을 가지고 계신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 7,
+   "text": "한 서비스(또는 프로덕트)에서 1년 이상 서버 개발을 이어가며 서비스를 책임져본 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 8,
+   "text": "Kotlin, Java 같은 JVM 언어와 Spring 기반 서버 개발에 능숙하신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 9,
+   "text": "관계형 데이터베이스와 캐시를 다뤄봤고, 안정적으로 동작하는 서버를 고민해본 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 10,
+   "text": "모니터링 등 중요한 시스템 지표들을 측정하고 끌어올린 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 11,
+   "text": "문제의 본질을 파악하기 위해 질문하고, 끝까지 풀어낸 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 12,
+   "text": "아이디어에서 멈추지 않고 사용자에게 가치가 닿는 데까지 가져가 보신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 13,
+   "text": "내가 만든 것이 어떤 지표와 경험을 바꾸는지 생각하며 일하시는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 14,
+   "text": "공들인 일이라도 방향이 틀리면 접을 줄 아는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 15,
+   "text": "Claude Code, Codex 같은 코딩 에이전트로 본인만의 AI 워크플로우를 만들어 일하시는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 16,
+   "text": "서버앱에 머물지 않고 웹앱, 데이터, 운영 도구까지 필요한 곳이면 어디든 손을 뻗어 제품을 완성해본 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 17,
+   "text": "익숙한 언어나 플랫폼을 넘어 새로운 환경에서 문제를 풀어본 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 18,
+   "text": "내가 만든 서비스를 직접 사용자로 쓰며 느낀 불편으로 제품을 발전시켜본 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 19,
+   "text": "내 담당 범위 밖에서 사용자 여정의 빈 곳을 찾아 더 나은 경험으로 채워본 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 20,
+   "text": "A/B 테스트 설계 및 분석 결과를 근거로 프로덕트를 발전시킨 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 21,
+   "text": "서버앱: Kotlin, Spring with Jakarta Servlet, Exposed",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 22,
+   "text": "웹앱: TypeScript, React with Streaming SSR, TanStack Query",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7762062003",
+   "index": 23,
+   "text": "API와 통신: OpenAPI, gRPC with Protocol Buffers",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 0,
+   "text": "새로 생성되는 콘텐츠마다 카테고리와 속성을 AI로 자동 추출하고, 그 데이터의 품질을 각 팀과 함께 관리해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 1,
+   "text": "유저의 행동과 프로필에서 의도·상태·선호 등의 태그를 AI로 자동 추론하고, 그 데이터의 품질을 각 팀과 함께 관리해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 2,
+   "text": "각 팀이 분류 체계와 태그를 스스로 정의하고 실험하고 평가할 수 있도록, 쉽고 편리한 셀프서비스 플랫폼을 만들어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 3,
+   "text": "대규모 AI 추론의 비용과 처리량, 품질을 최적화하고, 더 나은 분류 체계와 추론 방법을 리서치하고 프로덕션에 적용해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 4,
+   "text": "LLM으로 만든 데이터를 학습 데이터로 삼아 자체 경량 ML 모델을 구축하고, 대규모 추론을 LLM 의존 없이 운영할 수 있게 해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 5,
+   "text": "이렇게 만들어진 데이터를 피드, 검색, 추천, 광고 등 여러 서비스가 안정적으로 쓸 수 있도록 연동하고 관리해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 6,
+   "text": "실제 서비스 규모로 백엔드 시스템이나 데이터 파이프라인을 설계·운영해본 경험이 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 7,
+   "text": "LLM API를 프로덕션 시스템에 통합하고 운영해본 경험이 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 8,
+   "text": "대용량 배치·스트림 처리 시스템이나 데이터 웨어하우스로 대규모 데이터를 다뤄본 경험이 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 9,
+   "text": "분류 체계나 데이터 모델을 설계하고, 여러 팀이 공통으로 사용하는 데이터 자산을 만들어본 경험이 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 10,
+   "text": "LLM 프롬프트와 출력 품질을 평가하는 체계(골든셋, LLM-as-a-judge, 품질 지표)를 직접 설계·운영해본 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 11,
+   "text": "LLM 호출의 비용·처리량을 최적화해본 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 12,
+   "text": "유저 행동 데이터를 바탕으로 유저 모델링이나 세그먼트·태그 추론을 해본 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 13,
+   "text": "콘텐츠를 분류하는 시스템이나 지식 체계(taxonomy, ontology)를 구축해본 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 14,
+   "text": "LLM 출력을 학습 데이터로 활용해 ML 모델을 학습하거나 증류해본 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7995038003",
+   "index": 15,
+   "text": "전형과 입사 후 업무 모두 한국어로 원활히 소통 가능하신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 0,
+   "text": "Go, gRPC, gRPC-Gateway",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 1,
+   "text": "MySQL, Redis, Kafka",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 2,
+   "text": "k8s, Istio",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 3,
+   "text": "대규모 인증 트래픽을 견디는 고가용성 아키텍처를 설계해요.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 4,
+   "text": "OAuth 2.0, OpenID Connect(OIDC) 기반 인증 서버를 구축해요.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 5,
+   "text": "가입/로그인 플로우 설계와 가입 전환율 지표 개선 실험을 진행해요.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 6,
+   "text": "개인정보 보호와 보안을 전제로 한 계정·권한 관리 시스템을 설계해요.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 7,
+   "text": "인증 정책 변경이 서비스 전체에 미치는 영향을 예측하고, 무중단으로 마이그레이션해요.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 8,
+   "text": "백엔드 서비스 개발 경험 3년 이상 또는 그에 준하는 엔지니어링 역량을 가지신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 9,
+   "text": "트래픽 규모를 고려해 API·인터페이스를 설계해본 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 10,
+   "text": "분산 시스템에서 정합성과 장애 전파를 고민해본 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 11,
+   "text": "성능·비용·보안처럼 서로 충돌하는 요구 사이에서, 근거를 갖고 결정을 내리고 그 결정을 설명해본 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 12,
+   "text": "사용자 니즈를 파악하고 이를 기반으로 서비스를 지속적으로 개선해본 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 13,
+   "text": "OAuth 2.0 / OIDC 등 표준 인증 프로토콜 기반 시스템을 설계·운영해본 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 14,
+   "text": "대용랑 데이터 처리, 마이그레이션 그리고 다양한 데이터베이스에 대한 경험이 있으신분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 15,
+   "text": "Golang을 활용한 프로덕션 서비스 개발 및 운영 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5046759003",
+   "index": 16,
+   "text": "k8s/Istio 환경의 서비스 운영 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5823087003",
+   "index": 0,
+   "text": "추천 시스템에 필요한 추천 엔진, 피쳐 스토어, 임베딩 생성 플랫폼 등의 서비스들을 개발하고 운영해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5823087003",
+   "index": 1,
+   "text": "대규모 트래픽 환경에서도 안정적으로 동작할 수 있도록 성능과 비용을 지속적으로 최적화해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5823087003",
+   "index": 2,
+   "text": "LLM 기반 임베딩 벡터와 모델 추론 결과를 추천 시스템에서 안정적으로 활용할 수 있는 파이프라인을 구축해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5823087003",
+   "index": 3,
+   "text": "추천 품질과 데이터 품질을 더 잘 관찰할 수 있도록 Data Quality 모니터링 시스템을 구축해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5823087003",
+   "index": 4,
+   "text": "Go, gRPC, Redis, AWS DynamoDB, Kafka, GCP Pub/Sub, GCP BigQuery",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5823087003",
+   "index": 5,
+   "text": "Kotlin, Python, Apache Beam, GCP Dataflow, GCP Vertex AI",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5823087003",
+   "index": 6,
+   "text": "컴퓨터공학 또는 관련 분야를 전공했거나 이에 준하는 지식과 경험을 갖추신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5823087003",
+   "index": 7,
+   "text": "자료구조, 알고리즘, 운영체제, 네트워크, 데이터베이스 등 Computer Science 전반에 대한 탄탄한 이해를 바탕으로 높은 수준의 문제 해결 역량을 갖추신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5823087003",
+   "index": 8,
+   "text": "하나 이상의 프로그래밍 언어를 능숙하게 활용하여 문제를 해결하고, 읽기 쉽고 유지보수 가능한 코드를 작성할 수 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5823087003",
+   "index": 9,
+   "text": "새로운 기술과 익숙하지 않은 도메인을 적극적으로 학습하고 업무에 적용할 수 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5823087003",
+   "index": 10,
+   "text": "백엔드 서비스 또는 데이터 파이프라인을 설계부터 구현, 테스트, 배포 및 개선까지 주도적으로 완성해 본 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5823087003",
+   "index": 11,
+   "text": "시스템이나 개발 과정의 문제를 스스로 발견하고, 기술적 해결책을 구현하여 측정 가능한 개선으로 연결해 본 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4300801003",
+   "index": 0,
+   "text": "고성능의 확장 가능한 데이터 처리 시스템(배치/스트리밍)을 설계해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4300801003",
+   "index": 1,
+   "text": "안정적이고 테스트 가능한 데이터 파이프라인을 설계하고 운영해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4300801003",
+   "index": 2,
+   "text": "구성원들이 이벤트를 쉽게 추가할 수 있도록 자동화된 이벤트 로깅을 구현하고, 대용량의 이벤트를 유실 없이 안정적으로 수집할 수 있는 로그 시스템을 만들어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4300801003",
+   "index": 3,
+   "text": "전사 구성원들의 데이터 기반 의사결정을 돕는 데이터 제품(지표 플랫폼, 실험 플랫폼 등)을 개발하고 지속적으로 개선해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4300801003",
+   "index": 4,
+   "text": "하나 이상의 프로그래밍 언어에 능숙하신 분 (Python / Java / Scala / Kotlin / Go 등)",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4300801003",
+   "index": 5,
+   "text": "대규모 트래픽 처리를 위한 확장 가능한 데이터 아키텍처의 구성에 대한 관심이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4300801003",
+   "index": 6,
+   "text": "AWS, GCP 등 클라우드 환경에서 개발/운영 경험이 있거나 그에 준하는 지식을 갖추신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4300801003",
+   "index": 7,
+   "text": "Spark, Flink, Beam, BigQuery 등 빅데이터 프레임워크 사용 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4300801003",
+   "index": 8,
+   "text": "분산 환경에서 대용량 데이터 처리(배치/스트리밍) 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4300801003",
+   "index": 9,
+   "text": "Kubernetes 등 컨테이너 오케스트레이션 시스템을 활용한 운영 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-4300801003",
+   "index": 10,
+   "text": "AWS, GCP 등 클라우드 환경에서 IaC를 활용한 데이터 인프라 설계 및 운용 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6081125003",
+   "index": 0,
+   "text": "가치를 느낀 사용자가 기꺼이 지불하게 만드는 수익화 경험을 프론트엔드에서 설계하고 만들어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6081125003",
+   "index": 1,
+   "text": "AI를 제품에 통합해 이전에 없던 사용자 경험을 만들어요. '이 기술로 어떤 가치를 만들 수 있을까'를 가장 먼저 발견하고, 데모가 아니라 유저가 실제로 쓰는 화면으로 증명해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6081125003",
+   "index": 2,
+   "text": "고객사의 문제를 현장에서 직접 발굴하고, 제품으로 풀어내며 엔터프라이즈 시장을 개척해요. 아직 정답이 없는 시장에서 성공 사례를 만드는 일이에요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6081125003",
+   "index": 3,
+   "text": "B2B·B2C 시장을 아우르는 서비스의 프론트엔드 전반을 개발해요. 피쳐를 구현하는 데서 멈추지 않고, 제품을 성공시키기 위해 에이전트를 활용한 새로운 엔지니어링 방식을 탐구하고 설계해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6081125003",
+   "index": 4,
+   "text": "React 기반으로 실제 사용자가 쓰는 제품과 서비스들을 3년 이상 만들어본 분(또는 그에 준하는 역량을 가지신 분)과 함께하고 싶어요. UI 너머에 있는 다양한 사용자들을 감각하며 일하는 분이었으면 해요",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6081125003",
+   "index": 5,
+   "text": "에이전트가 일하기 쉬운 하네스에 대한 고민이 깊은 분과 함께하고 싶어요. es-toolkit, ts-pattern, 함수형 프로그래밍 등 선언적 개발이 손에 익은 분이었으면 해요",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6081125003",
+   "index": 6,
+   "text": "데이터 기반의 실험을 많이 해본 분과 함께하고 싶어요. 배포를 끝이 아니라 시작으로 여기고, 제품이나 기능의 성공을 주도해 본 분이었으면 해요",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6081125003",
+   "index": 7,
+   "text": "LLM, MCP, 에이전트 등 AI 도구를 개발만이 아니라 업무 전반에 활용하는 분과 함께하고 싶어요. 개인이나 팀의 일하는 방식을 바꿔본 분이었으면 해요",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6081125003",
+   "index": 8,
+   "text": "0에서 1을 만드는 초기 제품이나 신규 시장을 경험해 본 분이면 더 좋아요",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6081125003",
+   "index": 9,
+   "text": "결제, 구독, 광고처럼 사용자가 지불하는 제품을 만들어본 분이면 더 좋아요",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6081125003",
+   "index": 10,
+   "text": "Relay, Apollo, urql 같은 GraphQL 클라이언트로 제품을 만들어본 분이면 더 좋아요",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6081125003",
+   "index": 11,
+   "text": "다양한 lint 룰과 CI 워크플로우를 직접 만들어본 분이면 좋아요. 많이 만들어본 분이면 더 좋아요",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 0,
+   "text": "담당 업무를 해내기 위해 다른 개발자뿐만 아니라 PM, 디자이너 등 다양한 팀원들과 함께 소통해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 1,
+   "text": "사용자의 목소리를 기반으로 빠른 개발 주기를 가지고, 그 과정에서 상황에 맞게 적절한 기술을 결정해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 2,
+   "text": "프로덕트를 지탱하는 플랫폼(컴포넌트, 프레임워크 등)을 개발해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 3,
+   "text": "프로덕트를 안정적으로 성장시키기 위한 각종 시스템 이슈를 발견하고 해결해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 4,
+   "text": "개발 경험 3년 이상 또는 이에 준하는 실력을 가지고 계신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 5,
+   "text": "React를 활용하는 SSR 웹 서비스의 개발 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 6,
+   "text": "JavaScript, TypeScript에 이해가 깊으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 7,
+   "text": "문제의 본질을 파악하기 위해 질문하고, 문제를 끝까지 해결한 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 8,
+   "text": "사용자 중심으로 사고하며, 사용자 경험을 우선으로 프로덕트를 개발하시는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 9,
+   "text": "모바일 앱 내 웹뷰 개발 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 10,
+   "text": "Claude Code, Codex 같은 코딩 에이전트로 본인만의 AI 워크플로우를 만들어 일하시는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 11,
+   "text": "A/B 테스트 설계 및 분석 결과를 근거로 프로덕트를 개선한 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 12,
+   "text": "모니터링 등 중요한 지표들을 측정하고 개선한 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 13,
+   "text": "React, TypeScript",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 14,
+   "text": "Tanstack Query",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 15,
+   "text": "vanilla-extract",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7689088003",
+   "index": 16,
+   "text": "fastify와 react-dom/server 기반의 Streaming SSR",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 0,
+   "text": "당근의 Chat, Notification, My Karrot, Banner 등 다양한 Engagement 경험의 프론트엔드를 개발해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 1,
+   "text": "유저의 “다음 행동”이 자연스럽게 이어지도록 제품 간 연결 경험과 진입 흐름을 만들어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 2,
+   "text": "푸시 알림부터 알림함, 채팅까지 유저 여정 전체를 설계하고 구현해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 3,
+   "text": "User Segment, Banner, Event Flow 등 Growth & CRM 시스템의 프론트엔드를 개발해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 4,
+   "text": "빠른 실험과 반복이 가능한 A/B 테스트 및 실험 환경을 구축하고 개선해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 5,
+   "text": "다양한 제품팀과 협업하며 Cross-product 경험과 사용자 흐름을 함께 설계해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 6,
+   "text": "3년 이상의 프론트엔드 개발 경험이 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 7,
+   "text": "사용자 흐름과 인터랙션 품질에 높은 기준을 가진 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 8,
+   "text": "구현을 넘어 제품의 목표와 사용자 맥락을 함께 고민할 수 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 9,
+   "text": "빠른 실험과 반복 속에서도 구조와 품질의 균형을 만들 수 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 10,
+   "text": "다양한 직군과 열린 커뮤니케이션으로 협업할 수 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 11,
+   "text": "복잡한 상태와 흐름을 단순한 사용자 경험으로 풀어내는 데 관심이 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 12,
+   "text": "Push Notification, Chat, Feed, CRM 등 Engagement 성격의 제품을 개발해본 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 13,
+   "text": "A/B 테스트나 실험 기반 개발 문화에 익숙한 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 14,
+   "text": "다양한 서비스가 연결되는 플랫폼성 프론트엔드를 개발해본 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 15,
+   "text": "대규모 사용자 환경에서 성능 최적화나 상태 관리 문제를 해결해본 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 16,
+   "text": "Interaction, Motion, UX 디테일에 관심이 많은 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7668837003",
+   "index": 17,
+   "text": "빠른 실행과 높은 완성도 사이의 균형을 즐기는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5282170003",
+   "index": 0,
+   "text": "iOS 개발 경력 3년 이상에 준하는 실력을 보유하신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5282170003",
+   "index": 1,
+   "text": "새로운 기능을 설계하고 구현하는 것을 즐기시는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5282170003",
+   "index": 2,
+   "text": "기술 중심 보다는 사용자 중심의 사고를 가지고 제품을 만들어 갈 수 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5282170003",
+   "index": 3,
+   "text": "자기 주도적으로 일하는 걸 즐기고, 커뮤니케이션이 원활하신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5282170003",
+   "index": 4,
+   "text": "Testable 한 코드 작업에 익숙하신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5282170003",
+   "index": 5,
+   "text": "대규모 서비스를 개발해 보신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5282170003",
+   "index": 6,
+   "text": "iOS 와 관련된 오픈 소스에 기여해 보셨거나, 개인 오픈소스 프로젝트를 보유하신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5282170003",
+   "index": 7,
+   "text": "글로벌 서비스 경험 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5282170003",
+   "index": 8,
+   "text": "DI(Dependency Injection)을 활용한 코드 설계 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5248527003",
+   "index": 0,
+   "text": "피드에서의 사용자 Engagement, 다양하고 우연한 발견을 촉진하기 위한 ML 모델들을 개발하고 개선해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5248527003",
+   "index": 1,
+   "text": "데이터를 분석하고 분석된 데이터에 기반해 가설을 세워 이론적 근거에 기반한 개선점을 찾아요. 온라인 실험으로 검증하고 실질적인 서비스 임팩트를 만들어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5248527003",
+   "index": 2,
+   "text": "유저와 컨텐츠를 깊게 이해하기 위한 모델들을 개발하고 개선해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5248527003",
+   "index": 3,
+   "text": "LLM을 다양한 방식으로 활용하여 개인화 추천을 개선해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5248527003",
+   "index": 4,
+   "text": "머신러닝 이론과 기본기가 탄탄하신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5248527003",
+   "index": 5,
+   "text": "딥러닝에 대한 깊은 이해가 있으신 분 (Recommendation, NLP, Graph Neural Net, Reinforcement Learning, Vision 중 하나 이상)",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5248527003",
+   "index": 6,
+   "text": "효율적인 코드 아키텍처를 구상하고 가독성 뛰어난 코드 작성에 경험이 있으신 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5248527003",
+   "index": 7,
+   "text": "데이터 드리븐 환경에서 머신러닝을 통해 사용자 서비스에 실질적인 임팩트를 만들어 보신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5248527003",
+   "index": 8,
+   "text": "최신 머신러닝, 딥러닝 트렌드에 관심이 있고 관련 논문 읽는 것을 즐기시는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5248527003",
+   "index": 9,
+   "text": "ML 기반 추천 시스템, 광고 시스템에 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5248527003",
+   "index": 10,
+   "text": "머신러닝 모델 및 시스템을 large-scale 프로덕션 환경에 구축하고 사용해 보신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-5248527003",
+   "index": 11,
+   "text": "BigQuery, Cloud Dataflow, Kubeflow, TFX, TF Serving에 경험이 있으신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6610455003",
+   "index": 0,
+   "text": "사용자의 검색 의도를 파악하여 맞춤형 키워드, 컬렉션, 상품 등을 추천해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6610455003",
+   "index": 1,
+   "text": "자연어처리, 그래프 기반 모델, 개인화 알고리즘을 활용해 검색 품질을 향상시켜요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6610455003",
+   "index": 2,
+   "text": "모델의 실시간 서빙을 위한 경량화 및 아키텍처를 설계해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6610455003",
+   "index": 3,
+   "text": "컬렉션 랭킹, 지식그래프, 키워드 제안 등의 모델 개선 실험과 운영을 담당해요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6610455003",
+   "index": 4,
+   "text": "머신러닝 기반 추천/검색/랭킹 시스템을 실제로 설계·운영해본 경험이 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6610455003",
+   "index": 5,
+   "text": "자연어처리(NLP) 또는 그래프 기반 추천 시스템 개발 경험이 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6610455003",
+   "index": 6,
+   "text": "Python 기반의 머신러닝 훈련 파이프라인 구축 경험이 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6610455003",
+   "index": 7,
+   "text": "대용량 데이터를 활용한 실험 설계 및 A/B 테스트 경험이 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6610455003",
+   "index": 8,
+   "text": "모델 서빙과 성능 최적화를 고려한 시스템 구현 경험이 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6610455003",
+   "index": 9,
+   "text": "검색어 자동완성, 연관검색어, 오타교정 등 검색어 제안에 대한 모델링 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6610455003",
+   "index": 10,
+   "text": "실시간으로 딥러닝 모델 추론을 활용한 서빙 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6610455003",
+   "index": 11,
+   "text": "ML 엔지니어 팀에서 오너십을 갖고 특정 도메인(랭킹/추천 등)을 리딩해본 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7498021003",
+   "index": 0,
+   "text": "사내 프롬프트 스튜디오와 에이전트 시스템을 지원하는 LLM 라우터를 개발하고 있어요. 단순한 프록시를 넘어서, 다양한 LLM의 기능과 특성을 자연스럽게 활용할 수 있도록 추상화하고 확장하고 있어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7498021003",
+   "index": 1,
+   "text": "ML 메타데이터 관리 및 조회 시스템을 자체 개발하고 있어요. 단순한 관리 도구를 넘어서 AI 에이전트 기반으로 실험과 운영을 분석하고, 자동화하는 방향으로 발전시키고 있어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7498021003",
+   "index": 2,
+   "text": "그 외에도 당근에서 머신러닝과 AI를 더 잘 활용할 수 있다면, 문제의 크기나 형태에 관계없이 필요한 모든 것을 만들어가고 있어요",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7498021003",
+   "index": 3,
+   "text": "파이썬을 주요 언어로 사용하고 있어요. 파이썬 기반의 개발 환경에 익숙하거나, 사용하는 데에 부담이 없는 분이면 잘 맞아요",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7498021003",
+   "index": 4,
+   "text": "백엔드 시스템이나 머신러닝 시스템을 개발해본 경험이 있다면, 팀에 더 빠르게 적응하실 수 있어요",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7498021003",
+   "index": 5,
+   "text": "작더라도 실제 서비스 운영 과정에서 생기는 현실적인 문제를 직접 다뤄본 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7498021003",
+   "index": 6,
+   "text": "확장성, 안정성, 성능 같은 주제를 말로만이 아니라 실제 구조 개선으로 연결해본 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7498021003",
+   "index": 7,
+   "text": "여러 팀이 함께 쓸 플랫폼, 공통 도구, 내부 시스템을 고민해본 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7498021003",
+   "index": 8,
+   "text": "ML 시스템(서빙, 학습 파이프라인 등)이나 LLM 기반 서비스의 흐름을 이해하고 있거나, 빠르게 배우며 실제 문제에 적용해본 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-7498021003",
+   "index": 9,
+   "text": "정답이 없는 환경에서 오히려 더 재미를 느끼고, 팀과 함께 기준을 만들어가는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6285317003",
+   "index": 0,
+   "text": "서비스와 도메인 특성에 맞는 테스트 시나리오를 설계하고, 자동화 테스트를 직접 개발·운영하며 실행 결과를 분석하고 개선해요.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6285317003",
+   "index": 1,
+   "text": "사내 QA 플랫폼 QAHub의 구조와 방향을 함께 설계하고, 더 많은 팀이 쉽고 안정적으로 테스트할 수 있도록 기능과 시스템을 발전시켜요.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6285317003",
+   "index": 2,
+   "text": "AI를 비롯한 새로운 기술과 자동화 방식을 실제 테스트 환경에 적용하고 검증하며, 기존 자동화로 다루기 어려웠던 영역까지 테스트 범위를 확장해요.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6285317003",
+   "index": 3,
+   "text": "모바일 서비스의 개발 및 배포 환경에 대한 이해가 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6285317003",
+   "index": 4,
+   "text": "자동화 테스트 프레임워크와 도구에 대한 이해가 있고, 이를 활용해 테스트를 구현해본 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6285317003",
+   "index": 5,
+   "text": "소프트웨어 QA와 테스트 방법론에 대한 기본기를 갖추고, 좋은 품질이 무엇인지 고민하는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6285317003",
+   "index": 6,
+   "text": "LLM 기반 도구를 적극적으로 활용하고, AI를 활용해 기존의 문제를 새로운 방식으로 해결하는 데 관심이 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6285317003",
+   "index": 7,
+   "text": "주도적으로 문제를 발견하고 해결하며, 다양한 직군의 동료들과 원활하게 협업할 수 있는 분",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6285317003",
+   "index": 8,
+   "text": "테스트 자동화 프레임워크나 자동화 시스템을 직접 설계하고 구축해본 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6285317003",
+   "index": 9,
+   "text": "Java, Kotlin 등 하나 이상의 프로그래밍 언어를 활용한 개발 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6285317003",
+   "index": 10,
+   "text": "대규모 리그레션 테스트를 운영하거나 테스트의 안정성과 실행 효율을 개선해본 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6285317003",
+   "index": 11,
+   "text": "CI/CD 파이프라인에 자동화 테스트를 통합하고 운영해본 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6285317003",
+   "index": 12,
+   "text": "클라우드 환경이나 디바이스팜 등 테스트 인프라를 구축·운영해본 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6285317003",
+   "index": 13,
+   "text": "LLM이나 AI Agent를 테스트 자동화에 적용하거나 관련 시스템을 직접 만들어본 경험이 있는 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:daangn-6285317003",
+   "index": 14,
+   "text": "SQL과 스크립트 작성에 능숙하신 분",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7711666003",
+   "index": 0,
+   "text": "4–15 years of software development experience across backend, frontend, or full-stack systems, with a track record of leading complex, large-scale projects as seniority grows",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7711666003",
+   "index": 1,
+   "text": "Bachelor's degree or above in Computer Science or equivalent",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7711666003",
+   "index": 2,
+   "text": "Strong problem-solving skills with solid fundamentals in data structures and algorithms",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7711666003",
+   "index": 3,
+   "text": "Experience designing and implementing scalable systems — whether server-side APIs and infrastructure, or user-facing web and mobile interfaces",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7711666003",
+   "index": 4,
+   "text": "Experience with large-scale distributed systems, high-throughput data pipelines, or performance-critical frontend applications",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7711666003",
+   "index": 5,
+   "text": "Hands-on experience with public cloud platforms such as GCP, AWS, or Azure",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7711666003",
+   "index": 6,
+   "text": "Proficiency working with AI coding tools as a force multiplier — you plan before prompting, provide architectural context, review generated code critically, and know when to write code yourself versus when AI adds genuine value",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7711666003",
+   "index": 7,
+   "text": "Fluency in both Korean and English (spoken and written)",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7711666003",
+   "index": 8,
+   "text": "Backend: Go, Java, Python · GCP / AWS · Kubernetes · BigQuery · Dataflow / Apache Beam · Kafka · gRPC / REST APIs",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7711666003",
+   "index": 9,
+   "text": "Frontend: TypeScript / JavaScript · React · Web performance optimization · Mobile web",
+   "type": "SKILL"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-5820201003",
+   "index": 0,
+   "text": "Develop and iterate on deep learning models for real-world prediction problems, including CTR/CVR estimation and ranking, with guidance on modeling choices and objective function design.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-5820201003",
+   "index": 1,
+   "text": "Build and maintain data pipelines for model training and serving using GCP products such as Dataflow, BigQuery, BigTable, and open-source frameworks such as Apache Beam, PySpark, and Iceberg.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-5820201003",
+   "index": 2,
+   "text": "Support production model serving, monitor model behavior in live environments, and contribute to debugging and improving model quality.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-5820201003",
+   "index": 3,
+   "text": "Design and run offline experiments — define evaluation metrics, test hypotheses, and document findings to contribute to team-level modeling decisions.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-5820201003",
+   "index": 4,
+   "text": "Collaborate with fellow Machine Learning Engineers, Applied Scientists, and Infrastructure engineers to deliver projects end-to-end within defined scopes.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-5820201003",
+   "index": 5,
+   "text": "Grow your understanding of Moloco's AdTech domain — including auction mechanics, bidding systems, and advertising outcome modeling — and apply that context to your work.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-5820201003",
+   "index": 6,
+   "text": "Bachelor's degree or higher in Computer Science or a related technical field, or equivalent professional experience.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-5820201003",
+   "index": 7,
+   "text": "2+ years of hands-on software development experience in machine learning or deep learning, with at least some exposure to production systems beyond academic or personal projects.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-5820201003",
+   "index": 8,
+   "text": "Working knowledge of core machine learning modeling concepts, including classification and regression model selection, loss function design, bias/variance trade-offs, calibration, and offline evaluation.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-5820201003",
+   "index": 9,
+   "text": "Solid foundation in statistics and probability, including conditional probability, common distributions, maximum likelihood estimation, hypothesis testing, and basic A/B test interpretation.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-5820201003",
+   "index": 10,
+   "text": "Experience building or contributing to data pipelines or model serving systems, with an understanding of the engineering trade-offs involved.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-5820201003",
+   "index": 11,
+   "text": "Proficiency in at least one programming language such as Python, Java, or Go.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-5820201003",
+   "index": 12,
+   "text": "Fluent English communication skills.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-5820201003",
+   "index": 13,
+   "text": "Relevant experience in AdTech.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-5820201003",
+   "index": 14,
+   "text": "MS or Ph.D. degree in Computer Science or related technical field",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8003052003",
+   "index": 0,
+   "text": "Conduct thorough manual testing for new features, complex edge cases, and user-centric scenarios to ensure high product quality before release.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8003052003",
+   "index": 1,
+   "text": "Design, build, and scale an AI Agent-assisted test automation framework to transition repetitive manual tests into automated integration and end-to-end tests.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8003052003",
+   "index": 2,
+   "text": "Utilize AI Agents for automated test generation, script maintenance (auto-healing), and enhancing exploratory testing.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8003052003",
+   "index": 3,
+   "text": "Analyze bugs and errors found during both manual and automated testing, and communicate actionable findings (repro steps, root-cause insights) to Software Engineers.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8003052003",
+   "index": 4,
+   "text": "Choose the appropriate testing strategy for each service or feature, balancing manual testing, automation, regression coverage, and release risk.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8003052003",
+   "index": 5,
+   "text": "Integrate AI-driven QA tooling into CI/CD pipelines to identify quality risks early in the development lifecycle.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8003052003",
+   "index": 6,
+   "text": "Degree in Computer Science, Software Engineering, or a related field, with software-testing coursework or at least one year of software-testing experience.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8003052003",
+   "index": 7,
+   "text": "Basic understanding of Agile/DevOps software development practices and continuous integration/continuous delivery (CI/CD).",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8003052003",
+   "index": 8,
+   "text": "Strong attention to detail with a proven ability to identify edge cases, negative scenarios, boundary conditions, and gaps in requirements through manual testing.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8003052003",
+   "index": 9,
+   "text": "Familiarity with API testing, backend service verification, frontend testing.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8003052003",
+   "index": 10,
+   "text": "Strong written and verbal communication skills in English and Korean.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8003052003",
+   "index": 11,
+   "text": "Experience or strong interest in leveraging AI tools/LLM Agents for QA processes (e.g., automated test script generation, auto-healing, log analysis).",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8003052003",
+   "index": 12,
+   "text": "Familiarity with Jira or comparable test-management and issue-tracking tools.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8003052003",
+   "index": 13,
+   "text": "Familiarity with security/penetration testing concepts.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 0,
+   "text": "5+ years of industry experience solving large-scale ML, optimization, or systems problems without one.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 1,
+   "text": "Strong applied statistics and causal reasoning: experiment design, working with confounded observational data, and the judgment to recognize when a result is not real.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 2,
+   "text": "Fluency in Python and SQL against large datasets (Spark, BigQuery, or equivalent). You can get your own data without waiting on anyone.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 3,
+   "text": "Experience owning a model or algorithm in production — including what happened to it after launch.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 4,
+   "text": "Clear written English. A large share of this role's impact takes the form of a document that changes what a team decides to do.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 5,
+   "text": "Ads, recommendation, search ranking, marketplaces, or another domain with real-time auctions or bidding.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 6,
+   "text": "Probability calibration, delayed feedback, or selection bias in logged-bandit data.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 7,
+   "text": "CTV, attribution modeling, or incrementality measurement.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 8,
+   "text": "PyTorch or TensorFlow applied to tabular or sequential production data at scale.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 9,
+   "text": "Taken a project from an ambiguous problem statement to a shipped, measured change in production.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 10,
+   "text": "Made the calls yourself on what to investigate and, just as importantly, what to drop.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 11,
+   "text": "Made at least one teammate measurably better through review, pairing, or mentorship",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 12,
+   "text": "Led work that spanned multiple teams or systems, where no single team owned the problem.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 13,
+   "text": "Changed what your organization chose to work on, on the strength of analysis you produced.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 14,
+   "text": "Left behind a method, framework, or standard that other people now use by default.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7452525003",
+   "index": 15,
+   "text": "Represented technical trade-offs directly to non-technical stakeholders, and been trusted to do it.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8007407003",
+   "index": 0,
+   "text": "Write server-side code that handles millions of requests per second.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8007407003",
+   "index": 1,
+   "text": "Implement advertising functionality and customer-facing features.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8007407003",
+   "index": 2,
+   "text": "Learn and explore technologies to improve the services.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8007407003",
+   "index": 3,
+   "text": "Collaborate with internal/external cross-functional teams to make the best advertising products.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8007407003",
+   "index": 4,
+   "text": "Pursuing BS/MS/PhD degree in computer science or related majors.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8007407003",
+   "index": 5,
+   "text": "Outstanding problem solving skills with proper data structures and algorithms.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8007407003",
+   "index": 6,
+   "text": "Excellent software development skills at least in one programming language",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8007407003",
+   "index": 7,
+   "text": "Major/minor in Mathematics or relevant coursework/experience is a plus",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8007407003",
+   "index": 8,
+   "text": "Expected to graduate within a year, OR already graduated within a year",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8007407003",
+   "index": 9,
+   "text": "Fluent in English and Korean (both verbal and written)",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 0,
+   "text": "Set technical direction for key product and platform initiatives, influencing architecture, engineering standards, and long-term technical strategy.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 1,
+   "text": "Lead complex, cross-functional projects from problem framing and requirements definition through technical design, implementation, launch, and post-launch improvement.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 2,
+   "text": "Design, implement, and operate scalable backend services, APIs, data systems, and workflows that support Moloco’s products and customer experiences.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 3,
+   "text": "Translate ambiguous business and customer problems into clear technical solutions, balancing product impact, engineering quality, delivery timelines, and operational cost.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 4,
+   "text": "Partner closely with Product, Data, ML, UX, and other Engineering teams to define scope, align stakeholders, and make effective technical and product trade-offs.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 5,
+   "text": "Build and improve systems that help customers manage, deliver, measure, and optimize their business outcomes.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 6,
+   "text": "Bachelor’s or Master’s degree in Computer Science, a related technical field, or equivalent practical experience.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 7,
+   "text": "15+ years of software engineering experience, including significant experience building and operating backend systems, platforms, or user-facing products at scale.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 8,
+   "text": "Strong proficiency in one or more modern programming languages such as Java, Go, Kotlin, C++, or Python.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 9,
+   "text": "Deep understanding of distributed systems, service-oriented architecture, data structures, algorithms, and system design.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 10,
+   "text": "Proven experience designing and operating reliable, high-throughput services and APIs in production environments.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 11,
+   "text": "Experience working with relational or NoSQL databases and large-scale data systems, such as BigQuery, Bigtable, MySQL, or PostgreSQL.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 12,
+   "text": "Track record of leading complex technical initiatives that span multiple components, teams, or disciplines, including aligning stakeholders and delivering high-quality results.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 13,
+   "text": "Demonstrated ability to make sound technical decisions in ambiguous situations and clearly communicate the rationale, trade-offs, and expected impact.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 14,
+   "text": "Experience collaborating closely with Product, Data, ML, UX, and Engineering partners to shape product direction and execution plans.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 15,
+   "text": "Strong ownership mindset, with experience driving projects end-to-end and remaining engaged through launch, operation, and continuous improvement.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 16,
+   "text": "Experience mentoring engineers and influencing engineering practices, team culture, or technical strategy beyond your immediate area.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 17,
+   "text": "Fluent verbal and written communication skills in English, with the ability to lead technical discussions with global and cross-functional stakeholders.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 18,
+   "text": "Experience building products or platforms in digital advertising, machine learning, media, e-commerce, fintech, or other data-intensive domains.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 19,
+   "text": "Experience with large-scale distributed systems, real-time or near-real-time processing, high-volume data pipelines, or latency-sensitive services.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 20,
+   "text": "Familiarity with cloud platforms and big-data technologies such as GCP, BigQuery, Dataflow, Kafka, Beam, or Spark.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 21,
+   "text": "Experience integrating data pipelines, schemas, data contracts, analytics, and reporting capabilities into customer-facing products.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 22,
+   "text": "Experience defining or improving reliability practices, including SLIs/SLOs, capacity planning, backfill strategies, cost management, and incident response.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 23,
+   "text": "Ability to simplify complex technical or operational concepts into clear product experiences, APIs, and workflows.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 24,
+   "text": "Experience working in a global or multi-region environment, especially where customer needs, market dynamics, or regulations differ by region.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 25,
+   "text": "Demonstrated success influencing technical direction across organizational boundaries without relying on formal authority.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-8002090003",
+   "index": 26,
+   "text": "Experience building inclusive, collaborative teams and helping engineers develop their technical and leadership capabilities.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 0,
+   "text": "Build and extend platforms and developer tooling that provide common capabilities for service development and deployment.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 1,
+   "text": "Improve the scalability, reliability, security, and cost efficiency of our infrastructure.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 2,
+   "text": "Lead infrastructure projects and collaborate with engineers across Moloco to deliver durable solutions.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 3,
+   "text": "Help shape our approach to AI infrastructure, including enabling teams to build, deploy, and host AI workloads in a safe, compliant, and cost-effective manner.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 4,
+   "text": "BS in Computer Science or related fields.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 5,
+   "text": "5+ years of hands-on software development experience.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 6,
+   "text": "Strong software development skills and fluency in at least one modern programming language, such as Go, Java, Rust, or Python.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 7,
+   "text": "Experience designing and building large-scale, low-latency, highly reliable systems.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 8,
+   "text": "Strong system design skills, with experience taking projects from requirements through design, implementation, launch, adoption and production operation.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 9,
+   "text": "Experience working with cloud platforms and cloud-native technologies (e.g. Kubernetes, Airflow, Dataflow, Spark, Redis, BigTable, etc.)",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 10,
+   "text": "Experience using software delivery and developer tools (e.g. CI/CD systems, GitHub, Jenkins, or AI-assisted development tools, etc.)",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 11,
+   "text": "Strong problem-solving skills and the ability to make sound engineering tradeoffs in ambiguous situations.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 12,
+   "text": "Ability to leverage AI-assisted development tools to increase productivity while independently validating their outputs and owning the resulting design, implementation, testing, and security decisions.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 13,
+   "text": "Ability to communicate clearly and collaborate effectively with engineers and stakeholders across teams.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 14,
+   "text": "Experience leading projects through influence while remaining hands-on in the technical work.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 15,
+   "text": "Experience building foundational platforms, developer infrastructure, or highly reusable shared services.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 16,
+   "text": "Experience improving developer productivity through platform design, tooling, automation, or adoption.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 17,
+   "text": "Experience with infrastructure observability, performance optimization, or cost efficiency.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 18,
+   "text": "Experience working in AI infrastructure, such as agent identities, MCP servers, LLM gateways, model hosting, or workload orchestration.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 19,
+   "text": "Experience enabling other teams to build, deploy, and operate AI workloads in a safe, compliant, reliable, and cost-efficient way.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7982204003",
+   "index": 20,
+   "text": "Familiarity with security, privacy, access control, data governance, or compliance considerations for shared infrastructure and AI systems.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7717799003",
+   "index": 0,
+   "text": "Lead the design and implementation of major components across experiment management services, configuration delivery systems, and analysis pipelines.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7717799003",
+   "index": 1,
+   "text": "Own technical decisions for platform areas that require balancing correctness, reliability, performance, and ease of adoption.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7717799003",
+   "index": 2,
+   "text": "Improve the trustworthiness of experimentation by strengthening system design, observability, data quality, and operational standards.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7717799003",
+   "index": 3,
+   "text": "Partner closely with engineers, data scientists, statisticians, and stakeholders to turn ambiguous requirements into scalable platform capabilities.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7717799003",
+   "index": 4,
+   "text": "Mentor other engineers through design discussions, code reviews, and pragmatic technical leadership.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7717799003",
+   "index": 5,
+   "text": "5+ years of professional software engineering experience in a production environment.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7717799003",
+   "index": 6,
+   "text": "Strong hands-on experience in backend systems, data infrastructure, distributed systems, or other relevant platform areas.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7717799003",
+   "index": 7,
+   "text": "Proven ability to independently drive technical projects from problem definition through production rollout in ambiguous problem spaces.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7717799003",
+   "index": 8,
+   "text": "Strong engineering judgment in system design, operational reliability, maintainability, and cross-functional execution.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7717799003",
+   "index": 9,
+   "text": "Bachelor's degree in Computer Science, Computer Engineering, or equivalent practical experience.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7717799003",
+   "index": 10,
+   "text": "Experience designing and implementing experimentation platforms, A/B testing systems, feature flagging systems, or dynamic configuration platforms.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7717799003",
+   "index": 11,
+   "text": "Experience owning platform or infrastructure systems used by multiple engineering teams.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7717799003",
+   "index": 12,
+   "text": "Experience working with analytical data systems, metrics pipelines, or data quality and correctness challenges.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7717799003",
+   "index": 13,
+   "text": "Familiarity with advertising, mobile product ecosystems, or performance-driven product environments.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 0,
+   "text": "Design and build large-scale distributed systems for data ingestion (Petabyte-scale), transformation, and serving.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 1,
+   "text": "Partner with ML and Serving teams to support feature engineering workflows, connecting offline data to serving systems.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 2,
+   "text": "Contribute to the evolution of Feature Infra / Feature Store, ensuring scalability, discoverability, and consistency of feature data.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 3,
+   "text": "Collaborate on Identity Graph construction to unify user and device identifiers for more effective signal enrichment and targeting.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 4,
+   "text": "Improve system observability, resilience, and performance in high-throughput, low-latency environments.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 5,
+   "text": "Mentor engineers and help define best practices for data and backend engineering.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 6,
+   "text": "Bachelor’s or Master’s degree in Computer Science, or equivalent technical field.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 7,
+   "text": "5+ years of software engineering experience with one or more modern languages (Java, Kotlin, Go, C++, C#, or Python).",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 8,
+   "text": "Proven experience designing and building large-scale distributed systems and backend services.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 9,
+   "text": "Hands-on experience with data processing frameworks such as Apache Beam, Dataflow, or Spark, and orchestration tools like Airflow.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 10,
+   "text": "Strong understanding of cloud infrastructure (GCP, AWS, or Azure) and data storage technologies (BigQuery, Bigtable, Redis, GCS, Kafka, Pub/Sub).",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 11,
+   "text": "Demonstrated experience delivering impactful projects through collaboration with cross-functional teams (Product, ML, Data Science).",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 12,
+   "text": "Experience with Feature Infra / Feature Store architecture and operations.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 13,
+   "text": "Experience in Identity Graph design and construction to enhance user signal quality.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 14,
+   "text": "Deep familiarity with AdTech or Machine Learning infrastructure domains.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7519526003",
+   "index": 15,
+   "text": "Experience working with Petabyte-scale data and high-availability systems.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7790487003",
+   "index": 0,
+   "text": "Lead vertically focused quality initiatives from concept through launch, measurement, and iteration",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7790487003",
+   "index": 1,
+   "text": "Own problems end to end, from identifying advertiser pain points to driving cross-functional execution across the stack",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7790487003",
+   "index": 2,
+   "text": "Partner closely with Product, Data Science, Engineering, TPM, Sales, Marketing, and other stakeholders to ensure solutions are technically strong and commercially impactful",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7790487003",
+   "index": 3,
+   "text": "Translate customer and market needs into product and engineering priorities",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7790487003",
+   "index": 4,
+   "text": "Step into ambiguous, fast-moving situations and improvise effectively when new constraints or opportunities emerge",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7790487003",
+   "index": 5,
+   "text": "Represent the technical and product context for key advertisers, helping internal teams and external partners align on how to improve performance",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7790487003",
+   "index": 6,
+   "text": "Senior, hands-on engineer",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7790487003",
+   "index": 7,
+   "text": "Proven ability to lead large, ambiguous initiatives end to end",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7790487003",
+   "index": 8,
+   "text": "Strong communicator who can influence across technical and non-technical audiences",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7790487003",
+   "index": 9,
+   "text": "Comfortable operating with more breadth than depth, and switching between strategic, technical, and operational work as needed",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7790487003",
+   "index": 10,
+   "text": "Track record of driving outcomes directly through both technical contribution and coordination",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7790487003",
+   "index": 11,
+   "text": "Strong preference for ads or ad tech experience",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7790487003",
+   "index": 12,
+   "text": "Experience working on ads quality, traffic quality, search quality, feed quality, or adjacent quality-focused systems",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7790487003",
+   "index": 13,
+   "text": "Experience leading a vertical, domain, or product area where success depended on aligning multiple teams around customer and business outcomes",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:moloco-7790487003",
+   "index": 14,
+   "text": "Experience in environments where rapid experimentation, analysis, and ideation are core to the way teams work",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 0,
+   "text": "Operates and improves RNGD-based LLM serving services, defining SLIs/SLOs and production readiness criteria to guide reliability and capacity decisions.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 1,
+   "text": "Automates serving deployments and validates changes through performance tests, canary rollouts, and rollback procedures, collaborating with the build and release team on release artifacts.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 2,
+   "text": "Participates in on-call and incident response, from mitigation to root-cause analysis and preventive improvements. Builds runbooks and recovery automation to reduce operational toil.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 3,
+   "text": "Bachelor's degree in Computer Science or a related field, or equivalent practical experience, with 3+ years developing and operating production services.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 4,
+   "text": "Strong programming skills in Rust, C++, Python, or Go, with the ability to read, instrument, and improve existing production code.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 5,
+   "text": "Hands-on experience operating services in Kubernetes and solid understanding of Linux, containers, networking, concurrency, and distributed systems.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 6,
+   "text": "Understanding of LLM serving concepts, including prefill/decode, batching, KV-cache management, and request scheduling, and their impact on performance.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 7,
+   "text": "Experience profiling production services and analyzing telemetry to identify bottlenecks across the request path and validate improvements in tail latency, throughput, and resource efficiency.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 8,
+   "text": "Experience building observability systems and using metrics, logs, and traces to diagnose production incidents, restore services, and implement preventive improvements.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 9,
+   "text": "Ability to communicate quantitative findings and collaborate across teams to deliver measurable production improvements.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 10,
+   "text": "Experience operating LLM serving systems using llm-d, vLLM, SGLang, TensorRT-LLM, or similar technologies.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 11,
+   "text": "Experience optimizing request routing, load balancing, queueing, or autoscaling, and translating workload measurements into capacity plans or serving-cost estimates.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 12,
+   "text": "Experience with inference optimizations such as continuous batching, prefix KV-cache reuse, speculative decoding, distributed inference, or kernel optimization.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 13,
+   "text": "Experience with Istio traffic management, infrastructure as code, or GitOps, including automated rollout and rollback workflows.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 14,
+   "text": "Experience with Prometheus, Grafana, OpenTelemetry, and reliability practices such as SLO design, error budgets, and post-incident reviews.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 15,
+   "text": "Experience operating GPU/NPU workloads in on-premises or cloud environments and diagnosing issues across drivers, runtime, orchestration, and applications.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006969201",
+   "index": 16,
+   "text": "Experience developing software in Rust.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 0,
+   "text": "Design, implement, and optimize model-specific TCL kernels, including attention and mixture-of-experts computations, for high performance and efficient use of NPU resources.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 1,
+   "text": "Integrate new models and TCL kernels into Furiosa-LLM to enable correct, efficient inference.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 2,
+   "text": "Improve the process for adding new models by building reusable analysis and integration tools, automating validation and benchmarking, and documenting repeatable workflows.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 3,
+   "text": "Validate kernel and model correctness on NPUs against reference implementations, investigate numerical differences, and build regression tests for supported configurations.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 4,
+   "text": "Evaluate techniques from frameworks such as vLLM and SGLang, adapt and apply relevant approaches to TCL kernels and Furiosa-LLM integration, and document validated findings.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 5,
+   "text": "Deep understanding of transformer-based LLMs, including attention variants, mixture-of-experts architectures, and KV-cache behavior.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 6,
+   "text": "Strong Python programming skills and hands-on experience reading, modifying, and debugging model implementations in PyTorch or a comparable framework.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 7,
+   "text": "Hands-on experience implementing, debugging, and optimizing tensor operations or accelerator kernels, with an understanding of compute, memory, and numerical correctness.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 8,
+   "text": "Understanding of LLM inference performance, including prefill/decode, batching, and latency–throughput trade-offs, with experience in quantitative performance evaluation.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 9,
+   "text": "Ability to read and reason about Rust or C++ code when working on inference systems.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 10,
+   "text": "Clear technical communication and cross-team collaboration skills, including the ability to turn analysis into actionable engineering decisions.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 11,
+   "text": "Experience bringing up or optimizing models on GPUs, NPUs, TPUs, or other AI accelerators.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 12,
+   "text": "Familiarity with the internals of vLLM, SGLang, TensorRT-LLM, or similar inference frameworks, including scheduling, caching, or model parallelism.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 13,
+   "text": "Familiarity with ML compilers and optimizations such as fusion, tiling, and scheduling.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 14,
+   "text": "Experience developing and optimizing accelerator kernels using CUDA, Triton, or a tensor DSL.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006985201",
+   "index": 15,
+   "text": "Experience developing software in Rust, building model validation or benchmarking tools, or contributing to open-source model and inference projects.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 0,
+   "text": "Designs and maintains the build systems and toolchains across a polyglot codebase (Cargo, CMake, Python packaging), producing reproducible, hermetic builds across supported platforms.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 1,
+   "text": "Designs and manages major, minor, and hotfix release workflows, including release planning, stabilization, backports, validation, and end-of-life processes.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 2,
+   "text": "Develops CI automation for build, test, integration, and release, with a focus on build correctness, artifact integrity, caching, and fast, reliable release validation.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 3,
+   "text": "Resolves OS- and platform-specific build issues and upstreams fixes to the open-source community where appropriate.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 4,
+   "text": "Bachelor's degree in Computer Science or equivalent work experience.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 5,
+   "text": "3+ years in build or release engineering, developer infrastructure, or systems software with significant build and packaging responsibility.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 6,
+   "text": "Strong proficiency in Python and shell scripting (e.g., Bash) for automation.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 7,
+   "text": "Hands-on experience with build systems across compiled and interpreted languages (e.g., Cargo, CMake, Make, Bazel) and with C/C++, Rust, and Python toolchains.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 8,
+   "text": "Fluency with Git and experience setting up and maintaining continuous integration systems.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 9,
+   "text": "Active contributor to the build/release and CI/CD systems of a real-world software project",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 10,
+   "text": "Experience with Python packaging and distribution (wheels, manylinux, PyPI) and native extension builds (PyO3, pybind11, or C extensions).",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 11,
+   "text": "Experience maintaining APT/RPM repositories and OS package distribution.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 12,
+   "text": "Experience managing reproducible builds, artifact and version management, and dependency resolution across many interdependent packages.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 13,
+   "text": "Experience designing and operating CI/CD with GitHub Actions or similar, including build caching and matrix builds.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 14,
+   "text": "Experience releasing software for GPUs or other accelerator devices, including hardware-dependent build and test pipelines.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 15,
+   "text": "Familiarity with static analysis, code coverage, supply-chain/vulnerability scanning, and artifact signing.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006986201",
+   "index": 16,
+   "text": "Experience building across multiple operating systems and distributions (e.g., Ubuntu, CentOS/RHEL).",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006955201",
+   "index": 0,
+   "text": "Strong Python programming skills and experience building maintainable automation, data pipelines, or engineering tools.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006955201",
+   "index": 1,
+   "text": "Hands-on experience measuring and analyzing ML inference or complex systems performance, including profiling, latency/throughput analysis, and regression investigation.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006955201",
+   "index": 2,
+   "text": "Understanding of transformer-based LLM inference, including prefill/decode, batching, KV-cache behavior, and the effects of workload and numerical precision on performance and model outputs.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006955201",
+   "index": 3,
+   "text": "Practical experience evaluating model accuracy or numerical correctness using PyTorch, Hugging Face Transformers, or comparable tools, with the ability to investigate discrepancies against a reference implementation.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006955201",
+   "index": 4,
+   "text": "Sound experimental design and data analysis skills, including controlled comparisons, variability analysis, and reproducible reporting.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006955201",
+   "index": 5,
+   "text": "Ability to communicate quantitative findings clearly and collaborate across engineering teams to drive issues through resolution.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006955201",
+   "index": 6,
+   "text": "Experience with LLM inference frameworks such as vLLM, SGLang, TensorRT-LLM, including their benchmarking and profiling tools.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006955201",
+   "index": 7,
+   "text": "Experience building LLM evaluation suites with tools such as lm-evaluation-harness or comparable frameworks, including dataset preparation, prompt configuration, and scoring validation.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006955201",
+   "index": 8,
+   "text": "Familiarity with quantization, mixed precision, speculative decoding, or distributed inference, and their implications for performance and accuracy.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006955201",
+   "index": 9,
+   "text": "Experience benchmarking GPU, NPU, or TPU systems and analyzing memory bandwidth, kernel execution, or communication bottlenecks.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006955201",
+   "index": 10,
+   "text": "Experience operating automated evaluation workloads in Linux, container, or cluster environments and integrating results with CI, experiment tracking, or dashboards.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4006955201",
+   "index": 11,
+   "text": "Ability to read and instrument Rust or C++ code, or contributions to open-source inference, benchmarking, or evaluation projects.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005786201",
+   "index": 0,
+   "text": "Define and evolve reliability goals for production systems through SLIs, SLOs, error budgets, and meaningful operational metrics.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005786201",
+   "index": 1,
+   "text": "Design and build observability foundations that make system behavior, user impact, performance bottlenecks, and failure modes measurable and actionable.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005786201",
+   "index": 2,
+   "text": "Analyze production systems end-to-end, identify reliability risks across software, infrastructure, and networking boundaries, and drive architectural improvements.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005786201",
+   "index": 3,
+   "text": "Improve change safety and failure recovery through better rollout strategies, capacity planning, load validation, graceful degradation, and incident learning loops.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005786201",
+   "index": 4,
+   "text": "Reduce operational toil by building automation, internal tooling, and self-service workflows that make production systems easier to operate and harder to misuse.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005786201",
+   "index": 5,
+   "text": "Bachelor’s degree in Computer Science, Engineering, or a related field, or equivalent practical experience.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005786201",
+   "index": 6,
+   "text": "Strong programming skills in one or more general-purpose languages such as Rust, Python, , or Go.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005786201",
+   "index": 7,
+   "text": "Solid understanding of operating systems, computer networks, and cloud-native or container-based environments.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005786201",
+   "index": 8,
+   "text": "Ability to analyze technical problems and communicate clearly with engineering teams.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005786201",
+   "index": 9,
+   "text": "Experience improving reliability of production systems using SLOs, observability, incident analysis, rollout safety, and error-budget-driven decision making.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005786201",
+   "index": 10,
+   "text": "Experience designing or operating distributed systems where failures, overload, latency, and capacity limits must be explicitly managed.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005786201",
+   "index": 11,
+   "text": "Experience building automation, internal tooling, or self-service workflows that reduce operational toil and improve engineering productivity.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005786201",
+   "index": 12,
+   "text": "Experience working across software, infrastructure, networking, and security boundaries to diagnose problems and drive architectural improvements.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005374201",
+   "index": 0,
+   "text": "Develop high-impact AI applications and technical resources to enable the success of the global developer community.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005374201",
+   "index": 1,
+   "text": "Develop enterprise-focused, high-quality reference applications and sample code that enable developers to effectively understand and utilize FuriosaAI’s SW stack and integrations.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005374201",
+   "index": 2,
+   "text": "Drive end-to-end application enablement such as RAG systems, agentic systems, and RL inference engines on FuriosaAI accelerators, creating reproducible guides and reference implementations.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005374201",
+   "index": 3,
+   "text": "Evaluate applications against real-world scenarios to validate performance, reliability, and usability of RNGD deployments.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005374201",
+   "index": 4,
+   "text": "Support live application demos and collaborate with the global developer community through GitHub and open-source channels to improve real-world usability.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005374201",
+   "index": 5,
+   "text": "BS in Artificial Intelligence, Computer Science, Electrical Engineering, or a related field.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005374201",
+   "index": 6,
+   "text": "Experience in full-stack (frontend and backend) development of AI services.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005374201",
+   "index": 7,
+   "text": "Experience collaborating across engineering, product, and design teams to align software development with product requirements.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005374201",
+   "index": 8,
+   "text": "MS or PhD in Artificial Intelligence, Computer Science, Electrical Engineering, or a related field.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005374201",
+   "index": 9,
+   "text": "Experience in developing and maintaining AI products, including running A/B tests and operating services under high traffic.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005374201",
+   "index": 10,
+   "text": "Experience in open-source projects on AI applications such as agentic systems, RAG, or multimodal pipelines.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005370201",
+   "index": 0,
+   "text": "Agent System Framework의 핵심 인프라 설계 및 개발",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005370201",
+   "index": 1,
+   "text": "Agent orchestration, context management, tool execution, memory abstraction 등 agent runtime의 핵심 컴포넌트 구현",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005370201",
+   "index": 2,
+   "text": "다양한 조직과 협업하여 새로운 agent capability를 빠르게 프로토타이핑하고, 이를 프로덕션 환경으로 확장",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005370201",
+   "index": 3,
+   "text": "CLI 및 SDK를 포함한 developer-facing interface 설계 및 개선",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005370201",
+   "index": 4,
+   "text": "컴퓨터공학 또는 유관 분야 학사 학위, 혹은 이에 준하는 실무 경험",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005370201",
+   "index": 5,
+   "text": "Distributed systems 또는 대규모 backend 시스템 설계 및 운영 경험",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005370201",
+   "index": 6,
+   "text": "Machine Learning / AI 시스템 (특히 LLM 기반) 개발 및 프로덕션 적용 경험",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005370201",
+   "index": 7,
+   "text": "Agent system, workflow engine, orchestration framework 중 하나 이상의 개발 경험",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005370201",
+   "index": 8,
+   "text": "Python, Go, 또는 C++ 기반의 backend 시스템 개발 경험",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005370201",
+   "index": 9,
+   "text": "컴퓨터공학 또는 유관 분야 석사/박사 학위",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005370201",
+   "index": 10,
+   "text": "실제 환경 또는 대규모 시스템에서 agentic AI system framework를 설계 및 개발한 경험",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005370201",
+   "index": 11,
+   "text": "LLM 기반 application (예: reasoning system with planning, tool use) 개발 경험",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005370201",
+   "index": 12,
+   "text": "CLI 또는 SDK와 같은 developer tool 개발 경험",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005788201",
+   "index": 0,
+   "text": "Collaborate closely with the Compiler team to co-design and optimize execution for FuriosaAI NPUs, improving system-level throughput, latency, and memory utilization.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005788201",
+   "index": 1,
+   "text": "Proactively research, evaluate, and integrate state-of-the-art inference optimization techniques and key features of LLM serving frameworks into our production inference engine.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005788201",
+   "index": 2,
+   "text": "BS degree in Computer Science, Engineering, or a related field, with at least 3 years of relevant industry experience, or equivalent practical experience",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005788201",
+   "index": 3,
+   "text": "Proficiency in Rust or C++ programming skill",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005788201",
+   "index": 4,
+   "text": "Knowledge and passion of deep learning, LLM, and/or generative AI models",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005788201",
+   "index": 5,
+   "text": "Excellent problem-solving and data analysis skills.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005788201",
+   "index": 6,
+   "text": "Strong communication and collaboration skills.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005788201",
+   "index": 7,
+   "text": "Experience in building inference serving systems for large models, encompassing batching, scheduling, caching, and load balancing.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005788201",
+   "index": 8,
+   "text": "A deep understanding of performance optimization systems.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005788201",
+   "index": 9,
+   "text": "Proficiency in C++/CUDA or Triton kernel development",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005788201",
+   "index": 10,
+   "text": "Contributions to open-source inference frameworks such as vLLM, SGLang, or TensorRT-LLM.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005791201",
+   "index": 0,
+   "text": "Zero Trust 기반 전사 보안 전략 및 정책 수립, 실행",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005791201",
+   "index": 1,
+   "text": "ID 및 접근 제어 체계 구축 및 운영 (SSO, IAM, RBAC 등)",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005791201",
+   "index": 2,
+   "text": "SaaS 및 클라우드 인프라(AWS, GCP 등)의 보안 아키텍처 설계 및 구성",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005791201",
+   "index": 3,
+   "text": "사내 시스템 및 서비스의 보안 취약점 진단 및 개선",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005791201",
+   "index": 4,
+   "text": "개발 및 인프라 팀과의 협업을 통한 보안 내재화 (코드 리뷰, CI/CD 보안 등)",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005791201",
+   "index": 5,
+   "text": "침해 대응 체계 및 모니터링 환경 구성, 운영",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005791201",
+   "index": 6,
+   "text": "컴퓨터 공학 또는 IT 관련 분야 학사 이상 학위 보유자",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005791201",
+   "index": 7,
+   "text": "보안 인프라, DevOps, IT Infra 등 유관 분야에서 3년 이상 실무 경험",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005791201",
+   "index": 8,
+   "text": "Linux, Network, Cloud(AWS/GCP) 환경에서의 보안 설계 및 운영 경험",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005791201",
+   "index": 9,
+   "text": "보안 취약점 분석 및 대응, 개선 경험",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005791201",
+   "index": 10,
+   "text": "Zero Trust 보안 모델에 대한 이해와 실무 적용 경험",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4007040201",
+   "index": 0,
+   "text": "Analyze end-to-end LLM serving workloads and identify performance bottlenecks that can be addressed through kernel-level optimization.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4007040201",
+   "index": 1,
+   "text": "Design, implement, and optimize high-performance kernels in TCL for critical operations in Furiosa-LLM.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4007040201",
+   "index": 2,
+   "text": "Develop algorithmic techniques for efficiently supporting dynamic serving workloads.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4007040201",
+   "index": 3,
+   "text": "Integrate, benchmark, and validate optimized kernels across representative models, input shapes, and serving scenarios.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4007040201",
+   "index": 4,
+   "text": "Collaborate with compiler and serving teams to improve compiler capabilities and ensure optimized kernels work effectively within the production software stack.",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4007040201",
+   "index": 5,
+   "text": "BS in Computer Science, Artificial Intelligence, Electrical Engineering, or a related field.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4007040201",
+   "index": 6,
+   "text": "Experience in developing low-level or performance-critical software.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4007040201",
+   "index": 7,
+   "text": "Experience in analyzing performance bottlenecks using profiling, benchmarking, and hardware performance characteristics.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4007040201",
+   "index": 8,
+   "text": "Understanding of parallel computation, memory hierarchies, and data movement on modern architectures.",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4007040201",
+   "index": 9,
+   "text": "MS or PhD in Computer Science, Artificial Intelligence, Electrical Engineering, or a related field.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4007040201",
+   "index": 10,
+   "text": "Experience in optimizing high-performance kernels on AI accelerators (e.g., GPU, TPU) for AI products.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4007040201",
+   "index": 11,
+   "text": "Hands-on knowledge of kernel optimization techniques such as tiling, computation scheduling, operator fusion, memory layout transformation, vectorization, pipelining, and data movement optimization.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4007040201",
+   "index": 12,
+   "text": "Experience reasoning about trade-offs among parallelism, memory bandwidth, on-chip memory capacity, compute utilization, and synchronization overhead.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4007040201",
+   "index": 13,
+   "text": "Experience with accelerator programming or domain-specific kernel languages such as Triton, cuTile, or Pallas.",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005793201",
+   "index": 0,
+   "text": "Develop and maintain Linux PCIe device drivers and kernel modules",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005793201",
+   "index": 1,
+   "text": "Optimize PCIe subsystem behavior including DMA, IOMMU, interrupts, and BAR mapping",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005793201",
+   "index": 2,
+   "text": "Build user-space libraries and APIs enabling high-performance data paths",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005793201",
+   "index": 3,
+   "text": "Work closely with hardware/firmware teams to build end-to-end PCIe I/O pipelines",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005793201",
+   "index": 4,
+   "text": "Design efficient memory management and zero-copy data transfer paths",
+   "type": "RESPONSIBILITY"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005793201",
+   "index": 5,
+   "text": "Strong understanding of Linux Kernel internals and memory management (DMA/IOMMU)",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005793201",
+   "index": 6,
+   "text": "Experience developing kernel modules in C",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005793201",
+   "index": 7,
+   "text": "Knowledge of PCIe protocol and PCIe subsystem architecture",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005793201",
+   "index": 8,
+   "text": "Experience with kernel debugging tools (gdb, ftrace, perf, etc.)",
+   "type": "REQUIRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005793201",
+   "index": 9,
+   "text": "Experience with device drivers for HPC, AI accelerators, or high-speed networking",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005793201",
+   "index": 10,
+   "text": "Background in RDMA/DPDK/SPDK or other high-performance I/O frameworks",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005793201",
+   "index": 11,
+   "text": "Familiarity with NUMA, huge pages, and pinned memory",
+   "type": "PREFERRED"
+  },
+  {
+   "posting_key": "GREENHOUSE:furiosaai-4005793201",
+   "index": 12,
+   "text": "Upstream contributions or open-source maintainer experience",
+   "type": "PREFERRED"
+  }
+ ]
+}

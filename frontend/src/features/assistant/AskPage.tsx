@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowRight, BriefcaseBusiness, Check, ChevronRight, FileText, FolderGit2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -9,6 +9,7 @@ import {
 import { assistantSupported } from '@/api/capabilities';
 import { errorView } from '@/api/errorView';
 import { Bubble, ChatFrom, Composer } from '@/components/chat/Chat';
+import { scrollPageTo } from '@/components/chat/chatScroll';
 import { Breadcrumb, ButtonLink, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
@@ -16,6 +17,8 @@ import { composerHint, matchResult, postingMeta, questionsGuide, questionsGuideT
 import './ask.css';
 
 const Dots = () => <span className="ai-wait__dots" aria-hidden><i /><i /><i /></span>;
+/** 앞 대화로 남겨 두는 실행의 최대 개수 */
+const EARLIER_MAX = 5;
 const START_HINT = '예: 토스 백엔드 공고 찾아서 나랑 맞는지 봐 줘';
 /** 처음 화면의 예시 — 누르면 입력 칸에 그대로 들어가서, 회사 이름만 고쳐 보낼 수 있다 */
 const EXAMPLES = [
@@ -37,6 +40,7 @@ function AskChat() {
   useDocumentTitle('대화');
   const { runId } = useParams();
   const [sp] = useSearchParams();
+  const earlier = useEarlierRuns(runId);
   const nav = useNavigate();
   const run = useAssistantRun(runId);
   const start = useStartAssistantRun();
@@ -45,13 +49,18 @@ function AskChat() {
   /** 서버 응답이 오기 전에 먼저 보이는 내 말 */
   const [sending, setSending] = useState<string | null>(null);
   const asked = useRef(false);
-  const end = useRef<HTMLDivElement>(null);
+  const thread = useRef<HTMLDivElement>(null);
+  const dock = useRef<HTMLDivElement>(null);
   const area = useRef<HTMLTextAreaElement>(null);
 
   const begin = (goal: string) => {
     setSending(goal);
     start.mutate(goal, {
-      onSuccess: (made) => { setSending(null); nav(`/ask/${encodeURIComponent(made.id)}`, { replace: true }); },
+      onSuccess: (made) => {
+        setSending(null);
+        // 끝난 실행에서 새 일을 적으면 그 실행까지를 앞 대화로 들고 간다(새로고침해도 남도록 주소 상태에 둔다)
+        nav(`/ask/${encodeURIComponent(made.id)}`, { replace: true, state: { earlier: runId ? [...earlier, runId].slice(-EARLIER_MAX) : [] } });
+      },
       onError: () => { setSending(null); setText(goal); },
     });
   };
@@ -68,7 +77,10 @@ function AskChat() {
   const state = data?.state;
   const last = items.at(-1);
   const pending = start.isPending || say.isPending;
-  useEffect(() => { end.current?.scrollIntoView?.({ block: 'end' }); }, [items.length, last?.ok, pending, state]);
+  // 새로 온 말의 첫 줄이 위에 보이게 맞추고, 다 들어가는 짧은 말이면 맨 아래를 보인다(아래 입력 줄이 가리지 않는 만큼만 본다)
+  useEffect(() => {
+    if (thread.current) scrollPageTo(thread.current, dock.current, { pad: 16 });
+  }, [items.length, last?.ok, pending, state]);
   // 도구가 끝날 때마다 서버의 공고 판단, 자소서, 정리가 바뀌므로 이 화면을 떠난 뒤 다른 화면이 옛 값을 보이지 않게 한다
   const client = useQueryClient();
   const doneSteps = items.filter((item) => item.kind === 'STEP' && item.ok === true).length;
@@ -92,26 +104,11 @@ function AskChat() {
     } else begin(said);
   };
 
-  // 걸음은 이어진 것끼리 한 상자에 묶고, Gitory 의 말이 시작되는 자리에만 이름표를 붙인다
-  const blocks: ReactNode[] = [];
-  let steps: AssistantItem[] = [];
-  const flush = () => {
-    if (steps.length) blocks.push(<Steps key={`steps-${steps[0].seq}`} items={steps} />);
-    steps = [];
-  };
-  items.forEach((item, index) => {
-    if (item.kind !== 'USER' && (index === 0 || items[index - 1].kind === 'USER')) blocks.push(<ChatFrom key={`from-${item.seq}`} />);
-    if (item.kind === 'STEP') { steps.push(item); return; }
-    flush();
-    blocks.push(<Bubble key={item.seq} side={item.kind === 'USER' ? 'me' : 'it'}>{item.text}</Bubble>);
-  });
-  flush();
+  const blocks = chatBlocks(items);
 
   const thinking = pending || (state === 'RUNNING' && !(last?.kind === 'STEP' && last.ok === null));
   const choices = state === 'WAITING_USER' && last?.kind === 'ASK' && last.askKind === 'CHOICE' ? last.options : [];
   const guide = state === 'WAITING_USER' && last?.kind === 'ASK' && last.askKind === 'QUESTIONS' ? questionsGuide(items) : null;
-  const link = state === 'DONE' ? resultLink(items) : null;
-  const matched = state === 'DONE' && !link ? matchResult(items) : null;
   const failed = start.isError ? errorView(start.error).message : say.isError ? errorView(say.error).message
     : state === 'FAILED' ? '지금은 답을 받지 못했어요. 할 일을 다시 적어 주세요.' : null;
   const spoken = last && last.kind !== 'USER' ? (last.kind === 'STEP' ? stepLine(last) : last.text ?? '') : '';
@@ -122,7 +119,7 @@ function AskChat() {
     <main className="main ask">
       <Breadcrumb items={crumbs} />
       {!fresh && <h1 className="sr-only">대화</h1>}
-      <div className="ask__thread chat-thread">
+      <div className="ask__thread chat-thread" ref={thread}>
         {fresh && (
           <div className="ask-start">
             <h1>할 일을 적어 주세요</h1>
@@ -142,6 +139,7 @@ function AskChat() {
             </section>
           </div>
         )}
+        {earlier.map((id) => <EarlierRun key={id} id={id} />)}
         {blocks}
         {sending && <Bubble side="me" enter>{sending}</Bubble>}
         {thinking && (
@@ -162,22 +160,11 @@ function AskChat() {
             {choices.map((option) => <button key={option} type="button" disabled={pending} onClick={() => send(option)}>{option}</button>)}
           </div>
         )}
-        {matched && (
-          <section className="ask-guide" aria-labelledby="ask-result-title">
-            <h2 id="ask-result-title">{matched.posting.company} · {matched.posting.title}</h2>
-            {matched.fit && <p>{matched.fit}</p>}
-            <div className="ask-result__actions">
-              <ButtonLink to={matched.detailTo} variant="primary" className="ask-go">공고 보기<ArrowRight size={16} aria-hidden /></ButtonLink>
-              <Link to={matched.letterTo} className="ask-result__letter">이 공고로 자소서 쓰기</Link>
-            </div>
-          </section>
-        )}
-        {link && <ButtonLink to={link.to} variant="primary" className="ask-go">{link.label}<ArrowRight size={16} aria-hidden /></ButtonLink>}
+        {state === 'DONE' && <Outcome items={items} />}
         {failed && <p className="chat-fail" role="alert">{failed}</p>}
-        <div ref={end} className="ask__end" />
       </div>
       <p className="sr-only" aria-live="polite">{spoken}</p>
-      <div className="ask__dock">
+      <div className="ask__dock" ref={dock}>
         <Composer value={text} onChange={setText} onSend={() => send(text)} canSend={!!text.trim() && !pending && state !== 'RUNNING'} disabled={state === 'RUNNING'}
           label="할 일이나 답" maxLength={ASSISTANT_TEXT_MAX} areaRef={area}
           placeholder={state ? composerHint(state, last?.kind === 'ASK' ? last.askKind : null) : START_HINT} />
@@ -187,6 +174,65 @@ function AskChat() {
         </div>
       </div>
     </main>
+  );
+}
+
+/** 주소 상태로 넘어온 앞 대화의 실행 번호 — 홈에서 새로 들어온 대화(/ask?q=)에는 없다 */
+function useEarlierRuns(runId: string | undefined): string[] {
+  const state = useLocation().state as { earlier?: unknown } | null;
+  if (!runId || !Array.isArray(state?.earlier)) return [];
+  return state.earlier.filter((id): id is string => typeof id === 'string').slice(-EARLIER_MAX);
+}
+
+/** 걸음은 이어진 것끼리 한 상자에 묶고, Gitory 의 말이 시작되는 자리에만 이름표를 붙인다 */
+function chatBlocks(items: AssistantItem[]): ReactNode[] {
+  const blocks: ReactNode[] = [];
+  let steps: AssistantItem[] = [];
+  const flush = () => {
+    if (steps.length) blocks.push(<Steps key={`steps-${steps[0].seq}`} items={steps} />);
+    steps = [];
+  };
+  items.forEach((item, index) => {
+    if (item.kind !== 'USER' && (index === 0 || items[index - 1].kind === 'USER')) blocks.push(<ChatFrom key={`from-${item.seq}`} />);
+    if (item.kind === 'STEP') { steps.push(item); return; }
+    flush();
+    blocks.push(<Bubble key={item.seq} side={item.kind === 'USER' ? 'me' : 'it'}>{item.text}</Bubble>);
+  });
+  flush();
+  return blocks;
+}
+
+/** 끝난 실행의 결과 — 이어갈 화면으로 가는 링크, 없으면 맞춰 본 공고 상자 */
+function Outcome({ items }: { items: AssistantItem[] }) {
+  const link = resultLink(items);
+  const matched = link ? null : matchResult(items);
+  const titleId = useId();
+  return (
+    <>
+      {matched && (
+        <section className="ask-guide" aria-labelledby={titleId}>
+          <h2 id={titleId}>{matched.posting.company} · {matched.posting.title}</h2>
+          {matched.fit && <p>{matched.fit}</p>}
+          <div className="ask-result__actions">
+            <ButtonLink to={matched.detailTo} variant="primary" className="ask-go">공고 보기<ArrowRight size={16} aria-hidden /></ButtonLink>
+            <Link to={matched.letterTo} className="ask-result__letter">이 공고로 자소서 쓰기</Link>
+          </div>
+        </section>
+      )}
+      {link && <ButtonLink to={link.to} variant="primary" className="ask-go">{link.label}<ArrowRight size={16} aria-hidden /></ButtonLink>}
+    </>
+  );
+}
+
+/** 앞 실행 하나 — 읽는 동안과 읽지 못했을 때는 아무것도 그리지 않는다 */
+function EarlierRun({ id }: { id: string }) {
+  const run = useAssistantRun(id);
+  if (!run.data) return null;
+  return (
+    <>
+      {chatBlocks(run.data.items)}
+      {run.data.state === 'DONE' && <Outcome items={run.data.items} />}
+    </>
   );
 }
 

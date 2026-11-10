@@ -1,0 +1,729 @@
+{
+ "note": "자소서 공고 측정용. 공고는 로컬 DB 실제 공고(회사·제목·주요 업무·기술 조건 원문), 상태는 Claude 정답. gap_answer 는 ✕ 조건 질문에 가상 사용자가 할 답(null 은 넘김).",
+ "users": {
+  "u1": {
+   "posting_id": 531,
+   "posting": {
+    "company": "라인플러스",
+    "title": "LINE Pay Server Engineer",
+    "responsibilities": [
+     "LINE Pay 결제 및 핀테크 서비스의 핵심 Backend System 설계·개발·운영",
+     "결제, 송금, 리워드, 가맹점 및 외부 파트너 연동 과정에서 발생하는 복잡한 기술·데이터 문제 해결",
+     "금융 서비스에 요구되는 안정성, 확장성, 성능 및 데이터 정합성의 지속적인 개선",
+     "Production 환경의 장애와 성능 이슈 분석 및 재발 방지를 위한 개선 주도",
+     "AI를 활용한 설계, 개발, 테스트, 코드 리뷰, 장애 분석 및 운영 자동화 등 Software Engineering 전반의 생산성과 품질 향상",
+     "한국·대만 엔지니어들과의 기술적 의사결정 및 서비스와 개발 조직의 기술적 성장에 기여"
+    ],
+    "conditions": [
+     {
+      "type": "REQUIRED",
+      "text": "이에 준하는 기술적 깊이와 문제 해결 역량을 보유하신 분",
+      "status": "MET",
+      "met_by": [
+       2
+      ]
+     },
+     {
+      "type": "REQUIRED",
+      "text": "운영 중인 서비스에서 발생하는 복잡한 문제를 구조적으로 분석하고 해결할 수 있으신 분",
+      "status": "MET",
+      "met_by": [
+       2
+      ]
+     },
+     {
+      "type": "REQUIRED",
+      "text": "Backend System을 설계·개발·운영하고 안정성, 확장성, 성능 및 데이터 정합성을 개선해 본 경험이 있으신 분",
+      "status": "MET",
+      "met_by": [
+       2
+      ]
+     },
+     {
+      "type": "REQUIRED",
+      "text": "AI를 Software Engineering 과정에 적극적으로 활용하고, 개발 생산성과 품질 향상으로 연결할 수 있으신 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "코드와 설계에 대해 동료와 건설적으로 논의하고, 함께 기술적 의사결정을 만들어갈 수 있으신 분",
+      "status": "MET",
+      "met_by": [
+       3
+      ]
+     },
+     {
+      "type": "REQUIRED",
+      "text": "Java/Kotlin 및 Spring 기반 Backend 개발 경험과 HTTP/API, RDBMS, Transaction에 대한 기본 이해를 갖추신 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "결제·금융·커머스 등 높은 안정성과 데이터 정합성이 요구되는 서비스에 대한 이해 및 개발 경험이 있으신 분",
+      "status": "MET",
+      "met_by": [
+       2
+      ]
+     },
+     {
+      "type": "PREFERRED",
+      "text": "높은 트래픽, 분산 시스템 또는 복잡한 외부 시스템 연동 과정에서 발생하는 기술적 문제를 해결해 본 경험이 있으신 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "Web Frontend 또는 iOS/Android Native Application 개발 경험이 있으신 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "AI를 활용해 개발 프로세스, 테스트, 장애 대응 또는 운영 방식을 개선하고 팀의 변화로 확장해 본 경험이 있으신 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "장애 예방과 재발 방지, 배포 안정성, 성능 개선 또는 운영 자동화를 주도해 본 경험이 있으신 분",
+      "status": "MET",
+      "met_by": [
+       1
+      ]
+     },
+     {
+      "type": "PREFERRED",
+      "text": "복잡한 기술적 의사결정을 주도하거나 코드·설계 리뷰, 멘토링 등을 통해 동료와 팀의 기술적 성장을 이끈 경험이 있으신 분",
+      "status": "MET",
+      "met_by": [
+       3
+      ]
+     }
+    ]
+   },
+   "gap_answer": "결제 중복 승인 막기도 Spring Boot 와 MySQL 로 만들었고, 주문 저장과 승인을 한 트랜잭션으로 묶었어요.",
+   "gap_words": [
+    "AI",
+    "Spring",
+    "Java",
+    "Kotlin",
+    "트랜잭션"
+   ]
+  },
+  "u2": {
+   "posting_id": 21,
+   "posting": {
+    "company": "당근",
+    "title": "[산업기능요원 집중 채용 캠페인] Software Engineer, Frontend",
+    "responsibilities": [
+     "당근 앱 안의 웹 서비스와 인앱 웹뷰 화면을 React와 TypeScript로 개발하고 운영해요",
+     "홈피드, 커뮤니티, 채팅 등 여러 서비스와 연결되는 진입 흐름과 전환 퍼널을 설계하고 개선해요",
+     "PM, 디자이너, 데이터 분석가와 함께 문제를 정의하고, 실험과 지표로 제품을 발전시켜요",
+     "AI를 제품에 통합해 이전에 없던 사용자 경험을 만들고, 코딩 에이전트를 활용한 새로운 엔지니어링 방식을 탐구해요"
+    ],
+    "conditions": [
+     {
+      "type": "REQUIRED",
+      "text": "실제 사용자가 있는 웹 제품을 개발, 운영해 본 경험이 있는 분 (기간은 무관해요)",
+      "status": "MET",
+      "met_by": [
+       3
+      ]
+     },
+     {
+      "type": "REQUIRED",
+      "text": "JavaScript, TypeScript와 웹 플랫폼의 동작 원리를 이해하고, 특정 프레임워크에 국한되지 않고 문제에 맞는 기술을 선택해 빠르게 익혀 쓸 수 있는 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "사용자 흐름과 인터랙션 품질에 높은 기준을 가지고, UI 너머의 사용자 경험을 고민하며 일하는 분",
+      "status": "MET",
+      "met_by": [
+       1,
+       4
+      ]
+     },
+     {
+      "type": "REQUIRED",
+      "text": "요구사항을 구현하는 데서 멈추지 않고, 문제를 스스로 정의하고 출시와 운영까지 끌고 가 본 분",
+      "status": "MET",
+      "met_by": [
+       4
+      ]
+     },
+     {
+      "type": "REQUIRED",
+      "text": "AI 코딩 도구를 개발 흐름에 녹여 생산성을 높이고, 빠르게 프로토타입을 만들어 검증해 본 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "다양한 직군과 열린 커뮤니케이션으로 협업하는 분",
+      "status": "MET",
+      "met_by": [
+       2
+      ]
+     },
+     {
+      "type": "PREFERRED",
+      "text": "React 기반 SSR 웹 서비스나 모바일 앱 내 웹뷰를 다뤄 본 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "A/B 테스트를 설계하고 분석 결과를 근거로 제품을 개선해 본 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "대규모 사용자 환경에서 성능 최적화나 상태 관리 문제를 해결해 본 분",
+      "status": "MET",
+      "met_by": [
+       1
+      ]
+     },
+     {
+      "type": "PREFERRED",
+      "text": "GraphQL 클라이언트(Relay, Apollo, urql 등)로 제품을 만들어 본 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "Interaction, Motion, UX 디테일에 관심이 많은 분",
+      "status": "MET",
+      "met_by": [
+       4
+      ]
+     },
+     {
+      "type": "PREFERRED",
+      "text": "당근 앱을 써보면서 개선 포인트를 발견하신 분",
+      "status": "NOT_MET",
+      "met_by": []
+     }
+    ]
+   },
+   "gap_answer": null,
+   "gap_words": [
+    "TypeScript",
+    "JavaScript",
+    "AI 코딩",
+    "코딩 도구",
+    "프로토타입"
+   ]
+  },
+  "u3": {
+   "posting_id": 139,
+   "posting": {
+    "company": "카카오페이",
+    "title": "데이터 엔지니어 - 데이터 플랫폼",
+    "responsibilities": [
+     "수천만 사용자의 이벤트를 처리하는 실시간/배치 데이터 파이프라인을 설계하고 개발합니다.",
+     "수집된 금융 데이터를 목적에 맞게 가공하고 결합하여, 서비스와 분석이 실제로 활용할 수 있는 새로운 형태의 데이터를 만들어냅니다.",
+     "데이터 스트리밍 처리 시스템을 운영하며, 지연, 유실, 중복 같은 문제를 직접 찾아서 개선합니다.",
+     "서버 개발자, 데이터 분석가 등 다양한 직군과 협업하며 데이터 요구사항을 파이프라인으로 구현합니다.",
+     "파이프라인의 불편한 부분을 직접 찾아 개선합니다."
+    ],
+    "conditions": [
+     {
+      "type": "REQUIRED",
+      "text": "실시간 스트리밍 및 배치 파이프라인 설계 및 운영 경험",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "대용량 분산 처리 시스템에 대한 이해 및 실무 적용 경험",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "파이프라인 장애(지연, 유실, 중복) 디버깅 및 해결 경험",
+      "status": "MET",
+      "met_by": [
+       1
+      ]
+     },
+     {
+      "type": "REQUIRED",
+      "text": "프로덕션 환경에서 데이터 파이프라인을 직접 운영해 본 경험",
+      "status": "MET",
+      "met_by": [
+       1,
+       2
+      ]
+     },
+     {
+      "type": "PREFERRED",
+      "text": "대용량 트래픽 환경에서 파이프라인 병목 진단 및 개선 경험",
+      "status": "MET",
+      "met_by": [
+       1
+      ]
+     },
+     {
+      "type": "PREFERRED",
+      "text": "백엔드 서버 개발 경험",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "데이터 품질 모니터링 또는 알럿 체계 구축 경험",
+      "status": "MET",
+      "met_by": [
+       2
+      ]
+     }
+    ]
+   },
+   "gap_answer": "Kafka 는 강의 실습에서 토픽을 만들고 소비자를 붙여 본 정도예요. 실시간 파이프라인을 운영해 본 적은 없어요.",
+   "gap_words": [
+    "스트리밍",
+    "실시간",
+    "분산",
+    "Kafka",
+    "Spark"
+   ]
+  },
+  "u4": {
+   "posting_id": 439,
+   "posting": {
+    "company": "토스",
+    "title": "DevOps Engineer",
+    "responsibilities": [
+     "토스플레이스의 제품과 조직 성장 계획을 바탕으로 DevOps 전략과 Cloud Native 플랫폼의 중장기 로드맵을 수립해요. 현재 플랫폼의 리스크와 한계를 진단하고 주요 과제의 목표와 우선순위 및 성공 기준을 정해 실행해요.",
+     "AWS 환경의 여러 Kubernetes 클러스터와 Istio 기반 Service Mesh의 목표 아키텍처를 설계해요. Capacity Planning과 성능 검증을 바탕으로 확장성, SPOF, 장애 격리, 변경 안전성, 리소스와 비용 효율을 지속적으로 개선해요.",
+     "빌드부터 배포·검증·롤백까지의 과정을 표준화하고 CI/CD와 GitOps 기반의 배포 플랫폼을 고도화해요. IaC와 Policy as Code를 이용해 인프라 변경을 재현 가능하게 관리하고, 보안과 컴플라이언스 요구사항을 플랫폼의 기본 안전장치로 구현해요.",
+     "개발자의 반복적인 인프라 작업과 운영 과정의 불편을 발견하고, 이를 안전하게 직접 처리할 수 있는 Self-service 도구와 플랫폼으로 해결해요.",
+     "Metric과 Log를 포함한 관측 데이터를 안정적으로 수집·저장·조회할 수 있는 Observability 기반을 운영해요.",
+     "인프라와 플랫폼 영역의 장애 대응과 복구를 주도하고, 서비스 장애에서는 SRE 및 제품팀과 함께 원인을 분석해 복구를 지원해요.",
+     "주요 설계와 기술적 의사결정을 문서화하고, 설계 리뷰와 경험 공유를 통해 동료의 성장을 도와요."
+    ],
+    "conditions": [
+     {
+      "type": "REQUIRED",
+      "text": "DevOps 또는 Platform Engineering 영역에서 현재 시스템과 조직의 문제를 진단하고, 목표와 로드맵을 수립해 주요 과제를 실행까지 주도해본 분을 찾아요.",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "Public Cloud 환경에서 Kubernetes 기반 프로덕션 플랫폼을 설계·운영하고, 아키텍처, 확장, 업그레이드, 장애 격리와 변경 안전성에 관한 주요 기술적 의사결정을 내려본 경험이 필요해요.",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "IaC를 이용해 프로덕션 인프라를 재현 가능하게 관리하고, 여러 서비스와 팀이 사용하는 CI/CD, GitOps 또는 인프라 자동화 시스템을 구축해 실제 도입과 운영 방식의 변화까지 만들어본 분과 함께하고 싶어요.",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "하나 이상의 프로그래밍 언어로 플랫폼 기능, 진단·복구 도구와 운영 자동화를 개발하고, 테스트와 리뷰를 포함한 소프트웨어 엔지니어링 방식으로 관리할 수 있는 분을 찾아요.",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "애플리케이션, Container, OS, Network 등 여러 계층에 걸친 장애의 원인 분석과 복구를 주도하고, 자동화와 아키텍처 개선을 통해 재발을 방지해본 분을 찾아요.",
+      "status": "MET",
+      "met_by": [
+       3
+      ]
+     },
+     {
+      "type": "REQUIRED",
+      "text": "안정성, 성능, 보안, 비용과 운영 복잡도 사이의 트레이드오프를 바탕으로 기술 방향을 결정하고, 여러 팀의 합의를 만들어 실제 업무 방식으로 정착시켜본 분과 함께하고 싶어요.",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "Istio 또는 Envoy 기반 Service Mesh에서 트래픽 관리, 보안, 관측성이나 성능 문제를 해결해본 경험이 있으면 좋아요.",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "멀티 클러스터 또는 멀티 리전 환경의 고가용성과 재해 복구 구조를 설계하고 검증해본 경험이 있으면 좋아요.",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "여러 서비스가 사용하는 배포 플랫폼에서 점진적 배포, 자동 검증과 롤백을 구현해본 경험이 있으면 좋아요.",
+      "status": "MET",
+      "met_by": [
+       1
+      ]
+     },
+     {
+      "type": "PREFERRED",
+      "text": "Prometheus, Thanos, Grafana 또는 OpenTelemetry 기반의 Observability 플랫폼을 운영해본 경험이 있으면 좋아요.",
+      "status": "MET",
+      "met_by": [
+       2
+      ]
+     },
+     {
+      "type": "PREFERRED",
+      "text": "결제·금융처럼 가용성, 데이터 정합성, 보안과 컴플라이언스가 중요한 환경을 운영해본 경험이 있으면 좋아요.",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "장애 복구 훈련이나 Fault Injection을 통해 시스템의 장애 전파 경로와 복구 방식을 검증해본 경험이 있으면 좋아요.",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "인프라 비용과 리소스 효율을 가시화하고, 아키텍처나 운영 정책의 변화로 실질적인 개선을 만들어본 경험이 있으면 좋아요.",
+      "status": "NOT_MET",
+      "met_by": []
+     }
+    ]
+   },
+   "gap_answer": "퍼블릭 클라우드에서 운영해 본 적은 없고, 동아리 k8s 클러스터는 학교 서버에 직접 만들었어요.",
+   "gap_words": [
+    "로드맵",
+    "Public Cloud",
+    "퍼블릭 클라우드",
+    "AWS",
+    "EKS",
+    "프로덕션"
+   ]
+  },
+  "u5": {
+   "posting_id": 419,
+   "posting": {
+    "company": "토스",
+    "title": "Android Developer",
+    "responsibilities": [
+     "디바이스 사이의 연결 UX를 개선하여 연결 문제를 완전히 해결해요.",
+     "Place SDK를 활용하여 기존 제품의 기술 문제를 개선해요.",
+     "Local First 전환 기반을 구축하여 오프라인 서비스 안정성을 높여나가요.",
+     "실제 매장 환경에서 앱과 단말이 빠르고 안정적으로 동작할 수 있도록 성능과 품질을 책임져요.",
+     "개발자와 QA가 더 빠르게 만들고 검증할 수 있도록 DX를 지속적으로 높여가요.",
+     "배포 리스크를 줄이고 장애 발생 시 빠르게 감지·중단·롤백할 수 있는 환경을 구축해요.",
+     "여러 앱/제품/단말 조합에서 공통 기능을 재사용하고 구조적 한계를 줄이기 위해 플랫폼 확장성을 고민해요."
+    ],
+    "conditions": [
+     {
+      "type": "REQUIRED",
+      "text": "Kotlin 기반의 Android 코드베이스에서 코드 품질과 생산성을 높이기 위한 고민과 개선 경험이 있는 분이 필요해요.",
+      "status": "MET",
+      "met_by": [
+       1,
+       4
+      ]
+     },
+     {
+      "type": "REQUIRED",
+      "text": "복잡한 Android 상용 서비스의 구조를 설계하고, 확장성과 유지보수성을 깊이 고민해보신 분을 찾아요.",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "안드로이드의 UI/UX 가이드라인에 대한 이해도가 높은 분을 찾아요.",
+      "status": "MET",
+      "met_by": [
+       4
+      ]
+     },
+     {
+      "type": "PREFERRED",
+      "text": "다양한 디바이스 환경에서도 일관된 사용자 경험을 제공하기 위한 UI 구조와 인터랙션을 설계해 본 경험이 있는 분을 선호해요.",
+      "status": "NOT_MET",
+      "met_by": []
+     }
+    ]
+   },
+   "gap_answer": null,
+   "gap_words": [
+    "상용",
+    "설계",
+    "확장성",
+    "유지보수"
+   ]
+  },
+  "u6": {
+   "posting_id": 276,
+   "posting": {
+    "company": "강남언니(힐링페이퍼)",
+    "title": "[강남언니] 백엔드 개발자",
+    "responsibilities": [
+     "Kotlin, Spring Boot를 활용한 강남언니 백엔드 서비스 설계 및 개발",
+     "RESTful API 설계 및 구현을 통한 효율적인 클라이언트-서버 통신 시스템 구축",
+     "대용량 트래픽에도 안정적인 확장 가능한 서버 아키텍처 설계 및 구현",
+     "데이터베이스 모델링과 쿼리 최적화를 통한 효율적인 데이터 관리 및 처리",
+     "유저와 병원 파트너를 위한 다양한 비즈니스 로직 구현 및 지속적 개선",
+     "시스템 모니터링과 로깅 구축을 통한 서비스 안정성 향상 및 장애 대응 체계 마련",
+     "코드 리뷰와 단위 테스트를 통한 코드 품질 유지 및 지속적 개선"
+    ],
+    "conditions": [
+     {
+      "type": "REQUIRED",
+      "text": "하나 이상의 OO(Object-Oriented) 프로그래밍 언어를 능숙하게 다루는 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "문제의 본질을 이해하고 답을 찾기 위해 동료의 의견에 집중하는 분",
+      "status": "MET",
+      "met_by": [
+       2
+      ]
+     },
+     {
+      "type": "REQUIRED",
+      "text": "자신의 생각을 말, 글, 그림을 통해 합리적으로 표현할 수 있는 분",
+      "status": "MET",
+      "met_by": [
+       2
+      ]
+     },
+     {
+      "type": "REQUIRED",
+      "text": "문제 해결에 필요하다면 자신의 지식과 경험을 내려놓을 수 있는 분",
+      "status": "MET",
+      "met_by": [
+       3
+      ]
+     },
+     {
+      "type": "REQUIRED",
+      "text": "지금보다 더 나은 엔지니어로 성장하고 싶은 분",
+      "status": "MET",
+      "met_by": [
+       3
+      ]
+     },
+     {
+      "type": "PREFERRED",
+      "text": "모듈화에 대한 설계 원칙들의 개념과 장단점을 이해하는 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "서버 시스템 아키텍처 설계 패턴들의 개념과 장단점을 이해하는 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "HTTP API의 장단점을 이해하는 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "전통적 아키텍처와 클라우드 아키텍처의 차이를 이해하는 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "CQRS(Command Query Responsibility Segregation)를 이해하는 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "2년 이상의 NoSQL 데이터베이스 운영 경험을 가진 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "테스트 주도 개발 이해와 경험을 가진 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "1년 이상의 Continuous Integration과 Continuous Deployment 운영 경험을 가진 분",
+      "status": "NOT_MET",
+      "met_by": []
+     }
+    ]
+   },
+   "gap_answer": "부트캠프 과제를 Java 로 했고, 세션 저장소를 옮긴 프로젝트도 Spring Boot 였어요.",
+   "gap_words": [
+    "Java",
+    "Kotlin",
+    "OO",
+    "객체지향"
+   ]
+  },
+  "u7": {
+   "posting_id": 8,
+   "posting": {
+    "company": "당근",
+    "title": "[산업기능요원 집중 채용 캠페인] Software Engineer, Backend",
+    "responsibilities": [
+     "수백 개의 마이크로서비스로 이뤄진 당근 백엔드에서 서비스를 설계하고 개발, 운영해요",
+     "대규모 트래픽 환경에서 안정성, 성능, 확장성을 함께 고민하며 시스템을 개선해요",
+     "PM, 디자이너, 데이터 분석가와 함께 문제를 정의하고, 실험과 지표로 제품을 발전시켜요",
+     "배포 이후의 지표와 사용자 피드백을 보며 제품이 실제 성과를 낼 때까지 책임져요",
+     "AI와 LLM을 제품과 개발 과정에 적극적으로 활용해요"
+    ],
+    "conditions": [
+     {
+      "type": "REQUIRED",
+      "text": "특정 언어에 국한되지 않고, 문제에 맞는 언어와 도구를 선택해 빠르게 익혀 쓸 수 있는 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "자료구조, 알고리즘, 운영체제, 네트워크, 데이터베이스 등 CS 기본기를 바탕으로 문제를 풀어가는 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "요구사항을 구현하는 데서 멈추지 않고, 문제를 스스로 정의하고 출시와 운영까지 끌고 가 본 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "AI 코딩 도구를 개발 흐름에 녹여 생산성을 높이고, 빠르게 프로토타입을 만들어 검증해 본 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "다양한 직군과 원활하게 소통하며 협업하는 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "대규모 트래픽 환경에서 안정성과 성능을 직접 측정하고 개선해 본 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "마이크로서비스 환경에서 REST, gRPC 등 서비스 간 통신을 다뤄 본 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "Kafka 등 메시지 스트림이나 배치 처리 파이프라인을 만들어 본 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "LLM API를 프로덕션에 통합해 본 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "당근 앱을 써보면서 개선 포인트를 발견하신 분",
+      "status": "NOT_MET",
+      "met_by": []
+     }
+    ]
+   },
+   "gap_answer": null,
+   "gap_words": [
+    "CS",
+    "자료구조",
+    "알고리즘",
+    "AI 코딩",
+    "언어와 도구"
+   ]
+  },
+  "u8": {
+   "posting_id": 24,
+   "posting": {
+    "company": "당근",
+    "title": "Software Engineer, Frontend - 커뮤니티",
+    "responsibilities": [
+     "담당 업무를 해내기 위해 다른 개발자뿐만 아니라 PM, 디자이너 등 다양한 팀원들과 함께 소통해요",
+     "사용자의 목소리를 기반으로 빠른 개발 주기를 가지고, 그 과정에서 상황에 맞게 적절한 기술을 결정해요",
+     "프로덕트를 지탱하는 플랫폼(컴포넌트, 프레임워크 등)을 개발해요",
+     "프로덕트를 안정적으로 성장시키기 위한 각종 시스템 이슈를 발견하고 해결해요"
+    ],
+    "conditions": [
+     {
+      "type": "REQUIRED",
+      "text": "React를 활용하는 SSR 웹 서비스의 개발 경험이 있으신 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "JavaScript, TypeScript에 이해가 깊으신 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "문제의 본질을 파악하기 위해 질문하고, 문제를 끝까지 해결한 경험이 있으신 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "REQUIRED",
+      "text": "사용자 중심으로 사고하며, 사용자 경험을 우선으로 프로덕트를 개발하시는 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "모바일 앱 내 웹뷰 개발 경험이 있으신 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "Claude Code, Codex 같은 코딩 에이전트로 본인만의 AI 워크플로우를 만들어 일하시는 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "A/B 테스트 설계 및 분석 결과를 근거로 프로덕트를 개선한 경험이 있으신 분",
+      "status": "NOT_MET",
+      "met_by": []
+     },
+     {
+      "type": "PREFERRED",
+      "text": "모니터링 등 중요한 지표들을 측정하고 개선한 경험이 있으신 분",
+      "status": "NOT_MET",
+      "met_by": []
+     }
+    ]
+   },
+   "gap_answer": "Next.js 로 SSR 을 강의에서 따라 만들어 본 적만 있어요.",
+   "gap_words": [
+    "SSR",
+    "TypeScript",
+    "JavaScript",
+    "Next.js"
+   ]
+  }
+ }
+}

@@ -3331,6 +3331,43 @@
         "title": "Envelope[InterviewAnswerResult]",
         "type": "object"
       },
+      "Envelope_InterviewReplyResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InterviewReplyResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[InterviewReplyResult]",
+        "type": "object"
+      },
       "Envelope_InterviewTurnResult_": {
         "properties": {
           "data": {
@@ -4977,6 +5014,156 @@
           "next_action"
         ],
         "title": "InterviewAnswerResult",
+        "type": "object"
+      },
+      "InterviewReplyRequest": {
+        "additionalProperties": false,
+        "description": "`POST /internal/interview-replies` 요청 모델.",
+        "properties": {
+          "answer_text": {
+            "description": "사용자가 쓴 답",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Answer Text",
+            "type": "string"
+          },
+          "card_id": {
+            "description": "대상 경험 카드 ID",
+            "exclusiveMinimum": 0.0,
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "card_title": {
+            "description": "카드 제목",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Card Title",
+            "type": "string"
+          },
+          "follow_up_allowed": {
+            "description": "이 칸을 한 번 더 물어도 되는지",
+            "title": "Follow Up Allowed",
+            "type": "boolean"
+          },
+          "held_answers": {
+            "description": "같은 칸에 앞서 한 답 중 모자라서 카드에 넣지 않은 것(오래된 순)",
+            "items": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 2,
+            "title": "Held Answers",
+            "type": "array"
+          },
+          "question_text": {
+            "description": "그 답을 받은 질문",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Question Text",
+            "type": "string"
+          },
+          "slots": {
+            "description": "지금 카드의 네 칸",
+            "items": {
+              "$ref": "#/components/schemas/CardSlotText"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Slots",
+            "type": "array"
+          },
+          "star_slot": {
+            "description": "답이 들어갈 칸",
+            "enum": [
+              "S",
+              "T",
+              "A",
+              "R"
+            ],
+            "title": "Star Slot",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "card_title",
+          "star_slot",
+          "question_text",
+          "answer_text",
+          "slots",
+          "follow_up_allowed"
+        ],
+        "title": "InterviewReplyRequest",
+        "type": "object"
+      },
+      "InterviewReplyResult": {
+        "description": "`POST /internal/interview-replies` 응답 `data` 모델.",
+        "properties": {
+          "card_id": {
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "extra": {
+            "description": "APPLY 일 때 다른 빈 칸에 넣을 문장",
+            "items": {
+              "$ref": "#/components/schemas/ReplyExtra"
+            },
+            "title": "Extra",
+            "type": "array"
+          },
+          "follow_up": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ASK_MORE 일 때 한 번 더 묻는 질문. 그 밖에는 null",
+            "title": "Follow Up"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ASK_MORE·OFF_TOPIC 일 때 사용자에게 보일 한 문장",
+            "title": "Reason"
+          },
+          "sentence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "APPLY 일 때 그 칸의 새 문장. 그 밖에는 null",
+            "title": "Sentence"
+          },
+          "verdict": {
+            "enum": [
+              "APPLY",
+              "ASK_MORE",
+              "OFF_TOPIC",
+              "DONT_KNOW"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "verdict"
+        ],
+        "title": "InterviewReplyResult",
         "type": "object"
       },
       "InterviewTurnRequest": {
@@ -7509,6 +7696,31 @@
           "questions"
         ],
         "title": "QuestionsResult",
+        "type": "object"
+      },
+      "ReplyExtra": {
+        "description": "답이 다른 빈 칸의 내용까지 말했을 때 그 칸에 넣을 문장.",
+        "properties": {
+          "sentence": {
+            "title": "Sentence",
+            "type": "string"
+          },
+          "star_slot": {
+            "enum": [
+              "S",
+              "T",
+              "A",
+              "R"
+            ],
+            "title": "Star Slot",
+            "type": "string"
+          }
+        },
+        "required": [
+          "star_slot",
+          "sentence"
+        ],
+        "title": "ReplyExtra",
         "type": "object"
       },
       "RepoSummaryRequest": {
@@ -10504,6 +10716,77 @@
           }
         },
         "summary": "경험 카드 답을 표현만 다듬기",
+        "tags": [
+          "interview-turns"
+        ]
+      }
+    },
+    "/internal/interview-replies": {
+      "post": {
+        "description": "사용자 답을 읽고 APPLY(칸에 쓸 사실이 있음)·ASK_MORE(뭉뚱그림)·OFF_TOPIC(카드와 상관없음)·DONT_KNOW(모름) 중 하나로 판단하고, APPLY 면 그 칸의 새 문장과 답이 함께 말한 다른 빈 칸의 문장을 씁니다. 저장하지 않습니다. 뜻 없는 글자뿐인 답은 LLM 을 부르지 않고 OFF_TOPIC 으로 답합니다. 실패하면 Spring 이 답을 카드에 넣지 않습니다.",
+        "operationId": "reply_to_answer_internal_interview_replies_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterviewReplyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_InterviewReplyResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 설정이 없거나 12초 안에 쓸 만한 답을 받지 못함(retryable=true)."
+          }
+        },
+        "summary": "되묻기 답을 읽고 판단해 카드 문장 쓰기",
         "tags": [
           "interview-turns"
         ]

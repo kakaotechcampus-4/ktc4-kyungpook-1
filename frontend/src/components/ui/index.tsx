@@ -86,7 +86,7 @@ export const Divider = () => <div className="divider" role="separator" />;
 export function Field({ label, hint, right, children }: { label: string; hint?: string; right?: ReactNode; children: ReactNode }) {
   return (
     <label className="field">
-      <span className="field__label">{label}{right && <span className="right c-3" style={{ fontWeight: 400, fontSize: 11 }}>{right}</span>}</span>
+      <span className="field__label">{label}{right && <span className="right c-3" style={{ fontWeight: 'var(--weight-regular)', fontSize: 11 }}>{right}</span>}</span>
       {children}
       {hint && <span className="t-12l c-2">{hint}</span>}
     </label>

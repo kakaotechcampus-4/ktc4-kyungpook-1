@@ -8,6 +8,7 @@ import { Card, type InterviewTurn } from '@/api/schemas';
 import { CardPage } from '@/features/cards/CardPage';
 import { ActivityFolderPage, DirectFolderPage, RepoFolderPage } from '@/features/cards/FolderPage';
 import { InterviewPage } from '@/features/cards/InterviewPage';
+import { answeredBy, appliedReply } from './replyResult';
 import { folderNext } from '@/lib/folderNext';
 import { handle } from '@/mock/router';
 import { db, resetDb } from '@/mock/store';
@@ -129,10 +130,9 @@ describe('확정하면 카드가 든 폴더로 돌아가 다음에 할 일 하�
     const template = handle('POST', '/cards/card_01/interview', new URLSearchParams(), { field: 'R' }, true).data as InterviewTurn;
     let turns: InterviewTurn[] = [{ ...template, field: 'R', turnNo: 1, question: 'R question', answer: null, outcome: null }];
     vi.spyOn(endpoints, 'interviewTurns').mockImplementation(async () => turns);
-    vi.spyOn(endpoints, 'answerInterview').mockImplementation(async (_id, no, answer) => {
-      if (!('text' in answer)) throw new Error('이 시험은 글 답만 보낸다');
-      turns = turns.map((turn) => turn.turnNo === no ? { ...turn, answer, outcome: 'ANSWERED' } : turn);
-      return { ...card, status: 'CONFIRMED', confirmedAt: '2026-11-01T00:00:00Z' };
+    vi.spyOn(endpoints, 'replyInterview').mockImplementation(async (_id, no, body) => {
+      turns = turns.map((turn) => turn.turnNo === no ? answeredBy(turn, body) : turn);
+      return appliedReply({ ...card, status: 'CONFIRMED', confirmedAt: '2026-11-01T00:00:00Z' });
     });
     const client = newClient();
     client.setQueryData(keys.card(card.id), card);
@@ -143,7 +143,7 @@ describe('확정하면 카드가 든 폴더로 돌아가 다음에 할 일 하�
     ] });
 
     fireEvent.change(await screen.findByRole('textbox', { name: '답변' }), { target: { value: 'R answer' } });
-    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
 
     expect(await screen.findByText('카드를 확정했어요')).toBeInTheDocument();
     expect(screen.getByText('상황과 행동이 있어서 바로 쓸 수 있어요.')).toBeInTheDocument();

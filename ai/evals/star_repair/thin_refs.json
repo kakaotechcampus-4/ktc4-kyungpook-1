@@ -1,0 +1,68 @@
+{
+ "seed": 20261029,
+ "ours": [],
+ "others": [
+  {
+   "repo": "ktc4-chungnam-2",
+   "number": 319
+  },
+  {
+   "repo": "ktc4-kangwon-3",
+   "number": 139
+  },
+  {
+   "repo": "ktc4-kyungpook-5",
+   "number": 1
+  },
+  {
+   "repo": "ktc4-kyungpook-2",
+   "number": 20
+  },
+  {
+   "repo": "ktc4-kangwon-3",
+   "number": 361
+  },
+  {
+   "repo": "ktc4-kangwon-3",
+   "number": 223
+  },
+  {
+   "repo": "ktc4-kangwon-3",
+   "number": 392
+  },
+  {
+   "repo": "ktc4-kyungpook-2",
+   "number": 33
+  },
+  {
+   "repo": "ktc4-kyungpook-1",
+   "number": 26
+  },
+  {
+   "repo": "ktc4-kangwon-3",
+   "number": 325
+  },
+  {
+   "repo": "ktc4-kyungpook-2",
+   "number": 68
+  },
+  {
+   "repo": "ktc4-kyungpook-2",
+   "number": 29
+  }
+ ],
+ "first_batch": [
+  "ktc4-chungnam-2#319",
+  "ktc4-kangwon-3#139",
+  "ktc4-kyungpook-5#1",
+  "ktc4-kyungpook-2#20",
+  "ktc4-kangwon-3#361",
+  "ktc4-kangwon-3#223",
+  "ktc4-kangwon-3#392",
+  "ktc4-kyungpook-2#33",
+  "ktc4-kyungpook-1#26",
+  "ktc4-kangwon-3#325",
+  "ktc4-kyungpook-2#68",
+  "ktc4-kyungpook-2#29"
+ ]
+}

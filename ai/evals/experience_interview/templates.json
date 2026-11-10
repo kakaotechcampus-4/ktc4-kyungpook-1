@@ -1,0 +1,20 @@
+{
+  "note": "직접 쓴 가상의 활동 카드 10장. 빈 카드는 첫 질문이 S 로 정해지고, 앞 답이 있는 카드는 LLM 이 칸을 고른다. 예상 답변이 빈칸 틀인지 본다.",
+  "cards": [
+    {"id": "a01", "activity": {"name": "교내 개발 동아리", "type": "CLUB", "role": "백엔드 파트장"}, "previous": []},
+    {"id": "a02", "activity": {"name": "캠퍼스 해커톤", "type": "CONTEST", "role": null}, "previous": []},
+    {"id": "a03", "activity": {"name": "IT 기업 여름 인턴", "type": "INTERNSHIP", "role": "고객지원 인턴"}, "previous": []},
+    {"id": "a04", "activity": {"name": "카카오테크캠퍼스", "type": "EDUCATION", "role": "팀장"}, "previous": []},
+    {"id": "a05", "activity": {"name": "동네 카페", "type": "PART_TIME", "role": "마감조"}, "previous": []},
+    {"id": "a06", "activity": {"name": "중학생 코딩 교육 봉사", "type": "VOLUNTEER", "role": "강사"},
+     "previous": [["S", "봉사에서 어떤 상황이었나요?", "ANSWERED", "학생들이 수업 중간에 집중을 잃었어요"]]},
+    {"id": "a07", "activity": {"name": "알고리즘 스터디", "type": "STUDY", "role": "스터디장"},
+     "previous": [["S", "스터디에서 어떤 상황이었나요?", "ANSWERED", "몇 주 지나니까 참석이 줄었어요"]]},
+    {"id": "a08", "activity": {"name": "대학생 서포터즈", "type": "EXTERNAL", "role": "콘텐츠 제작"},
+     "previous": [["S", "서포터즈 활동에서 어떤 상황이었나요?", "ANSWERED", "첫 콘텐츠 반응이 거의 없었어요"],
+                  ["T", "맡은 일은 무엇이었나요?", "ANSWERED", "카드뉴스 만드는 걸 맡았어요"]]},
+    {"id": "a09", "activity": {"name": "창업 동아리", "type": "CLUB", "role": "기획"},
+     "previous": [["S", "어떤 상황이었나요?", "ANSWERED", "출시한 서비스를 쓰는 사람이 거의 없었어요"]]},
+    {"id": "a10", "activity": {"name": "학과 학생회", "type": "OTHER", "role": null}, "previous": []}
+  ]
+}

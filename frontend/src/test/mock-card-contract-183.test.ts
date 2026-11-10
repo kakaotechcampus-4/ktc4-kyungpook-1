@@ -103,13 +103,20 @@ describe('draft saves match #163', () => {
   it('freezes confirmed USER_EDIT, reopens without thawing, and clears flags on the new version', () => {
     const c = manual(); save(c.id, { situation: '상황', task: null, action: '행동', result: null });
     req('POST', `/cards/${c.id}/reopen`); // 저장만으로 이미 자동 확정돼 있어, 확정 버튼을 시험하려고 먼저 작성 중으로 돌린다
-    expect(req('POST', `/cards/${c.id}/confirm`).data).toMatchObject({ versionNo: 1 });
+    expect(req('POST', `/cards/${c.id}/confirm`).data).toMatchObject({ versionNo: 2 });
     expect((req('GET', `/cards/${c.id}/versions`).data as Any[])[0].summary).toBe('S · A 채움 · 확정');
     req('POST', `/cards/${c.id}/reopen`);
-    expect((save(c.id, { situation: '새 상황', task: null, action: '행동', result: null }).data as Any).versionNo).toBe(2);
-    expect((save(c.id, { situation: '더 새 상황', task: null, action: '행동', result: null }).data as Any).versionNo).toBe(2);
+    expect((save(c.id, { situation: '새 상황', task: null, action: '행동', result: null }).data as Any).versionNo).toBe(3);
+    expect((save(c.id, { situation: '더 새 상황', task: null, action: '행동', result: null }).data as Any).versionNo).toBe(3);
     const history = req('GET', `/cards/${c.id}/versions`).data as Any[];
     expect(history[0].summary).not.toContain('확정'); expect(history[1].summary).toContain('확정');
+  });
+  it('목에서 확정하면 버전이 하나 늘고 바뀐 횟수는 그대로다', () => {
+    const c = manual(); save(c.id, { situation: '상황', task: null, action: '행동', result: null });
+    req('POST', `/cards/${c.id}/reopen`);
+    expect(detail(c.id)).toMatchObject({ changeCount: 0, version: { versionNo: 1 } });
+    expect(req('POST', `/cards/${c.id}/confirm`).data).toMatchObject({ versionNo: 2 });
+    expect(detail(c.id)).toMatchObject({ changeCount: 0, version: { versionNo: 2 } });
   });
   it('hydrates legacy confirmed cards as frozen and orders list by latest edits', () => {
     const legacy = JSON.parse(snapshot());

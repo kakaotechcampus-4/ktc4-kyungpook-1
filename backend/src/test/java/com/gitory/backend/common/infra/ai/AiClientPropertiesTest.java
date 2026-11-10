@@ -41,6 +41,26 @@ class AiClientPropertiesTest {
 
     }
 
+    @Test
+    @DisplayName("설정이 없으면 자소서 제안은 25초를 기다리고, 설정 파일도 같은 기본값을 둔다")
+    void defaultsSuggestTimeout() {
+
+        assertThat(AiTestProperties.defaults().build().suggestReadTimeout()).isEqualTo(Duration.ofSeconds(25));
+        configFile.run(context -> assertThat(context.getBean(AiClientProperties.class).suggestReadTimeout())
+                .isEqualTo(Duration.ofSeconds(25)));
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0, -1})
+    @DisplayName("자소서 제안 대기 시간이 0 이하이면 설정을 거절한다")
+    void rejectsNonPositiveSuggestTimeout(long seconds) {
+
+        assertThatThrownBy(() -> AiTestProperties.defaults().suggestReadTimeout(Duration.ofSeconds(seconds)).build())
+                .isInstanceOf(IllegalArgumentException.class);
+
+    }
+
     @ParameterizedTest
     @ValueSource(longs = {0, -1})
     @DisplayName("되묻기 대기 시간이 0 이하이면 설정을 거절한다")

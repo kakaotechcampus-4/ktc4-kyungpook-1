@@ -72,15 +72,16 @@ describe('확정하면 카드가 든 폴더로 돌아가 다음에 할 일 하�
     expect(within(next).getByRole('link', { name: '확인할 카드 보기' })).toHaveAttribute('href', '/cards/card_01');
   });
 
-  it('카드가 모두 확정이면 공고로 보내고, 공고 매칭이 꺼져 있으면 자소서 쓰기로 보낸다', async () => {
+  it('카드가 모두 확정이면 공고 매칭이 켜져 있든 꺼져 있든 자소서 쓰기로 보낸다 — 맞는 공고는 아래 구역이 보여 준다', async () => {
     connectMockServer();
     vi.stubEnv('VITE_API_MOCK', 'true');
     mount('/cards/activity/act_edu');
 
     const on = await strip();
     expect(stripTitle(on)).toHaveTextContent('카드 1장이 준비됐어요');
-    expect(within(on).getByRole('link', { name: '맞는 공고 보기' })).toHaveAttribute('href', '/match');
+    expect(within(on).queryByRole('link', { name: '맞는 공고 보기' })).not.toBeInTheDocument();
     expect(within(on).getByRole('link', { name: '자소서 쓰기' })).toHaveAttribute('href', '/cover-letters/new');
+    expect(within(on).getByRole('link', { name: '자소서 쓰기' })).toHaveClass('btn--primary');
     cleanup();
 
     vi.stubEnv('VITE_API_MOCK', 'false');
@@ -121,7 +122,7 @@ describe('확정하면 카드가 든 폴더로 돌아가 다음에 할 일 하�
 
     await screen.findByRole('button', { name: '경험 카드 만들기' });
     expect(screen.queryByLabelText('다음에 할 일')).not.toBeInTheDocument();
-    expect(folderNext({ cards: [], justConfirmed: true, matchOn: true })).toBeNull();
+    expect(folderNext({ cards: [], justConfirmed: true })).toBeNull();
   });
 
   it('되묻기 답으로 확정되면 폴더로 돌아가기 버튼이 보인다', async () => {
@@ -147,7 +148,7 @@ describe('확정하면 카드가 든 폴더로 돌아가 다음에 할 일 하�
 
     expect(await screen.findByText('카드를 확정했어요')).toBeInTheDocument();
     expect(screen.getByText('상황과 행동이 있어서 바로 쓸 수 있어요.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '카드 보기' })).toHaveClass('btn--secondary');
+    expect(screen.getByRole('button', { name: '카드로 돌아가기' })).toHaveClass('btn--secondary');
     expect(screen.queryByRole('button', { name: '직접 수정하기' })).not.toBeInTheDocument();
     expect(within(screen.getByRole('navigation', { name: 'breadcrumb' })).getByRole('link', { name: 'auth-service' })).toHaveAttribute('href', '/cards/repo/r_auth');
     fireEvent.click(screen.getByRole('button', { name: '폴더로 돌아가기' }));

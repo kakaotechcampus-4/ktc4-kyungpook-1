@@ -82,14 +82,13 @@ async function confirmCard() {
   return screen.findByLabelText('다음에 할 일');
 }
 
-it('offers matching postings in the folder right after confirming when matching is on', async () => {
+it('offers cover-letter writing right after confirming even when matching is on; the repo section lists matching postings', async () => {
   vi.stubEnv('VITE_API_MOCK', 'false'); vi.stubEnv('VITE_MATCH_ENABLED', 'true');
   const next = await confirmCard();
-  // 확정 직후 주 버튼은 공고 보기 하나, 자소서 쓰기는 보조 버튼
-  expect(within(next).getByRole('link', { name: '맞는 공고 보기' })).toHaveAttribute('href', '/match');
-  expect(within(next).getByRole('link', { name: '맞는 공고 보기' })).toHaveClass('btn--primary');
+  // 확정 직후 주 버튼은 자소서 쓰기 하나 — 맞는 공고는 레포 폴더의 '이 레포로 맞는 기업' 구역이 보여 주므로 여기서 또 보내지 않는다
+  expect(within(next).queryByRole('link', { name: '맞는 공고 보기' })).not.toBeInTheDocument();
   expect(within(next).getByRole('link', { name: '자소서 쓰기' })).toHaveAttribute('href', '/cover-letters/new');
-  expect(within(next).getByRole('link', { name: '자소서 쓰기' })).toHaveClass('btn--text');
+  expect(within(next).getByRole('link', { name: '자소서 쓰기' })).toHaveClass('btn--primary');
 });
 
 it('does not offer matching postings in the folder after confirming when matching is off', async () => {

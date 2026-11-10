@@ -2,7 +2,6 @@ import { useId, useMemo, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Pencil, PenLine } from 'lucide-react';
 import { useActivities } from '@/api/activities';
-import { matchSupported } from '@/api/matching';
 import { useCards, useRepo } from '@/api/queries';
 import type { CardSummary } from '@/api/schemas';
 import { NextStep } from '@/components/cards/NextStep';
@@ -76,7 +75,7 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
   const ordered = [...techCards, ...experienceCards];
   const order = ordered.map((card) => card.id);
   const justConfirmed = !!justId && order.includes(justId);
-  const next = folderNext({ cards: ordered, justConfirmed, matchOn: matchSupported() });
+  const next = folderNext({ cards: ordered, justConfirmed });
   const confirmed = folder.cards.filter((card) => card.status === 'CONFIRMED').length;
   const boardLink = kind === 'repo' ? `/repos/${encodeURIComponent(id ?? '')}/candidates` : null;
   const facts = kind === 'repo' ? `기술 카드 ${techCards.length}장, 경험 카드 ${experienceCards.length}장, 확정 ${confirmed}장` : `카드 ${folder.cards.length}장, 확정 ${confirmed}장`;

@@ -471,6 +471,29 @@ class JobRunnerGroupingTest {
     }
 
     @Test
+    @DisplayName("새로 읽은 커밋·PR·이슈가 없으면 손댄 후보 때문에 요청이 달라져도 AI 를 부르지 않고 지난 후보를 그대로 둔다")
+    void skipsAiWhenNothingNewWasRead() {
+
+        given(activities.collect(any())).willReturn(activity(null, commit(SHA_A)));
+        given(grouping.group(any())).willAnswer(invocation -> groupedAsPullRequest(invocation.getArgument(0)));
+        enqueue(KEY_1);
+        runNext();
+        List<Long> firstCandidates = candidateIds();
+        // 후보 하나를 카드로 쓰면 그 커밋이 요청에서 빠져 지난번과 다른 요청이 된다
+        jdbc.update("UPDATE candidate SET status = 'USED' WHERE id = ?", firstCandidates.getFirst());
+        given(activities.collect(any())).willReturn(new CollectedActivity(List.of(), List.of(), List.of(), null, null));
+
+        Long secondJobId = enqueue(KEY_2);
+        runNext();
+
+        AnalysisJob second = jobs.findById(secondJobId).orElseThrow();
+        verify(grouping, times(1)).group(any());
+        assertThat(candidateIds()).isEqualTo(firstCandidates);
+        assertThat(second.getState()).isEqualTo(JobState.SUCCEEDED);
+
+    }
+
+    @Test
     @DisplayName("보낼 요청이 지난번과 다르면 AI 를 다시 불러 손대지 않은 후보를 새로 만든 후보로 바꾼다")
     void regroupsWhenInputChanges() {
 

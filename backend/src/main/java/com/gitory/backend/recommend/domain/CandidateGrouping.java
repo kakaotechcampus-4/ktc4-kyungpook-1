@@ -56,6 +56,12 @@ public class CandidateGrouping {
 
     }
 
+    public boolean hasVersion(int groupingVersion) {
+
+        return this.groupingVersion == groupingVersion;
+
+    }
+
     public boolean hasSameInput(String inputFingerprint, int groupingVersion) {
 
         return this.inputFingerprint.equals(inputFingerprint) && this.groupingVersion == groupingVersion;

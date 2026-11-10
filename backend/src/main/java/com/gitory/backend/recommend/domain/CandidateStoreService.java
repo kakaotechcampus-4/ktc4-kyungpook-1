@@ -67,6 +67,18 @@ public class CandidateStoreService {
 
     }
 
+    /** 새로 읽은 것이 없을 때 부르며, 같은 버전의 경험 그룹화 기록이 있으면 후보를 그대로 두고 시각만 지금으로 바꿔 true 를 돌려준다 */
+    @Transactional
+    public boolean keepIfNothingNew(Long userRepositoryId) {
+
+        Optional<CandidateGrouping> same = groupings.findById(userRepositoryId)
+                .filter(grouping -> grouping.hasVersion(properties.version()));
+        same.ifPresent(grouping -> grouping.record(grouping.getInputFingerprint(), properties.version()));
+
+        return same.isPresent();
+
+    }
+
     /**
      * 저장소 후보를 잠근 뒤 손대지 않은 NEW 후보를 지우고, AI 경험 그룹화가 준 후보를 받은 순서로 저장한 다음 지문을 남긴다
      * 잠근 뒤 다시 읽은 손댄 후보의 포함된 커밋과 겹치는 묶음은 AI 를 기다리는 사이 사용자가 손댄 것이라 버리고, 그 묶음의 나머지 커밋은 다음 분석 때 다시 경험 그룹화에 들어간다

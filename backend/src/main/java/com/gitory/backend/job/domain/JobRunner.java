@@ -166,7 +166,7 @@ public class JobRunner {
             Boolean startedGrouping = transaction.execute(
                     status -> storeCollection(job.getId(), request, activity, limitResetAt));
             if (Boolean.TRUE.equals(startedGrouping)) {
-                group(job, activity.partialReason(), limitResetAt, progress);
+                group(job, activity, limitResetAt, progress);
             }
         } catch (RuntimeException failure) {
             JobErrorCode errorCode = errorCodeOf(failure);
@@ -239,12 +239,20 @@ public class JobRunner {
 
     /**
      * 저장된 내 커밋에서 손댄 후보의 커밋·PR 을 빼고 AI 경험 그룹화를 불러 만든 후보를 저장한다
-     * 보낼 요청이 지난번 경험 그룹화 때와 같으면 AI 를 부르지 않고 지난 후보를 그대로 둔다
+     * 새로 읽은 것이 없거나 보낼 요청이 지난번 경험 그룹화 때와 같으면 AI 를 부르지 않고 지난 후보를 그대로 둔다
      */
-    private void group(AnalysisJob job, PartialReason partialReason, Instant limitResetAt,
+    private void group(AnalysisJob job, CollectedActivity activity, Instant limitResetAt,
                        Consumer<AiProgress> progress) {
 
         Long userRepositoryId = job.getUserRepositoryId();
+        PartialReason partialReason = activity.partialReason();
+        // 새로 읽은 것이 없으면 묶을 것도 그대로라, 손댄 후보 때문에 요청이 달라져도 AI 를 다시 부르지 않는다
+        boolean nothingNew = activity.commits().isEmpty() && activity.pullRequests().isEmpty()
+                && activity.issues().isEmpty();
+        if (nothingNew && candidates.keepIfNothingNew(userRepositoryId)) {
+            transaction.executeWithoutResult(status -> keepCandidates(job.getId(), partialReason, limitResetAt));
+            return;
+        }
         String login = users.loginOf(job.getUserId());
         LockedSources locked = candidates.lockedSources(userRepositoryId);
         GroupingMaterial material = materials.load(userRepositoryId, login, locked.commitShas(),

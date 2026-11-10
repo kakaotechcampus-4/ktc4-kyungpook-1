@@ -6,6 +6,7 @@ import { useActiveJobs } from '@/api/queries';
 import { JobWatcher } from '@/lib/jobWatcher';
 import { CoverLetterWatcher } from '@/lib/coverLetterWatcher';
 import { BrandLogo } from '@/components/ui/BrandLogo';
+import { SampleBand } from './SampleBand';
 import { GithubBanner } from './GithubBanner';
 import { ProfileMenu } from './ProfileMenu';
 import { NoticeBar } from './NoticeBar';
@@ -58,6 +59,8 @@ export function AppShell() {
   useEffect(() => { try { localStorage.setItem(RAIL_KEY, rail ? '1' : '0'); } catch { /* noop */ } }, [rail]);
 
   return (
+    <>
+    <SampleBand />
     <div className={`shell ${rail ? 'shell--rail' : ''}`}>
       <a href="#main" className="skip-link">본문으로 건너뛰기</a>
       <header className="mobile-brand">
@@ -101,5 +104,6 @@ export function AppShell() {
       <CoverLetterWatcher />
       <ProfileSetupModal />
     </div>
+    </>
   );
 }

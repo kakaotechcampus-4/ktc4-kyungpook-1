@@ -177,6 +177,34 @@ def test_suggestions_drop_invented_metrics_and_keep_two() -> None:
     assert result.suggested_answers == ["배포 대기를 없앴다", "목록 조회를 쿼리 한 번으로 바꿨다"]
 
 
+def _example_result(example: Optional[str]):
+    output = QuestionOutput(action="ASK", star_slot="S", question="그때 어떤 문제가 있었나요?", example_answer=example)
+    result, _ = _next(_agent(FakeClient(output)), _request(target_star_slot="S"))
+
+    return result.example_answer
+
+
+def test_example_answer_keeps_a_well_formed_example() -> None:
+    """'예:' 로 시작하는 예시는 그대로 남긴다."""
+    assert _example_result("예: 목록이 느려서 불편했어요") == "예: 목록이 느려서 불편했어요"
+
+
+def test_example_answer_is_none_when_missing_or_blank() -> None:
+    """예시가 없거나 비어 있어도 질문은 그대로 나간다."""
+    assert _example_result(None) is None
+    assert _example_result("   ") is None
+
+
+def test_example_answer_gets_the_prefix_when_missing() -> None:
+    """'예:' 없이 온 예시에는 붙여서 화면에서 예시로 읽히게 한다."""
+    assert _example_result("목록이 느려서 불편했어요") == "예: 목록이 느려서 불편했어요"
+
+
+def test_example_answer_is_clipped_to_sixty_chars() -> None:
+    """길게 온 예시는 60자에서 자른다."""
+    assert len(_example_result("예: " + "가" * 100)) == 60
+
+
 def test_review_reason_reaches_the_question_prompt() -> None:
     """확인이 필요한 이유 문장을 칸과 함께 넘겨, 등급만이 아니라 무엇이 약한지 짚어 묻게 한다."""
     weak = {**_slot("R", "검색 응답을 10초 줄였다", 4),

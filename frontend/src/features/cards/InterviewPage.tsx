@@ -314,7 +314,7 @@ export function InterviewPage() {
             <div className="iv__dock">
               <Composer value={text} onChange={(next) => { setText(next); if (picked && next !== picked) setPicked(null); }}
                 onSend={() => void submit()} canSend={!!text.trim() && !busy} disabled={busy}
-                label="답변" sendLabel="답 보내기" placeholder={starFieldSpoken[open.field]} maxLength={500} />
+                label="답변" sendLabel="답 보내기" placeholder={open.exampleAnswer ? `편하게 말하듯 적어 주세요. ${open.exampleAnswer}` : starFieldSpoken[open.field]} maxLength={500} />
               <div className="iv__sub">
                 <span>{text ? `${text.length}/500` : ''}</span>
                 <Button variant="secondary" size="sm" loading={skip.isPending} disabled={busy} onClick={skipOpen}>건너뛰기</Button>

@@ -34,6 +34,7 @@ public class AiInterviewQuestionAdapter implements InterviewQuestionPort {
     private static final int MAX_SUGGESTIONS = 2;
     private static final int MAX_SUGGESTION_LENGTH = 300;
     private static final int MAX_REASON_LENGTH = 60;
+    private static final int MAX_EXAMPLE_LENGTH = 80;
 
     private final AiHttpClient ai;
     private final AiClientProperties properties;
@@ -71,7 +72,8 @@ public class AiInterviewQuestionAdapter implements InterviewQuestionPort {
                     answerMode(data),
                     suggestedAnswers(data),
                     reason(data),
-                    List.of());
+                    List.of(),
+                    exampleAnswer(data));
             case COMPLETE -> complete(data);
         };
 
@@ -86,7 +88,7 @@ public class AiInterviewQuestionAdapter implements InterviewQuestionPort {
             }
         }
         return new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of(),
-                reason(data), ExperienceThemes.read(data.path("themes")));
+                reason(data), ExperienceThemes.read(data.path("themes")), null);
 
     }
 
@@ -100,6 +102,19 @@ public class AiInterviewQuestionAdapter implements InterviewQuestionPort {
         String reason = value.asString().strip();
 
         return reason.length() <= MAX_REASON_LENGTH ? reason : reason.substring(0, MAX_REASON_LENGTH);
+
+    }
+
+    // 입력칸 안내 글이라 없거나 모양이 틀려도 질문은 그대로 받고, 저장 칸 길이에서 자른다
+    private static String exampleAnswer(JsonNode data) {
+
+        JsonNode value = data.path("example_answer");
+        if (!value.isString() || value.asString().isBlank()) {
+            return null;
+        }
+        String example = value.asString().strip();
+
+        return example.length() <= MAX_EXAMPLE_LENGTH ? example : example.substring(0, MAX_EXAMPLE_LENGTH);
 
     }
 

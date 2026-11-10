@@ -21,6 +21,8 @@ public record InterviewTurnResponse(
         String question,
         @Schema(description = "AI 가 이 칸을 묻기로 한 이유 한 줄(60자 이내)로, 사용자가 칸을 골랐거나 AI 가 틀 질문을 썼으면 null",
                 nullable = true) String reason,
+        @Schema(description = "그 질문에 맞는 예시 답 한 줄('예:' 로 시작)로, 입력칸 안내에 쓰며 AI 가 못 만들었거나 옛 질문이면 null",
+                nullable = true) String exampleAnswer,
         @Schema(description = "AI 가 쓴 예상 답변으로, 그대로 고르면 USER_SELECTED 다") List<String> options,
         @Schema(description = "보일 답 버튼으로, MEASURE 는 R 수치 질문이다") AnswerMode answerMode,
         @Schema(description = "질문이 어떻게 끝났는지로, 답 전이면 null 이다", nullable = true) TurnOutcome outcome,
@@ -33,7 +35,7 @@ public record InterviewTurnResponse(
         InterviewAnswerResponse answer = turn.answer() == null ? null : InterviewAnswerResponse.from(turn.answer());
 
         return new InterviewTurnResponse(turn.turnNo(), turn.field(), askedByOf(turn.triggerSource()),
-                turn.sourceType(), turn.questionType(), turn.question(), turn.reason(),
+                turn.sourceType(), turn.questionType(), turn.question(), turn.reason(), turn.exampleAnswer(),
                 turn.options(),
                 turn.answerMode(), turn.outcome(), answer, turn.remaining(), turn.maxTurns());
 

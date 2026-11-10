@@ -292,7 +292,7 @@ public class InterviewReplyService {
         String reason = cut(verdict.reason(), REASON_MAX_LENGTH);
         turn.insufficient(text, prepared.answerSource());
         InterviewTurn followUp = turns.save(InterviewTurn.asked(card.getId(), nextSeq(asked), turn.getStarSlot(),
-                QuestionType.FOLLOWUP, verdict.followUp(), false, turn.getId(), AnswerMode.TEXT, List.of(), reason));
+                QuestionType.FOLLOWUP, verdict.followUp(), false, turn.getId(), AnswerMode.TEXT, List.of(), reason, null));
         card.resumeInterview();
 
         return Decision.askMore(reason, (int) followUp.getSeq());

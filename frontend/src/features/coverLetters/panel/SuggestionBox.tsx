@@ -56,7 +56,7 @@ export function SuggestionBox({ letter, question, onText }: { letter: CoverLette
   if (collapsed) {
     return (
       <div className="clp-sg clp-sg--folded">
-        <button type="button" className="clp-link" onClick={() => { setCollapsed(false); setFlow(null); }}>제안 {items.length}개 · 다시 보기</button>
+        <button type="button" className="clp-link" onClick={() => { setCollapsed(false); setFlow(null); }}>제안 {items.length}개 다시 보기</button>
       </div>
     );
   }

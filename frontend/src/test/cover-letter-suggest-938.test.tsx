@@ -90,7 +90,7 @@ describe('쓸거리 제안', () => {
     expect(within(box).getAllByText('레포 기록')).toHaveLength(2);
     expect(box.compareDocumentPosition(panel().querySelector('.chat-thread')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(within(box).getByRole('button', { name: '이걸로 쓰기' }));
-    await within(panel()).findByRole('button', { name: '제안 3개 · 다시 보기' }, SLOW);
+    await within(panel()).findByRole('button', { name: '제안 3개 다시 보기' }, SLOW);
     expect(rewrites(log)).toHaveLength(1);
     expect(draftText()).toContain(REWRITTEN_PART);
     expect(within(panel()).getByText(/카드로 다시 썼어요/, SEEN)).toBeInTheDocument();
@@ -111,7 +111,7 @@ describe('쓸거리 제안', () => {
     req('GET', `/jobs/${made.generation.jobId}`);
     made.lowConfidenceFields = [];
     settleCard(made);
-    await within(panel()).findByRole('button', { name: '제안 3개 · 다시 보기' }, SLOW);
+    await within(panel()).findByRole('button', { name: '제안 3개 다시 보기' }, SLOW);
     expect(rewrites(log)).toHaveLength(1);
     expect(draftText()).toContain(REWRITTEN_PART);
   });
@@ -142,7 +142,7 @@ describe('쓸거리 제안', () => {
     await openChat();
     fireEvent.click(within(panel()).getByRole('button', { name: '없어요, 직접 말할게요' }));
     expect(within(panel()).queryByText('이 문항에 쓸 만한 것을 찾았어요')).toBeNull();
-    fireEvent.click(within(panel()).getByRole('button', { name: '제안 3개 · 다시 보기' }));
+    fireEvent.click(within(panel()).getByRole('button', { name: '제안 3개 다시 보기' }));
     expect(within(panel()).getByText('이 문항에 쓸 만한 것을 찾았어요')).toBeInTheDocument();
     expect(rewrites(log)).toHaveLength(0);
   });

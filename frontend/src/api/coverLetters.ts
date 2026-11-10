@@ -248,8 +248,9 @@ export const coverLetterApi = {
     api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/polish`, { method: 'DELETE' }),
   remove: (id: string) => api(z.object({ ok: z.boolean() }), `/cover-letters/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   turns: (id: string) => api(TurnsResponse, `/cover-letters/${encodeURIComponent(id)}/turns`),
+  /** 처음 열 때는 서버가 쓸 만한 카드 제안(20초)과 여는 말(20초)을 차례로 받아 기본 30초로는 모자랄 수 있다 */
   openTurn: (id: string, questionId: string) =>
-    api(TurnReply, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/turns/open`, { method: 'POST' }),
+    api(TurnReply, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/turns/open`, { method: 'POST', timeoutMs: 60_000 }),
   /** 답이 충분하면 서버가 그 문항을 다시 쓴 뒤에 답한다 — 수십 초가 걸릴 수 있어 첨삭과 같은 100초를 준다 */
   replyTurn: (id: string, questionId: string, text: string) =>
     api(TurnReply, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/turns`, { method: 'POST', body: { text }, timeoutMs: 150_000 }),

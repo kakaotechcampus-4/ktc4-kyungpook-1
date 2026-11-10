@@ -285,7 +285,7 @@ function AutoDraft({ repoId, finishedAt, onPlan }: { repoId: string; finishedAt:
       }
       // 후보 보드에서 고른 것과 같은 지표로 남기되, 화면이 대신 고른 것임을 표시한다
       track('candidates_confirmed', { repoId, count: picks.length, jobId: made.jobId, auto: true });
-      nav(`/cards/${encodeURIComponent(made.cardIds[0])}`, { replace: true, state: { cardOrder: made.cardIds } });
+      nav(`/cards/${encodeURIComponent(made.cardIds[0])}`, { replace: true, state: { cardOrder: made.cardIds, draftJobId: made.jobId } });
     })();
   }, []);
   return null;

@@ -87,7 +87,7 @@ describe('정리가 끝나면 카드 초안까지 이어서 쓴다', () => {
     release();
     await screen.findByText(`추천 후보 ${MAX_CARDS_PER_REQUEST}개로 카드 초안을 쓰러 가요`, {}, LONG);
     expect(screen.getByRole('link', { name: '후보 직접 고르기' })).toBeInTheDocument(); // 넘어가기 전까지 직접 고르는 길을 남긴다
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'] } }), LONG);
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'], draftJobId: 'job_draft' } }), LONG);
     expect(create).toHaveBeenCalledTimes(1);
     expect(create).toHaveBeenCalledWith('r_auth', topIds('s')); // 쓸 만한 후보가 상한보다 많아도 상한까지, 점수 순이다
     expect(navigate).toHaveBeenCalledTimes(1);
@@ -98,13 +98,13 @@ describe('정리가 끝나면 카드 초안까지 이어서 쓴다', () => {
     await screen.findByText(`추천 후보 ${MAX_CARDS_PER_REQUEST}개로 카드 초안을 쓰러 가요`, {}, LONG);
     await settle(1000);
     expect(navigate).not.toHaveBeenCalled();
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'] } }), { timeout: 5000 });
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'], draftJobId: 'job_draft' } }), { timeout: 5000 });
   });
 
   it('추천도 낮은 후보만 남았으면 점수 순으로 한 요청 상한까지 카드 초안을 만든다', async () => {
     const { create, finish } = mount(job('RUNNING'), { board: boardOf(WEAK_ONLY) });
     finish(job('SUCCEEDED'));
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'] } }), LONG);
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'], draftJobId: 'job_draft' } }), LONG);
     expect(create).toHaveBeenCalledWith('r_auth', topIds('w'));
   });
 
@@ -126,7 +126,7 @@ describe('정리가 끝나면 카드 초안까지 이어서 쓴다', () => {
 
   it('끝난 지 10분이 안 된 정리를 다시 열면 추천 후보로 카드 초안을 만든다', async () => {
     const { create } = mount(job('SUCCEEDED', { finishedAt: new Date(Date.now() - 9 * 60_000).toISOString() }));
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'] } }), LONG);
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'], draftJobId: 'job_draft' } }), LONG);
     expect(create).toHaveBeenCalledWith('r_auth', topIds('s'));
   });
 
@@ -153,7 +153,7 @@ describe('정리가 끝나면 카드 초안까지 이어서 쓴다', () => {
     expect(screen.getByText(jobErrorTitle.COLLECTION_CAPPED)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '읽은 범위의 후보 보기' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /이어 읽기/ })).not.toBeInTheDocument();
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'] } }), LONG);
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'], draftJobId: 'job_draft' } }), LONG);
     expect(create).toHaveBeenCalledWith('r_auth', topIds('s'));
   });
 

@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import type { SetupView } from './homeApply';
+import { ButtonLink, buttonClass } from '@/components/ui';
 
 type Step = { title: string; text: string; action: ReactNode };
 
 const go = (to: string, label: string, primary = true) => (
-  <Link to={to} className={primary ? 'btn btn--primary home3-btn home3-btn--sm' : 'btn btn--outline home3-obtn'}>{label}{primary && <ArrowRight size={18} aria-hidden />}</Link>
+  <ButtonLink to={to} variant={primary ? 'primary' : 'secondary'} className={primary ? 'home3-btn home3-btn--sm' : 'home3-obtn'}>{label}</ButtonLink>
 );
 
 /** 맞는 공고가 아직 없을 때 지원할 곳 자리에 보이는 준비 단계 — 매칭이 꺼진 배포는 앞의 두 단계만 보인다 */
@@ -29,7 +29,7 @@ export function SetupSteps({ view, matching, onRetry, retrying = false }: { view
     : go('/cards', '카드 보기');
   const steps: Step[] = [
     { title: '레포 정리하기', text: '내 커밋과 PR에서 경험을 찾아 카드 초안을 써요. 레포 하나에 1~2분이에요.', action: go('/repos', '레포 고르기') },
-    { title: '카드 확정하기', text: '상황과 행동이 찬 카드는 저절로 확정돼요. 확인이 필요한 카드만 봐 주세요.', action: cardStep },
+    { title: '카드 확정하기', text: '상황과 행동이 찬 카드는 저절로 확정돼요. 확인이 필요한 카드만 보면 돼요.', action: cardStep },
   ];
   if (matching) {
     steps.push({
@@ -37,7 +37,7 @@ export function SetupSteps({ view, matching, onRetry, retrying = false }: { view
       text: mode === 'zero' ? '매일 새벽 새 공고를 맞춰 봐요. 카드가 늘면 맞는 곳도 늘어요.' : '확정한 카드와 맞는 공고를 서버가 골라 이 자리에 모아요.',
       action: mode === 'busy' ? <span className="home3-busy" role="status"><span className="home3-spin" aria-hidden />고르는 중</span>
         : mode === 'zero' ? go('/repos', '레포 더 정리하기', false)
-        : mode === 'failed' ? <button type="button" className="btn btn--outline home3-obtn" onClick={onRetry} disabled={retrying}>다시 고르기</button>
+        : mode === 'failed' ? <button type="button" className={buttonClass('secondary', undefined, 'home3-obtn')} onClick={onRetry} disabled={retrying}>다시 고르기</button>
         : null,
     });
   }

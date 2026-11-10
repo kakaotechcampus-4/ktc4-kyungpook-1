@@ -26,7 +26,7 @@ export function ReportProblemAction() {
   if (!loggedIn) return null;
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)}>문제 신고</Button>
+      <Button variant="secondary" onClick={() => setOpen(true)}>문제 신고</Button>
       {open && <FeedbackDialog onClose={() => setOpen(false)} />}
     </>
   );

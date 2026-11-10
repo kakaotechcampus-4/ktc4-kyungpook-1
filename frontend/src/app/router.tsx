@@ -20,6 +20,7 @@ const L = (f: () => Promise<Record<string, unknown>>, name: string) => lazy(() =
 const LandingPage = L(() => import('@/features/auth/LandingPage'), 'LandingPage');
 const PrivacyPage = L(() => import('@/features/legal/PrivacyPage'), 'PrivacyPage');
 const FaqPage = L(() => import('@/features/legal/FaqPage'), 'FaqPage');
+const UiShowcasePage = L(() => import('@/features/dev/UiShowcasePage'), 'UiShowcasePage');
 const TermsPage = L(() => import('@/features/legal/TermsPage'), 'TermsPage');
 const HomePage = L(() => import('@/features/home/HomePage'), 'HomePage');
 const AskPage = L(() => import('@/features/assistant/AskPage'), 'AskPage');
@@ -70,6 +71,8 @@ export const router = createBrowserRouter([
     errorElement: <ErrorBoundary />,
     children: [
       { path: '/', element: <S><HomePage /></S> },
+      // 디자인 기본값 견본(#804) — 목에서만. 실서버 배포에는 없다
+      ...(import.meta.env.VITE_API_MOCK !== 'false' ? [{ path: '/__ui', element: <S><UiShowcasePage /></S> }] : []),
       { path: '/ask', element: <S><AskPage /></S> },
       { path: '/ask/:runId', element: <S><AskPage /></S> },
       { path: '/match', element: <S><MatchListPage /></S> },

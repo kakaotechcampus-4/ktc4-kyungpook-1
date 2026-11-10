@@ -217,7 +217,7 @@ describe('first-entry dialog (shown while no interest is saved)', () => {
     mount();
     await screen.findByRole('dialog');
     pick('백엔드'); click('다음');
-    expect(screen.getByRole('button', { name: '이전' })).toHaveClass('btn--outline');
+    expect(screen.getByRole('button', { name: '이전' })).toHaveClass('btn--secondary');
     expect(screen.getByRole('button', { name: '경력 없음' })).toHaveClass('btn--primary');
     expect(screen.queryByText(/해당 사항이 없으면|회사에서 한 일과 기간을/)).not.toBeInTheDocument();
   });

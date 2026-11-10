@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -170,12 +170,10 @@ describe('그 밖의 화면 — 모르는 값 하나로 앱이 막히지 않는�
     mount(<MatchListPage />, '/match');
     const card = (await screen.findByRole('heading', { name: list[0].role })).closest('article') as HTMLElement;
     // 목록 카드의 한 줄 요약은 '기타' 분야와 '경력 표시 없음' 을 그리지 않는다 — 원래 값(백엔드·신입)을 지어내지 않고 학력만 남는다
-    const facts = [...card.querySelectorAll('.posting-facts span')].map((el) => el.textContent);
-    expect(facts).toEqual(['학사↑']);
+    expect(card.querySelector('.posting-facts')?.textContent).toBe('학사↑');
     // 아는 값의 공고는 그대로다
     const other = (await screen.findByRole('heading', { name: list[1].role })).closest('article') as HTMLElement;
-    expect(within(other).getByText('백엔드')).toBeInTheDocument();
-    expect(within(other).getByText('신입')).toBeInTheDocument();
+    expect(other.querySelector('.posting-facts')?.textContent).toMatch(/^백엔드, 신입/);
   });
 
   it('레포의 기여 구분을 몰라도 레포 목록이 열린다', async () => {

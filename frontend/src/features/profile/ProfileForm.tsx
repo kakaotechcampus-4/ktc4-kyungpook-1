@@ -1,7 +1,6 @@
 import '@/styles/profile.css';
-import { Link } from 'react-router-dom';
 import type { Profile } from '@/api/profile';
-import { Button, Note, StickyFooter } from '@/components/ui';
+import { Button, ButtonLink, Note, StickyFooter } from '@/components/ui';
 import { UnsavedChangesDialog } from '@/components/SaveStatus';
 import { isDemo } from '@/mock/browser';
 import { CertificationQuick, InterestPicker, MailSection, SectionEditor } from './ProfileSections';
@@ -19,9 +18,11 @@ export function ProfileForm({ initial }: { initial: Profile }) {
   const canSave = dirty || Boolean(saveError);
   return (
     <>
-      <Note strong="이렇게 쓰여요" tone="inset">
-        관심 분야는 공고 매칭이 공고를 고를 때 쓰고, 학력, 경력, 어학, 자격증은 지원 자격 조건을 비교할 때 써요. 자소서를 AI 로 쓸 때도 이 정보를 읽을 수 있어요. 경험 카드 문장은 이 정보로 만들지 않아요. 학력이나 경력 같은 개인 정보라 분석 지표와 주소에는 남기지 않아요.{isDemo && ' 샘플 모드라 이 브라우저 탭에만 저장되고, 탭을 닫으면 사라져요.'}
-      </Note>
+      {/* 처음부터 펼쳐 두면 칸보다 설명이 먼저 읽혀, 궁금할 때 여는 줄로 접는다(#805) */}
+      <details className="profile-usage">
+        <summary>이렇게 쓰여요</summary>
+        <p>관심 분야는 공고 매칭이 공고를 고를 때 쓰고, 학력, 경력, 어학, 자격증은 지원 자격 조건을 비교할 때 써요. 자소서를 AI 로 쓸 때도 이 정보를 읽을 수 있어요. 경험 카드 문장은 이 정보로 만들지 않아요. 학력이나 경력 같은 개인 정보라 분석 지표와 주소에는 남기지 않아요.{isDemo && ' 샘플 모드라 이 브라우저 탭에만 저장되고, 탭을 닫으면 사라져요.'}</p>
+      </details>
 
       {errorCount > 0 && <Note strong="입력을 확인해 주세요" tone="danger">{errorCount}곳을 고치면 저장할 수 있어요.</Note>}
       {view && errorCount === 0 && <Note strong={view.title} tone="danger">{view.message}</Note>}
@@ -38,7 +39,7 @@ export function ProfileForm({ initial }: { initial: Profile }) {
 
       <p className="sr-only" role="status" aria-live="polite">{statusText}</p>
       <StickyFooter strong={statusText}>
-        <Link to="/settings" className="btn btn--text">마이페이지로</Link>
+        <ButtonLink to="/settings" variant="text">마이페이지로</ButtonLink>
         <Button id={SAVE_ID} size="lg" loading={saving} className={!canSave ? 'btn--disabled' : undefined} aria-disabled={!canSave ? true : undefined}
           onClick={() => { if (canSave) void state.submit(); }}>{saveError ? '다시 저장' : '저장'}</Button>
       </StickyFooter>

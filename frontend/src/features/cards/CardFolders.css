@@ -21,10 +21,8 @@
 /* 뒤로 겹친 카드는 손에 쥔 패처럼 3°·6° 돌아가 모서리가 오른쪽 위로 삐져나온다 — 아래로만 삐져나오면 그림자로 읽히고 다크에선 안 보인다 */
 .folder__back { position: absolute; z-index: -1; inset: 10px 10px 8px 0; pointer-events: none; }
 .folder__back::before, .folder__back::after { content: ''; position: absolute; display: none; inset: 0; background: var(--bg-subtle); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); transform-origin: 85% 100%; transition: transform .15s ease; }
-/* ::before 가 먼 카드, ::after 가 가까운 카드다(나중에 그려지는 쪽이 위). 아래쪽 오른편을 축으로 돌려 위와 오른쪽으로 펼쳐진다(시안 A 와 같은 각) */
-.folder[data-deck="1"] .folder__back::after { display: block; transform: rotate(3deg); }
-.folder[data-deck="2"] .folder__back::after { display: block; transform: rotate(3deg); }
-.folder[data-deck="2"] .folder__back::before { display: block; transform: rotate(6deg); }
+/* 겹친 종이 장식은 뺐다(#920) — 폴더 수와 상태는 글이 말한다. 아래 규칙은 장식이 다시 켜질 때를 위해 남긴다.
+   ::before 가 먼 카드, ::after 가 가까운 카드다(나중에 그려지는 쪽이 위). 아래쪽 오른편을 축으로 돌려 위와 오른쪽으로 펼쳐진다(시안 A 와 같은 각) */
 .folder:hover .folder__back::after, .folder:focus-visible .folder__back::after { transform: rotate(4deg); }
 .folder:hover .folder__back::before, .folder:focus-visible .folder__back::before { transform: rotate(7deg); }
 @media (prefers-reduced-motion: reduce) { .folder__back::before, .folder__back::after { transition: none; } }
@@ -47,9 +45,9 @@
 .folder__tag { padding: 3px 9px; border-radius: var(--radius-sm); background: var(--bg-subtle); color: var(--text-secondary); font-size: 13px; line-height: 18px; overflow-wrap: anywhere; }
 /* 장 수는 겹침이 이미 보여 주므로 이름보다 작게 둔다 */
 .folder__count { flex: 0 0 auto; color: var(--text-secondary); font-size: 13px; line-height: 18px; }
-.folder__count-num { font-size: 15px; line-height: 18px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.folder__count-num { font-size: 15px; line-height: 18px; font-weight: var(--weight-bold); color: var(--text-primary); font-variant-numeric: tabular-nums; }
 /* 확정하지 않은 카드가 있을 때만 보이며, 홈의 '확인할 카드' 칩과 같은 색이라 같은 뜻으로 읽힌다 */
-.folder__review { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 999px; background: var(--state-open-bg); color: var(--state-open-text); font-size: 13px; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.folder__review { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 999px; background: var(--state-open-bg); color: var(--state-open-text); font-size: 13px; line-height: 1; font-weight: var(--weight-bold); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* ───── 폴더 안 ───── */
 .folder-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px; }
@@ -61,7 +59,7 @@
 /* 점선 타일이 구역마다 늘 끝에 있어서 auto-fit 으로 두면 카드가 한두 장일 때 타일이 한 줄을 다 채운다 — 칸을 비워 둬서 타일 폭을 같게 한다 */
 .folder-section .experience-list { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
 .experience-new { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 170px; padding: 18px; border: 1px dashed var(--border-strong); border-radius: 20px; background: transparent; color: var(--text-secondary); font-size: 13px; line-height: 20px; text-align: center; overflow-wrap: anywhere; }
-.experience-new__title { font-size: 14px; line-height: 20px; font-weight: 600; color: var(--text-primary); }
+.experience-new__title { font-size: 14px; line-height: 20px; font-weight: var(--weight-bold); color: var(--text-primary); }
 .experience-new:hover { border-color: var(--border-selected); }
 .folder-missing { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 24px 0; }
 
@@ -87,7 +85,7 @@
 .next-step__icon { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 13px; background: var(--bg-surface); color: var(--state-open-text); }
 .next-step--ready .next-step__icon { color: var(--border-accent); }
 .next-step__text { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
-.next-step__text strong { font-size: 17px; line-height: 25px; font-weight: 700; letter-spacing: -.03em; }
+.next-step__text strong { font-size: 17px; line-height: 25px; font-weight: var(--weight-bold); letter-spacing: -.03em; }
 .next-step__text span { font-size: 14px; line-height: 21px; color: var(--text-secondary); }
 .next-step__actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .next-step__go.btn { min-height: 46px; padding-inline: 20px; font-size: 15px; }

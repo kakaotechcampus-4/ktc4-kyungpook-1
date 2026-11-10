@@ -8,6 +8,7 @@ import com.gitory.backend.agent.port.StarSlotDraft;
 import com.gitory.backend.agent.port.StarSlotStatus;
 import com.gitory.backend.agent.port.StarStep;
 import com.gitory.backend.card.domain.evidence.EvidenceShaMatcher;
+import com.gitory.backend.card.domain.interview.InterviewQuestionNeeded;
 import com.gitory.backend.card.infra.CardDraftStepRepository;
 import com.gitory.backend.card.infra.CardRepository;
 import com.gitory.backend.card.infra.CardSlotNoteRepository;
@@ -16,6 +17,7 @@ import com.gitory.backend.card.infra.CardVersionRepository;
 import com.gitory.backend.card.infra.StatementEvidenceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +53,7 @@ public class CardDraftWriter {
     private final CardDraftStepRepository steps;
     private final CardVersionReader reader;
     private final CardThemeSuggester themeSuggester;
+    private final ApplicationEventPublisher events;
 
     /** 서버가 다시 켜져 같은 Job 이 다시 돌 때 이미 초안을 담은 카드를 건너뛰게 하며, 1번 버전이 없는 카드도 건너뛴다 */
     public boolean isDrafted(Long cardId) {
@@ -97,6 +100,7 @@ public class CardDraftWriter {
             card.markGenerationPartial();
         }
         themeSuggester.settleInDraftJob(card, reader.read(cardId, card.getCurrentVersion()));
+        askFirstQuestionIfDraft(card);
 
         return timedOut;
 
@@ -127,6 +131,16 @@ public class CardDraftWriter {
 
         writable.get().markAiDraft();
         card.clearGenerationFailure();
+        askFirstQuestionIfDraft(card);
+
+    }
+
+    // 자동 확정되지 않은 카드만 커밋 뒤에 서버가 첫 질문을 만들게 한다
+    private void askFirstQuestionIfDraft(Card card) {
+
+        if (!card.isConfirmed()) {
+            events.publishEvent(new InterviewQuestionNeeded(card.getId()));
+        }
 
     }
 

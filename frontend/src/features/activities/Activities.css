@@ -16,7 +16,7 @@
 .activity-cell input[type="month"] { min-width: 0; }
 .activity-cell .input[aria-invalid="true"], .activity-cell--invalid .select-trigger { border-color: var(--danger-500); box-shadow: inset 0 0 0 1px var(--danger-500); }
 :root[data-theme="dark"] .activity-cell .input[aria-invalid="true"], :root[data-theme="dark"] .activity-cell--invalid .select-trigger { border-color: var(--danger-300); box-shadow: inset 0 0 0 1px var(--danger-300); }
-.activity-error { margin: 0; font-size: 12px; line-height: 18px; font-weight: 500; color: var(--state-failed-text); }
+.activity-error { margin: 0; font-size: 12px; line-height: 18px; font-weight: var(--weight-regular); color: var(--state-failed-text); }
 .activity-check { display: inline-flex; align-items: center; gap: 10px; min-height: var(--control-touch-size); font-size: 13px; line-height: 20px; color: var(--text-strong); cursor: pointer; }
 .activity-check input { width: 20px; height: 20px; margin: 0; flex: 0 0 auto; accent-color: var(--accent-point); cursor: pointer; }
 .activity-check input:focus-visible { outline: 2px solid var(--border-selected); outline-offset: 2px; }

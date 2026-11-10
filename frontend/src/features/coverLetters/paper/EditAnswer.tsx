@@ -130,8 +130,8 @@ export function EditAnswer({ letterId, q, text, onText, threads, focusKey, foot,
       <div className="pq__tools">
         {q.polishAppliedCount > 0 ? <span className="t-12 c-3">{q.polishAppliedCount + 1}판</span> : text !== d.aiText && <span className="t-12 c-3">고친 글</span>}
         <span className="right row" style={{ gap: 6 }}>
-          <Button variant="ghost" size="sm" onClick={() => setShowOriginal((v) => !v)}>{`${q.polishAppliedCount > 0 ? '' : 'AI '}원본 ${showOriginal ? '닫기' : '보기'}`}</Button>
-          <Button variant="outline" size="sm" onClick={copy}><Copy size={14} aria-hidden /> 복사</Button>
+          <Button variant="secondary" size="sm" onClick={() => setShowOriginal((v) => !v)}>{`${q.polishAppliedCount > 0 ? '' : 'AI '}원본 ${showOriginal ? '닫기' : '보기'}`}</Button>
+          <Button variant="secondary" size="sm" onClick={copy}><Copy size={14} aria-hidden /> 복사</Button>
           <Button size="sm" onClick={() => void persist()} loading={editing.saving} disabled={!dirty}>{dirty ? '저장' : '저장됨'}</Button>
         </span>
       </div>

@@ -13,8 +13,6 @@
 .modal__close { flex-shrink: 0; min-width: var(--control-touch-size); min-height: var(--control-touch-size); }
 .modal__body { min-height: 0; }
 .modal__head, .modal__foot { flex-shrink: 0; }
-.interview-evidence summary { cursor: pointer; min-height: var(--control-touch-size); display: list-item; padding-block: var(--space-12); color: var(--text-secondary); font-size: var(--text-meta-size); }
-.interview-evidence[open] .found { margin-bottom: var(--space-12); }
 .skeleton { max-width: 100%; }
 .settings-section > .row { flex-wrap: wrap; gap: var(--space-8); }
 .user-avatar__fallback { font-size: 16px; }
@@ -119,7 +117,7 @@ body { overflow-x: hidden; }
   color: var(--text-secondary);
   font-size: 11px;
   line-height: 16px;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
 .landing__h1 { max-width: 620px; font-size: clamp(40px, 4vw, 58px); line-height: 1.18; }
 .landing__lead { max-width: 560px; font-size: 16px; line-height: 28px; }
@@ -131,7 +129,7 @@ body { overflow-x: hidden; }
   cursor: pointer;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   list-style-position: inside;
 }
 .landing__permissions[open] summary { margin-bottom: 12px; }
@@ -194,7 +192,7 @@ body { overflow-x: hidden; }
     background: color-mix(in srgb, var(--bg-surface) 96%, transparent);
     backdrop-filter: blur(16px);
   }
-  .mobile-nav a { display: flex; min-width: 0; min-height: 48px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 10px; color: var(--text-tertiary); font-size: 12px; font-weight: 600; }
+  .mobile-nav a { display: flex; min-width: 0; min-height: 48px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 10px; color: var(--text-tertiary); font-size: 12px; font-weight: var(--weight-bold); }
   .mobile-nav a[aria-current="page"] { background: var(--nav-active-bg); color: var(--nav-active-text); }
   .main { --main-px: 16px; --main-pb: 24px; gap: 16px; padding: 20px var(--main-px) var(--main-pb); }
   /* Match the actual padding so the shared footer cannot pull content under itself. */
@@ -223,8 +221,7 @@ body { overflow-x: hidden; }
   .two-col,
   .two-col--340,
   .iv,
-  .cmp,
-  .found { grid-template-columns: minmax(0, 1fr); }
+  .cmp { grid-template-columns: minmax(0, 1fr); }
   .experience-item.gcard { min-height: 0; padding: 22px 18px; }
   .status-tabs { gap: 20px; overflow-x: auto; }
   .settings-page { gap: 28px; }
@@ -264,6 +261,9 @@ body { overflow-x: hidden; }
   .sticky-footer { bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom)); flex-wrap: wrap; padding: 10px var(--main-px); gap: 8px; min-height: 0; }
   .sticky-footer__text { flex-basis: 100%; }
   .sticky-footer__actions { width: 100%; }
+  /* 카드 상세는 설명 줄과 버튼 줄이 하단 메뉴 위에 쌓여 화면의 30% 가까이를 덮었다 — 버튼이 할 일을 말하므로 버튼 한 줄만 남기고 설명은 화면 읽기에만 준다(#920) */
+  .sticky-footer--compact .sticky-footer__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .sticky-footer--compact .sticky-footer__actions { flex-wrap: nowrap; }
   .sticky-footer .btn { flex: 1 1 auto; }
   .dim { align-items: flex-end; padding: 12px; }
   .modal { max-height: calc(100svh - 24px); max-height: calc(100dvh - 24px); border-radius: 16px; overflow: hidden; }
@@ -299,6 +299,11 @@ body { overflow-x: hidden; }
   .landing { padding-inline: 14px; }
   .btn { white-space: normal; text-align: center; }
   .note { flex-direction: column; }
+  /* 320px 탭바 여섯 칸에서 다섯 글자 '마이페이지'만 칸 끝에 붙는다 — 마지막 칸을 조금 넓히고(나머지는 세 글자 이하) 바깥 여백을 줄인다(#920).
+     칸 수는 AppShell 이 인라인 grid 로 정해, 여기서는 flex 로 바꿔 칸 수와 상관없이 마지막 칸만 넓힌다 */
+  .mobile-nav { display: flex; padding-inline: 4px; }
+  .mobile-nav a { flex: 1 1 0; }
+  .mobile-nav a:last-child { flex-grow: 1.35; }
 }
 
 @media print {

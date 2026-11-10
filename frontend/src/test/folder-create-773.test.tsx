@@ -29,7 +29,7 @@ describe('#773 폴더 안: 머리와 점선 타일', () => {
     connectMockServer();
     mountApp(routes(), '/cards/repo/r_auth');
     const board = await screen.findByRole('link', { name: '후보 보드' });
-    expect(board).toHaveClass('btn--outline');
+    expect(board).toHaveClass('btn--secondary');
     expect(document.querySelectorAll('.folder-head__actions .btn')).toHaveLength(1);
     expect(screen.queryByRole('link', { name: '기술 카드 만들기' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '경험 카드 만들기' })).not.toBeInTheDocument();
@@ -66,7 +66,7 @@ describe('#773 폴더 안: 머리와 점선 타일', () => {
     mountApp(routes(), '/cards/direct');
     expect(await addTile('경험 카드 만들기')).toHaveAccessibleDescription('레포·활동 없이 경험을 써요');
     expect(document.querySelector('.folder-head__actions')).toBeNull();
-    expect(screen.getByText('카드 1장 · 확정 0장')).toBeInTheDocument();
+    expect(screen.getByText('카드 1장, 확정 0장')).toBeInTheDocument();
   });
 });
 

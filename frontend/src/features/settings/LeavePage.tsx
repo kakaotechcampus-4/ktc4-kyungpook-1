@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ApiError } from '@/api/client';
 import { errorView } from '@/api/errorView';
 import { useLeaveAccount } from '@/api/queries';
-import { Breadcrumb, Button, Note, PageTitle } from '@/components/ui';
+import { Breadcrumb, Button, ButtonLink, Note, PageTitle } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
@@ -31,7 +31,7 @@ export function LeavePage() {
       <Breadcrumb items={[{ label: '마이페이지', to: '/settings' }, { label: '탈퇴와 데이터 삭제' }]} />
       <PageTitle>탈퇴와 데이터 삭제</PageTitle>
       <div className="card stack" style={{ gap: 12, padding: '20px 22px' }}>
-        <span className="w-600" style={{ fontSize: 18 }}>탈퇴하면 바로 지워져요</span>
+        <span className="w-bold" style={{ fontSize: 18 }}>탈퇴하면 바로 지워져요</span>
         <ul className="stack" style={{ gap: 6, paddingLeft: 20, listStyle: 'disc', fontSize: 15 }}>
           {DELETED.map((item) => <li key={item}>{item}</li>)}
         </ul>
@@ -41,14 +41,14 @@ export function LeavePage() {
       {leave.isError && !blocked && <p role="alert" className="c-2">{errorView(leave.error).message}</p>}
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         <Button variant="danger" size="lg" onClick={ask}>탈퇴하기</Button>
-        <Link to="/settings" className="btn btn--outline">마이페이지로 돌아가기</Link>
+        <ButtonLink to="/settings" variant="secondary">마이페이지로 돌아가기</ButtonLink>
       </div>
       {open && (
         <Modal title="정말 탈퇴할까요?" width={480} onClose={() => { if (!leave.isPending) setOpen(false); }}>
           <div className="stack" style={{ gap: 20 }}>
             <p>되돌릴 수 없어요. 다시 로그인하면 새 계정으로 시작해요.</p>
             <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
-              <Button variant="outline" disabled={leave.isPending} onClick={() => setOpen(false)}>취소</Button>
+              <Button variant="secondary" disabled={leave.isPending} onClick={() => setOpen(false)}>취소</Button>
               <Button variant="danger" disabled={leave.isPending} onClick={() => void confirm()}>탈퇴하기</Button>
             </div>
           </div>

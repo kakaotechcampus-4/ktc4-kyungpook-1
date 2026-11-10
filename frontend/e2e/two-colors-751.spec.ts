@@ -55,7 +55,7 @@ test('공고 매칭 캘린더(390px): 날짜 버튼은 44px 이상이고, 요일
   expect(await selected.evaluate((el) => getComputedStyle(el, '::before').backgroundColor)).toBe(await tokenColor(page, '--nav-active-bg', 'backgroundColor'));
 });
 
-test('삭제를 여는 버튼과 확인 창의 삭제는 빨강이고, 로그아웃 진입 버튼은 테두리 버튼이다', async ({ page }) => {
+test('삭제를 여는 버튼과 확인 창의 삭제는 빨강이고, 로그아웃 진입 버튼은 보조 버튼(연한 글자 + 테두리)이다', async ({ page }) => {
   await loginAsDemo(page);
   await page.goto('/activities');
   const remove = page.getByRole('button', { name: '교내 개발 동아리 삭제' });
@@ -67,7 +67,7 @@ test('삭제를 여는 버튼과 확인 창의 삭제는 빨강이고, 로그아
   await page.getByRole('dialog').getByRole('button', { name: '취소' }).click();
 
   await page.goto('/settings');
-  expect(await page.getByRole('button', { name: '로그아웃', exact: true }).evaluate((el) => getComputedStyle(el).color)).toBe(await tokenColor(page, '--text-strong'));
+  expect(await page.getByRole('button', { name: '로그아웃', exact: true }).evaluate((el) => getComputedStyle(el).color)).toBe(await tokenColor(page, '--text-secondary')); // 버튼 네 가지(#804)의 secondary
 });
 
 test('공고 카드(390px): 제목 글자 밖, 카드 아래쪽을 눌러도 공고 상세로 간다', async ({ page }) => {

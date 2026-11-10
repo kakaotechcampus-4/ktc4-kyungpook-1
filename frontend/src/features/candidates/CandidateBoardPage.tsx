@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useActiveJobs, useAddCandidate, useCandidates, useCreateCards, usePatchCandidate, useRepo, useRepoCommits, useStartAnalysis } from '@/api/queries';
 import { isTerminal, type Candidate } from '@/api/schemas';
-import { Badge, Breadcrumb, Button, Check, Chip, Field, Input, Note, PageTitle, RepoContext, Skeleton, StickyFooter, Textarea } from '@/components/ui';
+import { Badge, Breadcrumb, Button, ButtonLink, Check, Chip, Field, Input, Note, PageTitle, RepoContext, Skeleton, StickyFooter, Textarea } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGrid } from '@/features/auth/LandingPage';
 import { candidateRefLabel } from '@/lib/labels';
@@ -102,7 +102,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
 
   if (board.isPending) return <main className="main"><Breadcrumb items={crumbs} /><Skeleton h={40} w={240} /><Skeleton h={300} /></main>;
   // 백그라운드 리페치만 실패했고 캐시에 보드가 있으면(방금 PATCH 응답을 합쳐 둔 상태) 보드를 그대로 보여준다.
-  if (board.isError && !board.data) return <main className="main"><QueryFailure error={board.error} retry={() => board.refetch()} pending={board.isFetching} /><Link to="/repos" className="btn btn--outline">레포 목록</Link></main>;
+  if (board.isError && !board.data) return <main className="main"><QueryFailure error={board.error} retry={() => board.refetch()} pending={board.isFetching} /><ButtonLink to="/repos" variant="secondary">레포 목록</ButtonLink></main>;
   const b = board.data!;
 
   // 직접 추가한 후보는 바로 골라 둔다 — 추가한 사람이 그 후보로 카드를 만들려는 것이라 다시 찾아 체크하지 않게 한다
@@ -128,7 +128,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         <Breadcrumb items={crumbs} />
         <PageTitle>아직 후보를 찾는 중이에요</PageTitle>
         <RepoContext name={name} note="정리가 끝나면 여기에 후보가 나와요."
-          right={<Link to={`/repos/${repoId}/run?job=${encodeURIComponent(running.jobId)}`} className="btn btn--primary">진행 상황 보기</Link>} />
+          right={<ButtonLink to={`/repos/${repoId}/run?job=${encodeURIComponent(running.jobId)}`} variant="primary">진행 상황 보기</ButtonLink>} />
       </main>
     );
   }
@@ -143,19 +143,19 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         <RepoContext name={name} note={neverAnalyzed ? '아직 정리 전' : '후보 0개'} />
         <div className="verdict">
           <div className="stack grow" style={{ gap: 8 }}>
-            <span className="w-600" style={{ fontSize: 16 }}>{neverAnalyzed ? '정리하면 커밋과 PR에서 후보를 찾아 드려요' : '파일을 보며 경험을 떠올려 보세요'}</span>
+            <span className="w-bold" style={{ fontSize: 16 }}>{neverAnalyzed ? '정리하면 커밋과 PR에서 후보를 찾아 드려요' : '파일을 보며 경험을 떠올려 보세요'}</span>
             <div className="verdict__reasons">{b.emptyReasons.map((r) => <span key={r}>• {r}</span>)}</div>
           </div>
           <div className="stack" style={{ gap: 8, alignItems: 'flex-end' }}>
             <div className="row" style={{ gap: 8 }}>
-              <Button variant="outline" size="sm" onClick={openAdd}>+ 직접 추가</Button>
+              <Button variant="secondary" size="sm" onClick={openAdd}>+ 직접 추가</Button>
               {neverAnalyzed
-                ? <Link to={`/repos/${repoId}/run`} className="btn btn--primary btn--sm">정리하러 가기</Link>
-                : <Link to={`/repos/${repoId}/recall`} className="btn btn--outline btn--sm">파일 보며 찾기</Link>}
+                ? <ButtonLink to={`/repos/${repoId}/run`} variant="primary" size="sm">정리하러 가기</ButtonLink>
+                : <ButtonLink to={`/repos/${repoId}/recall`} variant="secondary" size="sm">파일 보며 찾기</ButtonLink>}
             </div>
             <div className="row" style={{ gap: 8 }}>
-              <Link to={`/cards/new?repo=${encodeURIComponent(repoId)}`} className="btn btn--outline btn--sm">직접 작성</Link>
-              <Link to="/repos" className="btn btn--outline btn--sm">다른 레포</Link>
+              <ButtonLink to={`/cards/new?repo=${encodeURIComponent(repoId)}`} variant="secondary" size="sm">직접 작성</ButtonLink>
+              <ButtonLink to="/repos" variant="secondary" size="sm">다른 레포</ButtonLink>
             </div>
           </div>
         </div>
@@ -174,11 +174,12 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         <li className="wstep wstep--now" aria-current="step"><span className="wstep__no">3</span>후보 고르기</li>
       </ol>
       <div className="cand-head">
-        <PageTitle lead="카드로 남길 일을 골라 주세요. 고른 것마다 초안을 써 드려요.">{`${repo.data?.name ?? '…'} 에서 찾은 일`}</PageTitle>
+        <PageTitle lead="고른 일마다 카드 초안을 써 드려요.">{`${repo.data?.name ?? '…'} 에서 찾은 일`}</PageTitle>
         <div className="cand-head__acts">
           <Button variant="text" onClick={() => setSp((current) => { current.set('criteria', '1'); return current; })}>정리 기준</Button>
-          <Button variant="text" disabled={busy} onClick={openAdd}>+ 직접 추가</Button>
-          <Link to={`/cards/new?repo=${encodeURIComponent(repoId)}`} className="btn btn--text">경험 카드 직접 쓰기</Link>
+          {/* 정리 기준은 부가 정보라 글자 버튼, 후보를 더하거나 카드를 쓰는 일은 보조 버튼(#805) */}
+          <Button variant="secondary" size="sm" disabled={busy} onClick={openAdd}>+ 직접 추가</Button>
+          <ButtonLink to={`/cards/new?repo=${encodeURIComponent(repoId)}`} variant="secondary" size="sm">경험 카드 직접 쓰기</ButtonLink>
           {excluded.length > 0 && <Button variant="text" disabled={busy} onClick={() => void restoreExcluded()}>제외 {excluded.length}개 복원</Button>}
         </div>
       </div>
@@ -187,16 +188,16 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         <div className="card row" style={{ gap: 16, padding: '16px 20px', background: 'var(--state-partial-bg)', border: 0, flexWrap: 'wrap' }}>
           <Badge kind="NEUTRAL">부분 결과</Badge>
           <div className="stack grow" style={{ gap: 4 }}>
-            <span className="w-600" style={{ fontSize: 14 }}>읽은 기록에서 찾은 후보예요</span>
+            <span className="w-bold" style={{ fontSize: 14 }}>읽은 기록에서 찾은 후보예요</span>
             {b.readCoverage && <span className="t-12l c-2">{`커밋 ${b.readCoverage.commitsRead}/${b.readCoverage.commitsTotal}, PR ${b.readCoverage.prsRead}/${b.readCoverage.prsTotal} 읽음`}</span>}
           </div>
-          {sp.get('job') && <Link className="btn btn--outline btn--sm" to={`/repos/${repoId}/run?job=${encodeURIComponent(sp.get('job')!)}`}>작업 상태 보기</Link>}
+          {sp.get('job') && <ButtonLink variant="secondary" size="sm" to={`/repos/${repoId}/run?job=${encodeURIComponent(sp.get('job')!)}`}>작업 상태 보기</ButtonLink>}
         </div>
       )}
 
       <section className="cand-grp" aria-labelledby="cand-grp-open">
         <h2 className="cand-grp__h" id="cand-grp-open"><span className="cand-grp__n" aria-hidden>1</span>먼저 카드로 만들어 볼 경험
-          <span className="cand-grp__meta">{more.length > 0 && !showMore ? `${recommended.length}개 · 전체 ${open.length}개` : `${open.length}개`}</span></h2>
+          <span className="cand-grp__meta">{more.length > 0 && !showMore ? `${recommended.length}개, 전체 ${open.length}개` : `${open.length}개`}</span></h2>
         {open.length > 0
           ? <div className="cand-tiles">{shown.map(tile)}</div>
           : <Note strong="남은 후보가 없어요" tone="inset">후보를 모두 카드로 만들었어요. 아래에서 만든 카드를 볼 수 있어요.</Note>}
@@ -215,14 +216,14 @@ function CandidateBoard({ repoId }: { repoId: string }) {
               <li key={c.id} className="cand-made__row">
                 <span className="cand-made__title">{c.title}</span>
                 <span className="cand-kind">{candidateRefLabel(c.type, c.ref)}</span>
-                {c.usedByCardId && <Link to={`/cards/${c.usedByCardId}`} className="btn btn--text cand-made__link">카드 보기</Link>}
+                {c.usedByCardId && <ButtonLink to={`/cards/${c.usedByCardId}`} variant="text" className="cand-made__link">카드 보기</ButtonLink>}
               </li>
             ))}
           </ul>
         </section>
       )}
 
-      <StickyFooter strong={chosen.length ? `${chosen.length}개 골랐어요` : '카드로 남길 일을 골라 주세요'}
+      <StickyFooter strong={chosen.length ? `${chosen.length}개 골랐어요` : '카드로 남길 일을 고르면 초안을 써요'}
         sub={overLimit ? CARD_LIMIT_MESSAGE : chosen.length ? `${MAX_CARDS_PER_REQUEST}개까지 고를 수 있고, 하나에 1~2분쯤 걸려요` : `${MAX_CARDS_PER_REQUEST}개까지 고를 수 있어요`}>
         <Button size="lg" disabled={chosen.length === 0 || overLimit || busy} loading={create.isPending} onClick={makeCards}>카드 만들기</Button>
       </StickyFooter>
@@ -298,7 +299,7 @@ function CriteriaDialog({ repoId, partial, onClose }: { repoId: string; partial:
   return (
     <Modal title="이 보드의 정리 기준" width={720} onClose={() => { if (!start.isPending) onClose(); }}
       sub={r.lastAnalyzedAt ? `${ymdhm(r.lastAnalyzedAt)} 에 읽은 결과예요.` : '아직 정리 기록이 없어요.'}
-      footer={{ strong: partial ? '재시도 가능 여부는 작업 상태에서 확인해 주세요' : '후보의 추천 이유와 근거를 확인해 주세요', actions: <><Button variant="outline" disabled={start.isPending} onClick={onClose}>닫기</Button><Button onClick={again} disabled={partial} loading={start.isPending}>다시 정리하기</Button></> }}>
+      footer={{ strong: partial ? '재시도 가능 여부는 작업 상태에서 확인해 주세요' : '후보의 추천 이유와 근거를 확인해 주세요', actions: <><Button variant="secondary" disabled={start.isPending} onClick={onClose}>닫기</Button><Button onClick={again} disabled={partial} loading={start.isPending}>다시 정리하기</Button></> }}>
       <PermissionGrid compact reads={r.disclosure.reads} skips={r.disclosure.skips} />
       <p className="t-12l c-2">추천 이유와 연결된 커밋을 확인한 뒤 카드로 만들 후보를 골라 주세요.</p>
     </Modal>
@@ -326,7 +327,7 @@ function AddCandidateDialog({ repoId, onAdded, onClose }: { repoId: string; onAd
   return (
     <Modal title="후보 직접 추가" onClose={() => { if (!add.isPending) onClose(); }}
       footer={{ strong: shas.length ? '기술 카드로 만들어져요' : '경험을 직접 쓰는 카드(정성 카드)로 만들어져요', sub: shas.length ? `커밋 ${shas.length}개가 붙어 있어요` : undefined,
-        actions: <><Button variant="outline" disabled={add.isPending} onClick={onClose}>취소</Button><Button disabled={!title.trim() || !summary.trim()} loading={add.isPending} onClick={submit}>후보 추가</Button></> }}>
+        actions: <><Button variant="secondary" disabled={add.isPending} onClick={onClose}>취소</Button><Button disabled={!title.trim() || !summary.trim()} loading={add.isPending} onClick={submit}>후보 추가</Button></> }}>
       <Field label="후보 이름"><Input autoFocus disabled={add.isPending} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예) 배포 파이프라인 직접 구축" maxLength={80} /></Field>
       <Field label="어떤 일을 했나요"><Textarea disabled={add.isPending} rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="한 줄로 적어 주세요." maxLength={300} /></Field>
       <Field label="관련 커밋 (선택)">

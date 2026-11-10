@@ -63,7 +63,7 @@ export function PlacedBlock({ written, live }: { written: Written[]; live?: Live
             <>
               <div className="iv-put__bar">
                 <Button loading={live?.saving} disabled={!canSave} onClick={() => void save()}>저장</Button>
-                <Button variant="outline" onClick={() => setEditing(false)}>취소</Button>
+                <Button variant="secondary" onClick={() => setEditing(false)}>취소</Button>
                 <span className="iv-put__count">{draft.length}/{max}</span>
               </div>
               <p className="iv-put__hint">저장하면 적은 그대로 카드에 들어가요</p>

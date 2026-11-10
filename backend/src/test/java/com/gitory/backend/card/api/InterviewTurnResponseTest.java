@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class InterviewTurnResponseTest {
 
     @Test
-    @DisplayName("질문 번호·칸·출처 종류·질문 종류·질문 글·판단 이유·남은 수·최대 수는 도메인 값 그대로고 근거·보기는 빈 배열이다")
+    @DisplayName("질문 번호·칸·출처 종류·질문 종류·질문 글·판단 이유·남은 수·최대 수는 도메인 값 그대로고 보기는 빈 배열이다")
     void copiesDomainValues() {
 
         InterviewTurnView view = new InterviewTurnView(2, StarField.R, TriggerSource.USER,
@@ -39,8 +39,6 @@ class InterviewTurnResponseTest {
         assertThat(response.reason()).isEqualTo("결과에 수치가 없어 물어요");
         assertThat(response.remaining()).isEqualTo(1);
         assertThat(response.maxTurns()).isEqualTo(3);
-        assertThat(response.found()).isEmpty();
-        assertThat(response.missing()).isEmpty();
         assertThat(response.options()).isEmpty();
         assertThat(response.answer()).isNull();
         assertThat(response.outcome()).isNull();

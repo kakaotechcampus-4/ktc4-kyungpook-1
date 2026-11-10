@@ -17,7 +17,7 @@ export function DraftProgress({
   return (
     <section className="card stack draft-progress">
       <div className="draft-progress__count">
-        <span className="w-600">
+        <span className="w-bold">
           {known
             ? `카드 초안 ${done} / ${total}장`
             : `카드 초안 ${done}장 완료, 전체 개수 확인 중`}

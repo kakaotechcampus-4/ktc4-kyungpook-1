@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Briefcase, PenLine } from 'lucide-react';
 import { useCoverLetter, useRetryCoverLetter, useRewriteQuestion, useStartAsking, useStartDrafting, type CoverLetter, type CoverLetterPosting } from '@/api/coverLetters';
 import { errorView } from '@/api/errorView';
-import { Breadcrumb, Button, Note, PageTitle, Skeleton } from '@/components/ui';
+import { Breadcrumb, Button, ButtonLink, Note, PageTitle, Skeleton, buttonClass } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { FAILED_STEP_LABEL, flowStep } from '@/lib/coverLetterCopy';
 import { track } from '@/lib/track';
@@ -90,7 +90,7 @@ export function CoverLetterPage() {
       <div className="cl-crumbbar">
         <Breadcrumb items={crumbs} />
         <div className="row" style={{ gap: 8 }}>
-          <Link to={`/cover-letters/new?from=${encodeURIComponent(l.id)}`} className="btn btn--outline btn--sm cl-edit-trigger"><PenLine size={16} aria-hidden />문항 고치기</Link>
+          <ButtonLink to={`/cover-letters/new?from=${encodeURIComponent(l.id)}`} variant="secondary" size="sm" className="cl-edit-trigger"><PenLine size={16} aria-hidden />문항 고치기</ButtonLink>
           <CoverLetterDeleteAction letter={l} label="자소서 삭제" onDeleted={() => nav('/cover-letters', { replace: true })} />
         </div>
       </div>
@@ -156,13 +156,13 @@ function Failed({ letter }: { letter: CoverLetter }) {
       <div className="fail-card" role="alert">
         <span className="fail-card__bang">!</span>
         <div className="stack" style={{ gap: 6 }}>
-          <span className="w-600" style={{ fontSize: 16 }}>{why}</span>
+          <span className="w-bold" style={{ fontSize: 16 }}>{why}</span>
           <span className="c-2 t-13">입력한 직무와 문항은 그대로 남아 있어요.</span>
         </div>
       </div>
       <div className="row" style={{ gap: 8 }}>
         {letter.retryable === true && <Button onClick={() => retry.mutate(undefined)} loading={retry.isPending}>다시 시도</Button>}
-        <Link to="/cover-letters/new" className={`btn ${letter.retryable === true ? 'btn--outline' : 'btn--primary'}`}>새로 만들기</Link>
+        <Link to="/cover-letters/new" className={buttonClass(letter.retryable === true ? 'secondary' : 'primary')}>새로 만들기</Link>
       </div>
     </>
   );

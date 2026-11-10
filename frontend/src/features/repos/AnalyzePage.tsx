@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useActiveJobs, useCandidates, useCards, useCreateCards, useJob, useMe, useRepo, useStartAnalysis, useCancelJob } from '@/api/queries';
 import { isGithubUnauthorized, reconnectGithub, reconnectGithubTo } from '@/lib/githubReconnect';
 import { QueryFailure } from '@/components/ui/QueryFailure';
-import { Badge, Breadcrumb, Button, PageTitle, RepoContext, Skeleton } from '@/components/ui';
+import { Badge, Breadcrumb, Button, ButtonLink, PageTitle, RepoContext, Skeleton } from '@/components/ui';
 import { JobLiveness } from '@/components/JobLiveness';
 import { AiWait } from '@/components/ui/AiWait';
 import { agentHeadline, agentLine } from '@/lib/agentNarration';
@@ -91,12 +91,12 @@ export function AnalyzePage() {
         <div className="fail-card" role="alert">
           <span className="fail-card__bang">!</span>
           <div className="stack" style={{ gap: 6 }}>
-            <span className="w-600" style={{ fontSize: 16 }}>정리가 끝났는지 아직 알 수 없어요</span>
+            <span className="w-bold" style={{ fontSize: 16 }}>정리가 끝났는지 아직 알 수 없어요</span>
             <span className="c-2" style={{ fontSize: 14, lineHeight: '21px' }}>정리를 새로 시작하지 말고, 상태를 다시 불러와 확인해 주세요.</span>
           </div>
         </div>
         <div className="row" style={{ gap: 8 }}>
-          <Link to="/repos" className="btn btn--outline">레포 목록</Link>
+          <ButtonLink to="/repos" variant="secondary">레포 목록</ButtonLink>
         </div>
       </main>
     );
@@ -111,7 +111,7 @@ export function AnalyzePage() {
         <PageTitle>레포를 확인하지 못했어요</PageTitle>
         <QueryFailure error={repo.error} retry={() => repo.refetch()} pending={repo.isFetching} />
         <div className="row" style={{ gap: 8 }}>
-          <Link to="/repos" className="btn btn--outline">레포 목록으로</Link>
+          <ButtonLink to="/repos" variant="secondary">레포 목록으로</ButtonLink>
         </div>
       </main>
     );
@@ -137,8 +137,8 @@ export function AnalyzePage() {
             ? <Button onClick={reconnectGithub}>GitHub 다시 연결</Button>
             : analyzed
               ? <div className="row repo-ctx__actions" style={{ gap: 8 }}>
-                  <Button variant="outline" onClick={retry} loading={restart.isPending} disabled={active.isPending}>다시 정리</Button>
-                  <Link to={`/repos/${repoId}/candidates`} className="btn btn--primary">지난 결과 보기</Link>
+                  <Button variant="secondary" onClick={retry} loading={restart.isPending} disabled={active.isPending}>다시 정리</Button>
+                  <ButtonLink to={`/repos/${repoId}/candidates`} variant="primary">지난 결과 보기</ButtonLink>
                 </div>
               : <Button onClick={retry} loading={restart.isPending} disabled={active.isPending}>정리 시작</Button>} />
         {isGithubUnauthorized(restart.error) && <QueryFailure error={restart.error} retry={retry} />}
@@ -159,25 +159,25 @@ export function AnalyzePage() {
         <div className="fail-card" role="alert">
           <span className="fail-card__bang">!</span>
           <div className="stack" style={{ gap: 6 }}>
-            <span className="w-600" style={{ fontSize: 16, color: 'var(--state-failed-text)' }}>{jobErrorHint[code]}</span>
+            <span className="w-bold" style={{ fontSize: 16, color: 'var(--state-failed-text)' }}>{jobErrorHint[code]}</span>
             <span className="c-2" style={{ fontSize: 14, lineHeight: '21px' }}>{readNote(j)}</span>
           </div>
         </div>
         {requiresRetryRefresh(j) && <RetryTimeNotice refresh={() => job.refetch()} pending={job.isFetching} />}
         <div className="card stack" style={{ gap: 10, padding: '18px 20px' }}>
-          <span className="w-600" style={{ fontSize: 14 }}>이렇게 해 볼 수 있어요</span>
+          <span className="w-bold" style={{ fontSize: 14 }}>이렇게 해 볼 수 있어요</span>
           {[
             ...(blocked || canRetry ? [['이 레포 다시 정리하기', blocked ? `${minutes(waitSec)} 뒤에 눌러 주세요` : '같은 레포로 정리를 다시 요청해요',
               <Button key="a" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>{blocked ? minutes(waitSec) : '다시 시도'}</Button>]] : []),
             ...(code === 'GITHUB_UNAVAILABLE' ? [['GitHub 연결 확인', '다시 시도해도 같으면 연결이 끊겼을 수 있어요',
-              <Button key="g" variant="outline" size="sm" onClick={reconnectGithub}>다시 연결</Button>]] : []),
+              <Button key="g" variant="secondary" size="sm" onClick={reconnectGithub}>다시 연결</Button>]] : []),
             ...(code === 'GITHUB_UNAUTHORIZED' ? [['GitHub 연결 새로 하기', '다시 연결하면 정리를 시작하는 화면으로 돌아와요',
               <Button key="u" size="sm" onClick={() => reconnectGithubTo(`/repos/${repoId}/run`)}>다시 연결</Button>]] : []),
-            ['다른 레포 고르기', '이 레포에서만 반복되면 레포 쪽 문제일 수 있어요', <Link key="b" to="/repos" className="btn btn--outline btn--sm">레포 목록으로</Link>],
-            ['GitHub 없이 시작', 'GitHub 없이 바로 쓸 수 있어요', <Link key="c" to="/cards/new" className="btn btn--outline btn--sm">직접 작성하기</Link>],
+            ['다른 레포 고르기', '이 레포에서만 반복되면 레포 쪽 문제일 수 있어요', <ButtonLink key="b" to="/repos" variant="secondary" size="sm">레포 목록으로</ButtonLink>],
+            ['GitHub 없이 시작', 'GitHub 없이 바로 쓸 수 있어요', <ButtonLink key="c" to="/cards/new" variant="secondary" size="sm">직접 작성하기</ButtonLink>],
           ].map(([t, d, b], i) => (
             <div key={i} className="card card--paper row" style={{ gap: 14, padding: '12px 14px', border: 0 }}>
-              <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 13 }}>{t}</span><span className="t-12 c-2">{d}</span></div>{b}
+              <div className="stack grow" style={{ gap: 3 }}><span className="w-bold" style={{ fontSize: 13 }}>{t}</span><span className="t-12 c-2">{d}</span></div>{b}
             </div>
           ))}
         </div>
@@ -202,14 +202,14 @@ export function AnalyzePage() {
             <span className="partial-card__note">{readNote(j)} {code && jobErrorHint[code]}</span>
           </div>
           {(canRetry || waitSec > 0) && (
-            <Button variant="outline" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>
+            <Button variant="secondary" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>
               {waitSec > 0 ? `${minutes(waitSec)} 뒤 이어 읽기` : '이어 읽기'}
             </Button>
           )}
         </div>
         <div className="row" style={{ gap: 8 }}>
           <Button onClick={() => nav(`/repos/${repoId}/candidates?job=${encodeURIComponent(jobId)}`)}>읽은 범위의 후보 보기</Button>
-          <Link to="/repos" className="btn btn--outline">다른 레포</Link>
+          <ButtonLink to="/repos" variant="secondary">다른 레포</ButtonLink>
         </div>
       </main>
     );
@@ -237,17 +237,16 @@ export function AnalyzePage() {
             <span>{plan === 'draft' ? '카드를 쓰기 시작했어요' : plan === 'folder' ? '만들어 둔 카드가 있어서 카드 폴더로 가요' : '추천 경험으로 카드까지 이어서 써요'}</span>
             {!plan && (
               <div className="run-foot__right">
-                <Link to={`/repos/${repoId}/candidates`} replace className="btn btn--outline">후보 직접 고르기</Link>
+                <ButtonLink to={`/repos/${repoId}/candidates`} replace variant="secondary">후보 직접 고르기</ButtonLink>
               </div>
             )}
           </>
         ) : (
           <>
-            <span>끝나면 알려 드릴게요</span>
             <div className="run-foot__right">
               {/* 기다리는 동안 보통 누를 것은 다른 일 하러 가기(주 버튼). 되돌릴 수 없는 취소는 위험 버튼으로 낮춰 왼쪽에 둔다 */}
               <Button variant="danger" loading={cancel.isPending} onClick={() => jobId && cancel.mutate(jobId)}>정리 취소</Button>
-              <Link to="/" className="btn btn--primary">다른 일 하러 가기</Link>
+              <ButtonLink to="/" variant="primary">다른 일 하러 가기</ButtonLink>
             </div>
           </>
         )}
@@ -380,7 +379,7 @@ function took(j: Job) {
 
 function RetryTimeNotice({ refresh, pending }: { refresh: () => Promise<unknown>; pending: boolean }) {
   return <div className="query-failure" role="alert"><p>대기 시간을 확인하지 못했어요. 정리 상태를 다시 불러와 주세요.</p>
-    <Button variant="outline" loading={pending} onClick={() => void refresh()}>정리 상태 새로고침</Button></div>;
+    <Button variant="secondary" loading={pending} onClick={() => void refresh()}>정리 상태 새로고침</Button></div>;
 }
 
 /** 어디까지 읽고 멈췄는지. 단계 진행값이 그대로 근거가 된다. */

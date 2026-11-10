@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDisconnectGithub, useMe, useRepos } from '@/api/queries';
 import { endpoints } from '@/api/endpoints';
-import { Badge, Button, Note, PageTitle, Skeleton } from '@/components/ui';
+import { Badge, Button, Note, PageTitle, Skeleton, buttonClass } from '@/components/ui';
 import { ConfirmActionDialog } from '@/features/cards/CardDialogs';
 import { koMd, koYmd } from '@/lib/format';
 import { toast } from '@/lib/toast';
@@ -26,7 +26,7 @@ export function GithubSettingsPage() {
   const gh = login.isDemo ? undefined : me.data?.github;
   const analyzed = (repos.data ?? []).filter((r) => r.lastAnalyzedAt);
   const lastRead = analyzed.reduce<string | null>((latest, r) => (!latest || new Date(r.lastAnalyzedAt!) > new Date(latest) ? r.lastAnalyzedAt! : latest), null);
-  const reconnect = <a href={endpoints.githubStartUrl()} className={`btn ${gh?.connected ? 'btn--outline' : 'btn--primary'}`}>다시 연결</a>;
+  const reconnect = <a href={endpoints.githubStartUrl()} className={buttonClass(gh?.connected ? 'secondary' : 'primary')}>다시 연결</a>;
 
   return (
     <main className="main settings-page set-page">

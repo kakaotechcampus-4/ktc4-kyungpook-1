@@ -37,7 +37,7 @@ const objectParticle = (name: string) => (hasBatchim(name) ? '을' : '를');
 export const shortRepoName = (repoName: string): string => repoName.split('/').pop() || repoName;
 
 const postingLine = (p: NoticePosting) =>
-  `${p.companyName} ${p.title} · ${p.requiredMet >= p.requiredTotal ? `필수 조건 ${p.requiredTotal}개가 모두` : `필수 조건 ${p.requiredTotal}개 중 ${p.requiredMet}개가`} 카드에 있어요`;
+  `${p.companyName} ${p.title}, ${p.requiredMet >= p.requiredTotal ? `필수 조건 ${p.requiredTotal}개가 모두` : `필수 조건 ${p.requiredTotal}개 중 ${p.requiredMet}개가`} 카드에 있어요`;
 
 const cardCountText = (n: number | null) => (n === null ? '카드를' : `카드 ${n}장을`);
 

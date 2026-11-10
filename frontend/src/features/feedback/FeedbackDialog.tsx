@@ -36,7 +36,7 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
         <p className="c-2" style={{ fontSize: 15 }}>지금 화면 주소와 브라우저 종류가 함께 전달돼요. 카드와 자소서 내용은 전달되지 않아요.</p>
         {send.isError && <p role="alert" style={{ fontSize: 15 }}>{errorView(send.error).message}</p>}
         <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
-          <Button size="lg" variant="outline" onClick={onClose}>취소</Button>
+          <Button size="lg" variant="secondary" onClick={onClose}>취소</Button>
           <Button size="lg" type="submit" disabled={blank} loading={send.isPending}>보내기</Button>
         </div>
       </form>

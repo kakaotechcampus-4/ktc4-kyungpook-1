@@ -79,8 +79,8 @@ class InterviewAskApiTest {
     private static final String ASK_PATH = "/api/cards/{id}/interview";
 
     // FE schemas.ts 의 InterviewTurn 이 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
-    private static final String[] TURN_KEYS = {"turnNo", "field", "askedBy", "sourceType", "questionType", "found",
-            "missing", "question", "reason", "options", "answerMode", "outcome", "answer", "remaining", "maxTurns"};
+    private static final String[] TURN_KEYS = {"turnNo", "field", "askedBy", "sourceType", "questionType", "question",
+            "reason", "options", "answerMode", "outcome", "answer", "remaining", "maxTurns"};
 
     @Container
     @ServiceConnection
@@ -433,8 +433,6 @@ class InterviewAskApiTest {
                 .containsEntry("askedBy", "USER_REQUEST")
                 .containsEntry("sourceType", "DIRECT_CARD")
                 .containsEntry("questionType", "RECALL_AID")
-                .containsEntry("found", List.of())
-                .containsEntry("missing", List.of())
                 .containsEntry("question", "  앞뒤 공백이 있는 질문  ")
                 .containsEntry("options", List.of())
                 .containsEntry("answer", null)

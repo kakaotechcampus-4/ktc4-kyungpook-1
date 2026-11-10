@@ -23,7 +23,7 @@ export function RepoDescriptionDialog({ repo, onClose }: { repo: Pick<RepoSummar
   };
   return (
     <Modal title="폴더 설명" width={560} onClose={() => { if (!save.isPending) onClose(); }}
-      footer={{ strong: '비워 두면 GitHub 설명이나 README 문장을 보여요.', actions: <><Button variant="outline" disabled={save.isPending} onClick={onClose}>취소</Button><Button disabled={!changed} loading={save.isPending} onClick={() => void submit()}>저장</Button></> }}>
+      footer={{ strong: '비워 두면 GitHub 설명이나 README 문장을 보여요.', actions: <><Button variant="secondary" disabled={save.isPending} onClick={onClose}>취소</Button><Button disabled={!changed} loading={save.isPending} onClick={() => void submit()}>저장</Button></> }}>
       <Field label="한 줄 설명">
         {repo.descriptionSource === 'AI' && <span className="t-14 c-2">자동으로 요약한 문장이에요</span>}
         <Input aria-label="한 줄 설명" autoFocus maxLength={CONFIG.REPO_DESCRIPTION_MAX} value={text} disabled={save.isPending}

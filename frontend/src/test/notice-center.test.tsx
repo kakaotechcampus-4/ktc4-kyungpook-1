@@ -380,9 +380,9 @@ describe('읽음 응답과 새 공고 알림', () => {
     expect(panel).toHaveTextContent('새 공고 중 잘 맞는 곳을 4곳 찾았어요');
     const lines = within(panel).getAllByRole('listitem').filter((row) => row.parentElement?.classList.contains('notice__lines')).map((row) => row.textContent);
     expect(lines).toEqual([
-      '한빛페이 서버 개발자 · 필수 조건 5개 중 4개가 카드에 있어요',
-      '모아마켓 백엔드 · 필수 조건 4개가 모두 카드에 있어요',
-      '한빛페이 플랫폼 · 필수 조건 3개 중 1개가 카드에 있어요',
+      '한빛페이 서버 개발자, 필수 조건 5개 중 4개가 카드에 있어요',
+      '모아마켓 백엔드, 필수 조건 4개가 모두 카드에 있어요',
+      '한빛페이 플랫폼, 필수 조건 3개 중 1개가 카드에 있어요',
     ]);
   });
 
@@ -575,7 +575,7 @@ describe('자소서 진행 표시', () => {
     await screen.findByRole('link', { name: /자소서 쓰는 중/ });
     server.set([row('DRAFTED', { jobRole: '완료' })]);
     await tick(FAR);
-    const done = await screen.findByText('가온소프트 · 완료 — 자소서 초안을 다 썼어요');
+    const done = await screen.findByText('가온소프트, 완료 — 자소서 초안을 다 썼어요');
     fireEvent.click(within(done.closest('.toast') as HTMLElement).getByRole('button', { name: '보기' }));
     expect(where()).toBe('/cover-letters/cl_1');
     cleanup(); queryClient.clear();
@@ -585,7 +585,7 @@ describe('자소서 진행 표시', () => {
     await screen.findByRole('link', { name: /자소서 쓰는 중/ });
     failing.set([row('FAILED', { jobRole: '실패' })]);
     await tick(FAR);
-    expect(await screen.findByText('가온소프트 · 실패 — 자소서를 끝내지 못했어요')).toBeInTheDocument();
+    expect(await screen.findByText('가온소프트, 실패 — 자소서를 끝내지 못했어요')).toBeInTheDocument();
     cleanup(); queryClient.clear();
 
     const waiting = serve([row('ASKING', { jobRole: '기다림' })]);
@@ -594,7 +594,7 @@ describe('자소서 진행 표시', () => {
     waiting.set([row('ASKED', { jobRole: '기다림' })]);
     await tick(FAR);
     await waitFor(() => expect(screen.queryByRole('link', { name: /자소서 쓰는 중/ })).not.toBeInTheDocument());
-    expect(screen.queryByText(/가온소프트 · 기다림/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/가온소프트, 기다림/)).not.toBeInTheDocument();
     cleanup(); queryClient.clear();
 
     const viewing = serve([row('DRAFTING', { jobRole: '보는중' })]);
@@ -603,13 +603,13 @@ describe('자소서 진행 표시', () => {
     viewing.set([row('DRAFTED', { jobRole: '보는중' })]);
     await tick(FAR);
     await waitFor(() => expect(screen.queryByRole('link', { name: /자소서 쓰는 중/ })).not.toBeInTheDocument());
-    expect(screen.queryByText(/가온소프트 · 보는중/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/가온소프트, 보는중/)).not.toBeInTheDocument();
     cleanup(); queryClient.clear();
 
     serve([row('DRAFTED', { jobRole: '지난일' })]);
     mountWatched();
     await tick(FAR);
-    expect(screen.queryByText(/가온소프트 · 지난일/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/가온소프트, 지난일/)).not.toBeInTheDocument();
   });
 
   it('C5 끝난 순간 탭이 가려져 있고 권한이 허용이면 같은 문장으로 브라우저 알림을 띄우고 진행 중이면 권한 안내도 보인다', async () => {
@@ -629,7 +629,7 @@ describe('자소서 진행 표시', () => {
     server.set([row('DRAFTED', { id: 'cl_9', jobRole: '알림' })]);
     await tick(FAR);
     await waitFor(() => expect(made).toHaveLength(1));
-    expect(made[0].title).toBe('가온소프트 · 알림 — 자소서 초안을 다 썼어요');
+    expect(made[0].title).toBe('가온소프트, 알림 — 자소서 초안을 다 썼어요');
     expect(made[0].tag).toBe('cover-letter-cl_9');
     act(() => { made[0].onclick?.(); });
     expect(router.state.location.pathname).toBe('/cover-letters/cl_9');

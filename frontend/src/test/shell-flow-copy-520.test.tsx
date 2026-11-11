@@ -209,10 +209,10 @@ describe('레포 화면 (#520 G-03 · 용어집)', () => {
 describe('로그인 화면 (#520 L-01 · L-03)', () => {
   const landing = (path: string) => render(<QueryClientProvider client={quiet()}><MemoryRouter initialEntries={[path]}><LandingPage /></MemoryRouter></QueryClientProvider>);
 
-  it('소개 문장은 저장소·작업 같은 말을 쓰지 않는다', () => {
+  it('소개 문장은 "레포"와 "한 일"을 쓴다(저장소, 작업 아님)', () => {
     landing('/login');
     const lead = document.querySelector('.landing__lead')!.textContent!.replace(/\s+/g, ' ');
-    expect(lead).toContain('커밋이 자소서 문장이 되기까지, 근거는 따라갑니다.');
+    expect(lead).toContain('레포를 고르면 내가 한 일을 찾아 상황, 과제, 행동, 결과로 정리해요.');
     expect(lead).not.toMatch(/저장소|작업/);
   });
 

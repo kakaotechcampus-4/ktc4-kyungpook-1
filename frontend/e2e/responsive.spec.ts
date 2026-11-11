@@ -18,16 +18,16 @@ test.describe('반응형 레이아웃', () => {
     await page.goto('/login?reason=expired');
 
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.locator('.landing__hero').getByRole('button', { name: '샘플로 체험하기' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '샘플로 체험하기' })).toBeVisible();
     await expect(page.getByText('로그인이 만료됐어요. 다시 시작해 주세요.')).toHaveCount(0);
     await expect(page.getByText('샘플 데이터로 체험해요. 실제 GitHub 계정은 연결하지 않아요.')).toHaveCount(0);
-    await expect(page.getByRole('img', { name: /Gitory 홈 화면/ })).toBeVisible();
+    await expect(page.getByLabel('경험 카드 예시')).toBeVisible();
     await expectNoHorizontalOverflow(page);
 
     const columns = await page.locator('.landing__hero').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
     expect(columns).toBe(1);
 
-    await page.locator('.landing__hero').getByRole('button', { name: '샘플로 체험하기' }).click();
+    await page.getByRole('button', { name: '샘플로 체험하기' }).click();
     await expect(page.getByRole('navigation', { name: '모바일 주 메뉴' })).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
@@ -80,7 +80,7 @@ test.describe('반응형 레이아웃', () => {
     await freshSeed(page);
     await page.goto('/login');
 
-    const buttons = page.locator('.landing__hero').getByRole('button', { name: '샘플로 체험하기', exact: true });
+    const buttons = page.getByRole('button', { name: '샘플로 체험하기', exact: true });
     await expect(buttons).toHaveCount(1);
     await expect(page.getByText(/GitHub으로 시작/)).toHaveCount(0);
     await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'done');

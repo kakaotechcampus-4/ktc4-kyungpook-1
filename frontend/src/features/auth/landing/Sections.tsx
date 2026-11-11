@@ -20,8 +20,8 @@ export function FlowStrip() {
   );
 }
 
-/** 세 줄로 나눠 보여 주고, 줄 안의 구절이 스크롤에 맞춰 차례로 채워진다 */
-const INK = [['흩어진 커밋, PR,', '리뷰 속에'], ['면접에서 꺼낼 경험이', '이미 다 들어 있어요.'], ['찾고,', '정리하고,', '근거를 붙이는 일은', 'Gitory가', '할게요.']];
+/** 줄마다 나눠 보여 주고, 줄 안의 구절이 스크롤에 맞춰 차례로 채워진다. 마지막 줄은 한 칸 띄워 크게 */
+const INK = [['흩어진 커밋, PR,', '리뷰 속에'], ['면접에서 꺼낼 경험이', '이미 다 들어 있어요.'], ['찾고,', '정리하고,', '근거를 붙이는 일은'], ['Gitory가', '할게요.']];
 
 /** 스크롤하면 회색 글자가 한 구절씩 검게 채워지는 문장 */
 export function InkStatement() {
@@ -30,7 +30,7 @@ export function InkStatement() {
       <div className="lp-ink__stage">
         <p className="lp-ink__text">
           {INK.map((line, li) => (
-            <span key={li} className="lp-ink__line">
+            <span key={li} className={`lp-ink__line${li === INK.length - 1 ? ' lp-ink__line--brand' : ''}`}>
               {line.map((t, i) => <span key={i}>{i > 0 && ' '}<span data-ink-part="">{t}</span></span>)}
             </span>
           ))}

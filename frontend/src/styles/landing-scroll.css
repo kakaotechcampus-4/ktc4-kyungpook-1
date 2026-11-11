@@ -60,7 +60,8 @@
 /* 채워지는 문장: PC 는 화면에 잠깐 머물고, 휴대폰은 지나가며 채운다 */
 .lp-ink { position: relative; height: 160vh; }
 .lp-ink__stage { position: sticky; top: 0; height: 100vh; display: flex; align-items: center; padding-inline: 20px; }
-.lp-ink__text { max-width: 1100px; margin: 0 auto; text-align: center; text-wrap: balance; font-size: clamp(30px, 5.4vw, 60px); line-height: 1.3; font-weight: var(--weight-heavy); letter-spacing: -.035em; }
+.lp-ink__text { max-width: 1200px; margin: 0 auto; text-align: center; font-size: clamp(28px, 4.4vw, 60px); line-height: 1.3; font-weight: var(--weight-heavy); letter-spacing: -.035em; }
+.lp-ink__line { display: block; }
 .lp[data-motion="on"] [data-ink-part] { color: color-mix(in srgb, var(--text-primary) 20%, transparent); transition: color .35s ease-out; }
 .lp[data-motion="on"] [data-ink-part][data-inked] { color: var(--text-primary); }
 
@@ -120,15 +121,15 @@
 /* 시작 권유 */
 .lp-closing { padding-top: clamp(80px, 10vw, 120px); padding-bottom: clamp(64px, 8vw, 96px); }
 .lp-closing__box { display: flex; flex-wrap: wrap; align-items: center; overflow: hidden; border-radius: 24px; background: var(--bg-feature); color: var(--text-on-feature); }
-.lp-closing__copy { flex: 1 1 420px; min-width: 0; padding: clamp(40px, 5vw, 64px); }
+.lp-closing__copy { flex: 1.2 1 440px; min-width: 0; padding: clamp(40px, 5vw, 64px); }
 .lp-closing .lp-h2 { margin: 0; }
 .lp-closing .lp-body { color: var(--text-on-feature-muted); }
 .lp-closing .lp-actions { justify-content: flex-start; }
 .lp-closing .lp-actions .btn { background: var(--bg-surface); color: var(--text-primary); }
 .lp-closing .lp-actions .sample-link__btn { background: transparent; color: var(--text-on-feature); border-color: color-mix(in srgb, var(--text-on-feature) 30%, transparent); }
-.lp-closing__phones { flex: 1 1 320px; min-width: 0; display: flex; justify-content: center; align-items: center; padding: 32px 24px; }
-.lp-closing__phones .lp-phone { width: 46%; max-width: 230px; }
-.lp-closing__phones .lp-phone--back { margin-right: -8%; transform: translateY(16px); }
+.lp-closing__media { flex: 1.1 1 440px; min-width: 0; align-self: flex-end; padding: 48px 0 0 8px; }
+.lp-closing__media .lp-laptop { margin-right: -14%; margin-bottom: -6%; }
+.lp-closing__media .lp-laptop__lid { box-shadow: 0 30px 60px rgba(0, 0, 0, .35); }
 
 /* 푸터 */
 .lp-footer { border-top: 1px solid var(--border-default); background: var(--bg-surface); }
@@ -171,7 +172,7 @@
   .lp .lp-actions { flex-direction: column; align-items: stretch; width: 100%; }
   .lp .lp-actions .btn, .lp .lp-actions .sample-link__btn { width: 100%; justify-content: center; }
   .lp-top__link { display: none; }
-  .lp-closing__phones { display: none; }
+  .lp-closing__media { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .lp-hword, .lp-hero__stage, .lp-strip__track { animation: none; }

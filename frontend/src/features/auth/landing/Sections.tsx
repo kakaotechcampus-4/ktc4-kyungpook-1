@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Link2 } from 'lucide-react';
 import { LEGAL } from '@/lib/legal';
-import { Laptop, Phone, Split } from './Shots';
+import { Laptop, Split } from './Shots';
 
 const FLOW = ['내가 한 일 찾기', '경험 정리', '자소서 초안', '공고 맞춰 보기', '면접 대비', '로그인 없이 체험'];
 
@@ -20,7 +20,8 @@ export function FlowStrip() {
   );
 }
 
-const INK = ['흩어진 커밋, PR, 리뷰 속에', '면접에서 꺼낼 경험이', '이미 다 들어 있어요.', '찾고,', '정리하고,', '근거를 붙이는 일은', 'Gitory가', '할게요.'];
+/** 세 줄로 나눠 보여 주고, 줄 안의 구절이 스크롤에 맞춰 차례로 채워진다 */
+const INK = [['흩어진 커밋, PR,', '리뷰 속에'], ['면접에서 꺼낼 경험이', '이미 다 들어 있어요.'], ['찾고,', '정리하고,', '근거를 붙이는 일은', 'Gitory가', '할게요.']];
 
 /** 스크롤하면 회색 글자가 한 구절씩 검게 채워지는 문장 */
 export function InkStatement() {
@@ -28,7 +29,11 @@ export function InkStatement() {
     <section className="lp-ink" data-ink="">
       <div className="lp-ink__stage">
         <p className="lp-ink__text">
-          {INK.map((t, i) => <span key={i}>{i > 0 && ' '}<span data-ink-part="">{t}</span></span>)}
+          {INK.map((line, li) => (
+            <span key={li} className="lp-ink__line">
+              {line.map((t, i) => <span key={i}>{i > 0 && ' '}<span data-ink-part="">{t}</span></span>)}
+            </span>
+          ))}
         </p>
       </div>
     </section>
@@ -82,7 +87,7 @@ export function Steps() {
         media={<Laptop name="board-d" alt="경험 후보를 고르는 화면" />} />
       <Step no="02" label="경험 카드" title={['내가 한 일이,', '자소서 문장이 돼요']} flip
         body="문장을 누르면 그때 한 작업이 바로 열려요."
-        media={<div className="lp-pane"><Phone name="card-m" alt="STAR 경험 카드 화면" /></div>}>
+        media={<Laptop name="card-d" alt="근거 커밋이 붙은 STAR 경험 카드 화면" />}>
         <div className="lp-callout" data-reveal="">
           <span className="lp-callout__icon" aria-hidden="true"><Link2 size={20} /></span>
           <p>면접에서 “이거 진짜 하셨어요?”<br /><span>커밋 링크로 바로 보여 주세요</span></p>
@@ -90,7 +95,7 @@ export function Steps() {
       </Step>
       <Step no="03" label="되묻기" title={['코드에 없는 이야기는,', '지어내지 않고 물어봐요']}
         body="코드로 모르는 건 짧게 묻고, 답으로 빈칸을 채워요."
-        media={<div className="lp-pane lp-pane--accent"><Phone name="interview-m" alt="되묻기 답변 화면" /></div>}>
+        media={<Laptop name="interview-d" alt="빈칸을 질문으로 채우는 답변하기 화면" />}>
         <div className="lp-chat" data-reveal="">
           <p className="lp-chat__ask">그때 어떤 역할을 맡았나요?</p>
           <p className="lp-chat__answer">인증 처리를 맡았어요</p>
@@ -106,7 +111,7 @@ export function Steps() {
       </Step>
       <Step no="05" label="자소서" title={['문항만 붙여 넣으면,', '내 경험으로 초안까지']}
         body="내가 진짜 한 일로만, 문항마다 초안을 써요."
-        media={<div className="lp-pane"><Phone name="cl-m" alt="자소서 초안 화면" /></div>}>
+        media={<Laptop name="cl-d" alt="문항별 자소서 초안 화면" />}>
         <ul className="lp-grid2" data-reveal="">
           <li><span className="lp-mark">확인할 곳</span>만 짚어 줘요</li>
           <li>말로 고쳐 달라고 하세요</li>
@@ -154,9 +159,8 @@ export function Closing({ actions }: { actions: ReactNode }) {
             <p className="lp-body">공개 레포만 읽고, 코드는 바꾸지 않아요.</p>
             <div className="lp-actions">{actions}</div>
           </div>
-          <div className="lp-closing__phones" aria-hidden="true">
-            <Phone name="card-m" alt="" className="lp-phone--back" />
-            <Phone name="cl-m" alt="" />
+          <div className="lp-closing__media" aria-hidden="true">
+            <Laptop name="home-d" alt="" />
           </div>
         </div>
       </div>

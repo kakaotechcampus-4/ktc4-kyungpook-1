@@ -17,17 +17,17 @@ test.describe('반응형 레이아웃', () => {
     await freshSeed(page);
     await page.goto('/login?reason=expired');
 
+    const hero = page.locator('.landing__hero');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.getByRole('button', { name: '샘플로 체험하기' })).toBeVisible();
+    await expect(hero.getByRole('button', { name: '샘플로 체험하기' })).toBeVisible();
     await expect(page.getByText('로그인이 만료됐어요. 다시 시작해 주세요.')).toHaveCount(0);
     await expect(page.getByText('샘플 데이터로 체험해요. 실제 GitHub 계정은 연결하지 않아요.')).toHaveCount(0);
-    await expect(page.getByLabel('경험 카드 예시')).toBeVisible();
+    // 좁은 화면은 노트북 대신 폰 화면 하나만 보인다
+    await expect(hero.getByAltText('휴대폰에서 본 자소서 초안 화면')).toBeVisible();
+    await expect(hero.locator('.lp-laptop')).toBeHidden();
     await expectNoHorizontalOverflow(page);
 
-    const columns = await page.locator('.landing__hero').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
-    expect(columns).toBe(1);
-
-    await page.getByRole('button', { name: '샘플로 체험하기' }).click();
+    await hero.getByRole('button', { name: '샘플로 체험하기' }).click();
     await expect(page.getByRole('navigation', { name: '모바일 주 메뉴' })).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
@@ -80,14 +80,14 @@ test.describe('반응형 레이아웃', () => {
     await freshSeed(page);
     await page.goto('/login');
 
-    const buttons = page.getByRole('button', { name: '샘플로 체험하기', exact: true });
+    const buttons = page.locator('.landing__hero').getByRole('button', { name: '샘플로 체험하기', exact: true });
     await expect(buttons).toHaveCount(1);
     await expect(page.getByText(/GitHub으로 시작/)).toHaveCount(0);
     await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'done');
 
     const geometry = await page.evaluate(() => {
-      const header = document.querySelector<HTMLElement>('.landing__top')!;
-      const hero = document.querySelector<HTMLElement>('.landing__hero')!;
+      const header = document.querySelector<HTMLElement>('.lp-top__in')!;
+      const hero = document.querySelector<HTMLElement>('.lp-hero__in')!;
       const logo = header.querySelector<HTMLImageElement>('img')!;
       const h = header.getBoundingClientRect();
       const content = hero.getBoundingClientRect();

@@ -24,21 +24,17 @@ test('a signed-in visitor opening /login goes home instead of the login screen',
   await expect(page.locator('.landing')).toHaveCount(0);
 });
 
-// 로그인한 사람은 /login 에서 홈으로 가므로(위 시험) 인트로 재생은 로그아웃 상태만 본다
-for (const loggedIn of [false]) {
-  test(`every refresh replays the introduction with loggedIn=${loggedIn}`, async ({ page }) => {
-    await page.addInitScript(loggedIn => {
-      sessionStorage.setItem('gitory.brand-intro.v1', '1'); // Legacy flag must no longer suppress entry.
-      if (loggedIn) sessionStorage.setItem('gitory.demo.session', '1');
-    }, loggedIn);
-    await page.goto('/login');
-    await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'playing');
-    await page.keyboard.press('Escape');
-    await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'done');
-    await page.reload();
-    await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'playing');
-  });
-}
+// 로고 인트로는 탭마다 처음 한 번만. 새로고침이나 다시 들어오면 바로 본문을 보이고, ?intro=1 이면 다시 튼다
+test('the introduction plays once per tab and a refresh shows the page right away', async ({ page }) => {
+  await page.goto('/login');
+  await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'playing');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'done');
+  await page.reload();
+  await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'done');
+  await page.goto('/login?intro=1');
+  await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'playing');
+});
 
 for (const query of ['reason=expired', 'error=access_denied']) {
   test(`login feedback remains accessible after intro: ${query}`, async ({ page }) => {
@@ -84,13 +80,12 @@ test('resizing mid-flight safely reveals the final layout', async ({ page }) => 
   await expect(page.locator('.landing__hero')).not.toHaveAttribute('inert');
 });
 
-test('Esc ends only the current intro and refresh replays it', async ({ page }) => {
+test('Esc ends only the current intro', async ({ page }) => {
   await page.goto('/login');
   await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'playing');
   await page.keyboard.press('Escape');
   await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'done');
-  await page.reload();
-  await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'playing');
+  await expect(page.locator('.landing__hero')).not.toHaveAttribute('inert');
 });
 
 test('missing animation support never blocks the landing page', async ({ page }) => {

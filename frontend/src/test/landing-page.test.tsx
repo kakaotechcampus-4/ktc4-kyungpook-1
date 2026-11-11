@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -15,21 +15,32 @@ const mount = () => render(
 );
 
 describe('로그인 첫 화면', () => {
-  it('제목 하나와 시작 버튼, 샘플 데이터로 둘러보기 버튼을 둔다', () => {
+  it('제목 하나와 시작 버튼, 샘플 데이터로 둘러보기 버튼을 히어로에 둔다', () => {
     mount();
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('커밋과 PR을자소서 경험으로');
-    expect(screen.getByRole('button', { name: /시작|체험/ }).closest('.landing__actions')).not.toBeNull();
-    const tour = screen.getByRole('button', { name: '샘플 데이터로 둘러보기' });
-    expect(tour.closest('.landing__hero')).not.toBeNull();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('개발은 이미 다 했잖아요자소서는 Gitory가 써 드릴게요');
+    const hero = document.querySelector<HTMLElement>('.landing__hero')!;
+    expect(within(hero).getByRole('button', { name: /시작|체험/ }).closest('.landing__actions')).not.toBeNull();
+    const tour = within(hero).getByRole('button', { name: '샘플 데이터로 둘러보기' });
     fireEvent.click(tour);
     expect(startSampleTour).toHaveBeenCalledTimes(1);
   });
 
-  it('오른쪽에 GitHub 기록이 경험 카드가 되는 예시를 둔다', () => {
+  it('히어로에 실제 화면 시연 영상을 둔다', () => {
     mount();
-    expect(screen.getByLabelText('GitHub 기록 예시')).toBeInTheDocument();
-    const card = screen.getByLabelText('경험 카드 예시');
-    expect(card).toHaveTextContent('로그인 유지 문제 개선');
+    const video = screen.getByLabelText('레포 고르기부터 자소서 초안까지 이어지는 시연 영상');
+    expect(video.tagName).toBe('VIDEO');
+    expect(video).toHaveAttribute('src', '/landing/demo.mp4');
+  });
+
+  it('아래로 01~05 흐름, AI 채팅과의 차이, 정책 링크가 이어진다', () => {
+    mount();
+    for (const label of ['01  레포 고르기', '02  경험 카드', '03  되묻기', '04  공고 매칭', '05  자소서']) {
+      expect(screen.getByText((_, el) => el?.classList.contains('lp-chip') === true && el.textContent === label)).toBeInTheDocument();
+    }
+    expect(screen.getByText('AI 채팅으로 쓰면')).toBeInTheDocument();
+    const footer = screen.getByRole('navigation', { name: '정책과 문의' });
+    expect(within(footer).getByRole('link', { name: '개인정보처리방침' })).toHaveAttribute('href', '/privacy');
+    expect(within(footer).getByRole('link', { name: '이용약관' })).toHaveAttribute('href', '/terms');
   });
 
   it('공개 설명 문구에서 면접 이야기를 뺐다', () => {

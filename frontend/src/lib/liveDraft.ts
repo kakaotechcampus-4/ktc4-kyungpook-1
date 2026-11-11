@@ -11,7 +11,7 @@
  *  - 한 카드를 한 번에 한 칸씩(상황, 과제, 행동, 결과 순) 쓴다. 커서는 지금 쓰는 칸 하나에만 있다.
  *  - 서버는 카드를 두 장씩 동시에 쓰므로 뒤 카드가 먼저 쓰기 시작할 수 있다. 그래도 화면은 한 장씩 차례로 보인다:
  *    보이는 카드는 서버에서 끝났든(DONE·FAILED) 뒤 카드가 시작했든 끝까지 펼친 뒤 DWELL_MS 쉬고 넘어간다.
- *    뒤에 끝난 카드가 CATCH_UP_BACKLOG 장 이상 밀려 있을 때만 남은 글을 바로 마치고 따라잡는다.
+ *    뒤에 끝난 카드가 CATCH_UP_BACKLOG 장 이상 밀려 있으면 남은 글을 CATCH_UP_FAST_CPS 로 빠르게 쓰고 쉬지 않고 넘어가 따라잡는다 — 글이 한꺼번에 나타나거나 결과 칸이 비어 보인 채 넘어가지는 않는다.
  *  - 칸의 round 가 오르거나 글이 앞부분을 이어 쓰지 않고 바뀌면 거꾸로 지우되 달라지는 곳까지만 지우고, 0.3초 쉬고 다시 쓴다.
  *    지우는 데 ERASE_MAX_MS, 지우고 쉬고 다시 쓰는 데 REWRITE_MAX_MS 를 넘기지 않는다. 이 시간은 칸마다 그 칸의 차례가 온 때부터 센다
  *    (뒤 칸의 시간이 앞 칸을 쓰는 동안 흘러가 버리면 뒤 칸이 한꺼번에 나타난다). 상한이 가까우면 한꺼번에 보이지 않고 속도를 올려 맞춘다.
@@ -23,6 +23,8 @@ import type { DraftLive, DraftLiveSlot, DraftLiveState, DraftStep, StarField } f
 /** 한 문장이 타자처럼 보이려면 초당 20자대여야 한다. 40자면 한 줄이 통째로 나타나는 것처럼 읽힌다 */
 export const TYPING_CPS = 20;
 export const CATCH_UP_CPS = 30;
+/** 끝난 카드가 CATCH_UP_BACKLOG 장 이상 밀렸을 때의 속도 — 읽히는 한도 안에서 가장 빠르게 */
+export const CATCH_UP_FAST_CPS = 120;
 /** 고쳐 쓴 글의 달라진 뒷부분은 이미 한 번 본 문장이라 조금 빠르게 다시 쓴다 */
 export const REWRITE_CPS = 30;
 /** 고칠 때는 달라지는 곳까지만 거꾸로 지운다. 지우기는 빠르고 상한이 있다 */
@@ -311,7 +313,7 @@ export class DraftPlayback {
     if (!card) return;
     // 끝난 카드 하나가 기다리는 것은 두 장씩 쓰는 서버에서 늘 있는 일이라 보통 속도로 두고, 둘부터 조금 빨리 따라잡는다
     const behind = this.cards.slice(this.shownIndex() + 1).filter(isOver).length;
-    const base = (behind >= CATCH_UP_BACKLOG - 1 ? CATCH_UP_CPS : TYPING_CPS) / 1000;
+    const base = (behind >= CATCH_UP_BACKLOG ? CATCH_UP_FAST_CPS : behind >= CATCH_UP_BACKLOG - 1 ? CATCH_UP_CPS : TYPING_CPS) / 1000;
     const retype = Math.max(base, REWRITE_CPS / 1000);
     let ms = elapsed;
     for (let guard = 0; guard < 16 && ms > 0; guard += 1) {
@@ -407,9 +409,9 @@ export class DraftPlayback {
       const next = this.cards[index + 1];
       if (!next) return;
       // 뒤 카드가 쓰기 시작했다고 앞 카드를 끊지 않는다 — 서버가 두 장씩 쓰면 뒤 카드는 늘 먼저 시작해 있어서,
-      // 끊으면 글이 한 글자씩 펼쳐지지 않고 한꺼번에 보인다. 끝난 카드가 많이 밀렸을 때만 따라잡는다
+      // 끊으면 글이 한 글자씩 펼쳐지지 않고 한꺼번에 보인다. 끝난 카드가 많이 밀렸을 때는 tick 이 빠르게 쓰고, 다 쓰이면 쉬지 않고 넘어간다
       if (isOver(card) && this.cards.slice(index + 1).filter(isOver).length >= CATCH_UP_BACKLOG) {
-        this.flush(run);
+        if (!done) return;
         this.start(index + 1);
         continue;
       }

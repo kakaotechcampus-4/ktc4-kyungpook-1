@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DraftLive, DraftStep, type StarField } from '@/api/schemas';
-import { CATCH_UP_BACKLOG, CATCH_UP_CPS, DWELL_MS, DraftPlayback, ENDED_MAX_MS, ERASE_CPS, ERASE_MAX_MS, REWRITE_CPS, REWRITE_MAX_MS, REWRITE_PAUSE_MS, TYPING_CPS } from '@/lib/liveDraft';
+import { CATCH_UP_BACKLOG, CATCH_UP_CPS, CATCH_UP_FAST_CPS, DWELL_MS, DraftPlayback, ENDED_MAX_MS, ERASE_CPS, ERASE_MAX_MS, REWRITE_CPS, REWRITE_MAX_MS, REWRITE_PAUSE_MS, TYPING_CPS } from '@/lib/liveDraft';
 
 /** #617 카드 초안 펼침 모델 — 시계를 직접 읽지 않으므로 시각(ms)을 넣어 가며 시험한다 */
 const T0 = 1_000_000;
@@ -608,16 +608,21 @@ describe('#953 서버가 두 장씩 동시에 써도 화면은 한 장씩', () =
     expect(pb.view().current!.cardId).toBe('b');
   });
 
-  it('뒤에 끝난 카드가 CATCH_UP_BACKLOG 장 이상 밀려 있으면 남은 글을 바로 마치고 따라잡는다 (#980)', () => {
+  it('뒤에 끝난 카드가 CATCH_UP_BACKLOG 장 이상 밀려 있으면 남은 글을 한꺼번에 채우지 않고 CATCH_UP_FAST_CPS 로 빠르게 쓴 뒤 쉬지 않고 넘어간다 (#980)', () => {
     const behind = Array.from({ length: CATCH_UP_BACKLOG }, (_, i) => card(`b${i}`, 'DONE', four(40)));
     const pb = player([card('a', 'WRITING', four(40)), ...behind.map((c) => card(c.cardId, 'WAITING')), card('c', 'WAITING')]);
     pb.receive([card('a', 'DONE', four(40)), ...behind, card('c', 'WRITING', four(40))], { ended: false, now: T0 });
     pb.advance(T0 + 500);
-    const view = pb.view();
-    expect(view.finished.map((c) => c.cardId)).toEqual(['a']); // a 는 바로 마쳤다
+    let view = pb.view();
+    expect(view.current!.cardId).toBe('a'); // 밀려도 a 를 바로 마치지 않는다
+    expect(typed(pb, 'S')).toBe(40); // 0.5초면 S 는 다 쓰였고(120자/초)
+    expect(typed(pb, 'T')).toBeGreaterThanOrEqual(15); // T 는 그 속도로 쓰는 중(0.17초분, 틱 반올림 여유)
+    expect(typed(pb, 'T')).toBeLessThanOrEqual(20);
+    expect(CATCH_UP_FAST_CPS).toBeGreaterThan(CATCH_UP_CPS);
+    pb.advance(T0 + Math.ceil((160 / CATCH_UP_FAST_CPS) * 1000) + 50); // 네 칸 160자를 다 쓰면 DWELL_MS 를 기다리지 않고 넘어간다
+    view = pb.view();
+    expect(view.finished.map((c) => c.cardId)).toEqual(['a']);
     expect(view.finished[0].slots.every((s) => s.phase === 'DONE')).toBe(true);
-    expect(view.current!.cardId).toBe('b0'); // 밀린 카드가 하나 줄었으니 b0 부터는 다시 펼친다 — 뒤에 끝난 카드가 남아 따라잡는 속도다
-    expect(typed(pb, 'S')).toBe(Math.floor(0.5 * CATCH_UP_CPS));
-    expect(typed(pb, 'T')).toBe(0);
+    expect(view.current!.cardId).toBe('b0');
   });
 });

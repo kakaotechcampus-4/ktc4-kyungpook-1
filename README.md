@@ -115,6 +115,18 @@ AI 는 **판단만** 맡습니다. 근거와 수치는 코드가 검사하고, �
 
 **에이전트 프레임워크(LangGraph · LangChain)는 일부러 쓰지 않았습니다.** 모델 호출은 OpenAI 호환 API 하나뿐이고, 단계 분기 · 상한 · 되돌리기를 코드 줄로 두면 단위 시험과 변이 확인으로 잡을 수 있기 때문입니다. 홈 한 줄 명령의 도구 호출 루프, STAR 초안의 고쳐 쓰기 루프, 되묻기 루프는 각각 상태와 상한을 가진 일반 함수입니다. 분기가 더 늘어나면 그때 옮길 계획입니다. 이유와 다른 선택지는 [기술 결정 116번](./docs/tech-decisions.md#116-에이전트-프레임워크--langgraph를-쓸까-직접-짤까-ai-2026-11-11)에 있습니다.
 
+**실행 과정은 사용자 화면에 남고, 글 원문은 밖으로 나가지 않습니다.** AI 가 무엇을 어떤 순서로 했는지는 그 사용자의 화면에서 확인합니다.
+
+| 어디서 | 무엇이 보이나 |
+| --- | --- |
+| 홈 한 줄 명령 | 부른 도구의 순서와 단계마다 나온 결과가 대화로 남음 |
+| 경험 카드 | 'AI 가 한 일' — 쓰기 → 검사 → 자료 열기 · 다시 쓰기 · 되돌림 (`card_draft_step` 에 저장) |
+| 레포 정리 | 읽은 PR·커밋과 같은 일로 묶은 이유 |
+| 자소서 | 카드 고르기 → 질문 → 초안 → 첨삭의 각 단계와 대화 (`cover_letter_turn` 에 저장) |
+
+운영자가 보는 것은 AI 호출 기록 `ai_call`(경로 · 모델 · 토큰 · 끝난 방식 · 걸린 시간)과 CloudWatch 로그(예외 종류만)뿐입니다. 사용자 글 · 카드 본문 · 모델 응답 원문은 로그에 남기지 않고 Langfuse 같은 외부 추적 도구로도 보내지 않으므로, 관리자 화면은 따로 두지 않았습니다.
+개인정보는 GitHub 권한 `read:user` 하나(공개 저장소만)로 시작하고, 모델에 보내기 전에 토큰 · 키 · 이메일을 가리며, 탈퇴하면 DB 의 정보를 지웁니다(서버 로그와 백업은 7일 뒤 사라짐). 처리 항목과 보관 기간은 [개인정보처리방침](https://gitory.duckdns.org/privacy)에 있고, 시연과 채점용 둘러보기는 로그인 없는 샘플 데이터로 돌아 실제 사용자 정보가 들어가지 않습니다.
+
 ## 🧱 서비스 구성
 
 [![EC2의 Docker Compose에서 Caddy·React, Spring Boot, FastAPI, PostgreSQL, Redis, ChromaDB가 연결되고 GitHub·LLM·채용 사이트·Gmail·CloudWatch와 통신하는 Gitory 시스템 아키텍처](./docs/images/architecture/system-architecture.svg)](./docs/images/architecture/system-architecture.svg)

@@ -4,10 +4,11 @@ import { freshSeed, loginAsDemo, showCardTiles } from './helpers';
 test('sample landing explains GitHub records and card output without a false expired-session notice', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await freshSeed(page); await page.goto('/login?reason=expired');
-  await expect(page.getByLabel('GitHub 기록 예시')).toBeVisible();
-  await expect(page.getByLabel('경험 카드 예시')).toBeVisible();
+  const hero = page.locator('.landing__hero');
+  await expect(hero.getByLabel('레포 고르기부터 자소서 초안까지 이어지는 시연 영상')).toBeVisible();
+  await expect(hero.getByAltText('휴대폰에서 본 자소서 초안 화면')).toBeVisible();
   await expect(page.getByText('로그인이 만료됐어요. 다시 시작해 주세요.')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: '샘플로 체험하기', exact: true })).toBeVisible();
+  await expect(hero.getByRole('button', { name: '샘플로 체험하기', exact: true })).toBeVisible();
 });
 
 test('first, middle and last selected repository rows retain geometry and rounded end corners', async ({ page }) => {

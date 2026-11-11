@@ -212,7 +212,7 @@ describe('로그인 화면 (#520 L-01 · L-03)', () => {
   it('소개 문장은 "레포"와 "한 일"을 쓴다(저장소, 작업 아님)', () => {
     landing('/login');
     const lead = document.querySelector('.landing__lead')!.textContent!.replace(/\s+/g, ' ');
-    expect(lead).toContain('레포를 고르면 내가 한 일을 찾아 상황, 과제, 행동, 결과로 정리해요.');
+    expect(lead).toContain('레포만 고르면, 내가 한 일이 경험 카드와 자소서 초안이 돼요.');
     expect(lead).not.toMatch(/저장소|작업/);
   });
 

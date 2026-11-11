@@ -5,10 +5,18 @@ import { Wordmark } from '@/components/layout/AppShell';
 export const LANDING_HOLD_EXTENSION_MS = 138;
 const INTRO_DURATION_MS = 1600 + LANDING_HOLD_EXTENSION_MS;
 
+/** 로고 인트로는 탭(세션)마다 처음 한 번만. 새로고침이나 다시 들어올 때는 바로 본문을 보인다. ?intro=1 이면 다시 튼다 */
+const SEEN_KEY = 'gitory.landing-intro.seen';
+
 export function shouldPlayLandingIntro(params: URLSearchParams): boolean {
   if (params.get('consent') === '1') return false;
   if (typeof window === 'undefined' || !window.matchMedia || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
-  return true;
+  if (params.get('intro') === '1') return true;
+  try { return sessionStorage.getItem(SEEN_KEY) !== '1'; } catch { return true; }
+}
+
+export function markLandingIntroSeen() {
+  try { sessionStorage.setItem(SEEN_KEY, '1'); } catch { /* 저장 못 하면 다음에도 인트로가 나올 뿐이다 */ }
 }
 
 /** One wordmark travels to its real header slot; the two clipped parts retain the original artwork. */

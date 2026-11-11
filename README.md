@@ -81,6 +81,10 @@ Gitory 는 **개발자 취업 준비생이 GitHub 기록에서 자신의 기여�
 
 <p align="center"><img src="./docs/images/readme/gif/cover-letter-fill.gif?v=20261111e" width="880" alt="자소서 대화 탭. 한 줄로 알려 주면 종이의 그 자리를 다시 쓴다" /></p>
 
+초안이 나오면 AI 가 그 글을 다시 읽고 아쉬운 점과 잘한 점을 짚어 고친 글을 내놓습니다. 적용하기 전까지 종이는 그대로이고, 적용해도 원본은 남습니다.
+
+<p align="center"><img src="./docs/images/readme/gif/cover-letter-polish.gif?v=20261111f" width="880" alt="자소서 진단과 첨삭 탭. 첨삭 받기를 누르면 살펴보는 중, 고치는 중을 거쳐 종합 평가와 포인트가 나오고, 적용하기를 누르면 종이의 글이 바뀐다" /></p>
+
 ## 🧠 Agentic AI 설계
 
 AI 는 **판단만** 맡습니다. 근거와 수치는 코드가 검사하고, 실행과 저장은 서버가 하며, 확인할 칸이 남은 카드는 확정하지 않습니다.

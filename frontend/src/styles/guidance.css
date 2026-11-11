@@ -189,3 +189,5 @@
 .sample-band { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; padding: 10px clamp(16px, 3vw, 56px); background: var(--state-open-bg); border-bottom: 1px solid var(--field-low-border); }
 .sample-band__text { font-size: 14px; line-height: 20px; color: var(--state-open-text); min-width: 0; flex: 1 1 240px; }
 .sample-band__actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.sample-link { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin-top: 12px; }
+.sample-link__btn { padding: 4px 0; background: none; border: 0; font: inherit; font-size: 14px; font-weight: var(--weight-bold); color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }

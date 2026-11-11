@@ -34,20 +34,15 @@ test('field edit has a phone-sized target and focuses the requested field', asyn
   await expect(page).toHaveURL(/mode=edit&field=A/);
 });
 
-test('mobile landing stacks each claim as text above its screen without sideways scroll', async ({ page }) => {
+test('mobile landing shows the output before another screen and expands complete examples', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await freshSeed(page); await page.goto('/login?reason=expired');
-  const claims = page.locator('.lp-claim');
-  await expect(claims).toHaveCount(3);
-  for (let i = 0; i < 3; i++) {
-    const claim = claims.nth(i);
-    await claim.scrollIntoViewIfNeeded();
-    const text = (await claim.locator('.lp-claim__text').boundingBox())!;
-    const shot = (await claim.locator('.lp-claim__shot').boundingBox())!;
-    expect(shot.y).toBeGreaterThan(text.y);
-    expect(Math.round(shot.x)).toBe(Math.round(text.x));
-  }
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const output = page.getByLabel('경험 카드 예시');
+  expect((await output.boundingBox())!.y).toBeLessThan(650);
+  await expect(page.locator('.landing-card__field[data-slot=T]')).toBeHidden();
+  await page.getByRole('button', { name: '전체 예시 보기', exact: true }).click();
+  await expect(page.locator('.landing-card__field[data-slot=T]')).toBeVisible();
+  await expect(page.locator('.github-snapshot__commits li')).toHaveCount(3);
 });
 
 test('settings prioritizes controls and keeps storage details available on demand', async ({ page }) => {

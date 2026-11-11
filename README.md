@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="./docs/images/readme/hero.png" width="100%" alt="Gitory 소개 이미지. 왼쪽에 '커밋과 PR에서 시작하는 나의 다음 지원'이라는 제목과 경험 카드·공고 매칭·자소서 세 기능, 오른쪽에 지원할 공고를 보여 주는 홈 화면과 상황·과제·행동·결과가 채워진 경험 카드 화면" />
+  <img src="./docs/images/readme/hero.png?v=20261111b" width="100%" alt="Gitory 소개 이미지. 왼쪽에 '커밋과 PR이 자소서가 되기까지'라는 제목과 경험 카드·공고 매칭·자소서 세 기능, 오른쪽에 지원할 공고를 보여 주는 홈 화면과 상황·과제·행동·결과가 채워진 경험 카드 화면" />
 </p>
 
 <div align="center">
   <h1>Gitory</h1>
-  <p><strong>커밋과 PR에서 시작하는 나의 다음 지원</strong></p>
+  <p><strong>커밋과 PR이 자소서가 되기까지</strong></p>
   <p>GitHub 기록을 근거가 연결된 경험 카드로 정리하고,<br />내 경험에 맞는 채용 공고와 자소서 초안으로 이어갑니다.</p>
   <p>카카오테크 캠퍼스 4기 · 경북대 1팀</p>
   <p>

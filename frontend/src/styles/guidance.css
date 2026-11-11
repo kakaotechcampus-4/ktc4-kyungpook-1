@@ -115,9 +115,8 @@
 .profile-menu__trigger:hover, .profile-menu__trigger[aria-expanded="true"] { background: var(--bg-subtle); }
 .profile-menu__name { flex: 1; min-width: 0; font-size: 14px; font-weight: var(--weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .profile-menu__chev { color: var(--text-tertiary); flex: 0 0 auto; }
-.profile-menu__pop { position: absolute; z-index: 50; min-width: 200px; padding: 6px; border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border-default); box-shadow: var(--shadow-menu); animation: menu-in .15s cubic-bezier(.4, 0, .2, 1); }
-.profile-menu--sidebar .profile-menu__pop { left: 0; right: 0; bottom: calc(100% + 6px); }
-.profile-menu--mobile .profile-menu__pop { right: 0; top: calc(100% + 6px); }
+/* 메뉴는 body 로 꺼내 화면 기준(fixed)에 둔다. 자리는 ProfileMenu 가 정한다 — 사이드바 안에 두면 overflow-x: hidden 에 잘린다 */
+.profile-menu__pop { position: fixed; z-index: 50; box-sizing: border-box; min-width: 200px; max-width: calc(100vw - 16px); padding: 6px; border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border-default); box-shadow: var(--shadow-menu); animation: menu-in .15s cubic-bezier(.4, 0, .2, 1); }
 @keyframes menu-in { from { opacity: 0; transform: translateY(4px) scale(.98); } }
 .profile-menu__item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--control-touch-size); padding: 10px 12px; border-radius: var(--control-radius); font-size: 14px; font-weight: var(--weight-regular); color: var(--text-strong); text-align: left; }
 .profile-menu__item svg { color: var(--text-secondary); }
@@ -128,14 +127,14 @@
 .profile-menu--mobile .profile-menu__name { font-size: 12px; font-weight: var(--weight-regular); color: var(--text-secondary); max-width: 40vw; }
 .shell--rail .profile-menu__name, .shell--rail .profile-menu__chev { display: none; }
 .shell--rail .profile-menu__trigger { justify-content: center; padding-inline: 0; }
-.shell--rail .profile-menu--sidebar .profile-menu__pop { right: auto; width: 200px; }
+/* layout-tio.css 가 접힌 사이드바에서 프로필 안의 div 를 모두 숨기므로, 프로필 메뉴만 되살려 아바타를 남긴다(태블릿은 아래에서 같은 일을 한다) */
+.shell--rail .sidebar__profile > .profile-menu { display: block; }
 @media (prefers-reduced-motion: reduce) { .profile-menu__pop { animation: none; } }
 /* 태블릿 접힌 사이드바: responsive.css 가 프로필 안 글자 묶음(> div)을 숨기므로 메뉴 자체는 되살리고 아바타만 남긴다 */
 @media (min-width: 768px) and (max-width: 1199px) {
   .sidebar__profile > .profile-menu { display: block !important; }
   .profile-menu__name, .profile-menu__chev { display: none; }
   .profile-menu__trigger { justify-content: center; padding-inline: 0; }
-  .profile-menu--sidebar .profile-menu__pop { right: auto; width: 200px; }
 }
 
 /* ───────── GitHub 연결 끊김 띠 ───────── */

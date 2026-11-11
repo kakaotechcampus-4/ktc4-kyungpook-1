@@ -45,13 +45,12 @@ type Holder = {
  *   카드가 이미 완성으로 바뀌어도(generating 이 false) true 일 수 있다. 이 화면을 보고 있던 경우에만이고,
  *   Job 이 실패하거나 취소됐을 때는 붙잡지 않는다. 카드가 먼저 바뀌고 Job 의 끝 상태가 늦게 오는 순서도 있어서
  *   화면이 보던 Job 을 직접 끝까지 읽는다(카드의 Job 조회는 generation 이 사라지면 꺼진다).
- * - 동작 줄이기를 켰거나 '한 번에 보기'를 누르면 글을 펼치지 않고 오는 대로 한 번에 보인다.
+ * - 동작 줄이기를 켜면 글을 펼치지 않고 오는 대로 한 번에 보인다.
  */
 export function useLiveDraft(options: { scope: string; jobId: string | undefined; generating: boolean }) {
   const { scope, jobId, generating } = options;
   const reducedMotion = usePrefersReducedMotion();
-  const [manualInstant, setManualInstant] = useState(false);
-  const instant = reducedMotion || manualInstant;
+  const instant = reducedMotion;
   const [, redraw] = useReducer((count: number) => count + 1, 0);
 
   const ref = useRef<Holder | null>(null);
@@ -112,7 +111,5 @@ export function useLiveDraft(options: { scope: string; jobId: string | undefined
     /** 홀드 중 진행 막대에 쓸 Job. 카드가 완성으로 바뀌면 카드가 따라가던 Job 조회가 꺼져 화면이 가진 Job 이 없어지기 때문이다 */
     job,
     reducedMotion,
-    manualInstant,
-    setManualInstant,
   };
 }

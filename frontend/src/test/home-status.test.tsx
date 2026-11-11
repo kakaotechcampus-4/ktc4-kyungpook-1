@@ -1,59 +1,21 @@
 import type { ReactNode } from 'react';
-import { cleanup, render, renderHook, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, renderHook, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { endpoints } from '@/api/endpoints';
-import { keys } from '@/api/keys';
 import { matchingApi, OverallRecommendation, RepoRecommendation } from '@/api/matching';
 import { CardSummary } from '@/api/schemas';
-import { AppShell } from '@/components/layout/AppShell';
-import { HomePage } from '@/features/home/HomePage';
 import { HomeHero } from '@/features/home/HomeSections';
 import { useHomePicks } from '@/features/home/useHomePicks';
-import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
-import { connectMockServer, mountApp, page, type Call } from './profileHarness';
+import { mountApp, page } from './profileHarness';
 
 vi.mock('@/lib/track', () => ({ track: vi.fn() }));
 vi.mock('@/lib/jobWatcher', () => ({ JobWatcher: () => null, releaseJobToast: vi.fn(), suppressJobToast: vi.fn() }));
 beforeEach(() => { resetDb(); localStorage.clear(); });
 afterEach(() => { cleanup(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
-const mockCards = () => handle('GET', '/cards', new URLSearchParams(), {}, true).data as CardSummary[];
-const json = (data: unknown) => new Response(JSON.stringify({ data, error: null }), { status: 200 });
-const runningJob = { jobId: 'job_1', state: 'RUNNING', type: 'ANALYZE', userRepositoryId: 'r_auth', repoName: 'auth-service', startedAt: '2026-11-05T00:00:00Z', pollAfterMs: 60_000 };
-const noCards = (jobs: unknown[]) => (call: Call) => (call.path === '/cards' ? json([]) : call.path.startsWith('/jobs?') ? json({ jobs }) : undefined);
 
-describe('홈의 상태 화면', () => {
-  it('처음 온 사람(카드 0장, 도는 작업 없음)에게는 이어서 하기 자리에 레포를 하나 골라 보라는 안내와 레포 고르기 링크가 보인다', async () => {
-    connectMockServer(noCards([]));
-    mountApp([page(<HomePage />, '/')], '/');
-
-    const todo = await screen.findByRole('region', { name: '이어서 하기' });
-    await within(todo).findByText('레포를 하나 골라 보세요');
-    expect(within(todo).getByRole('link', { name: /레포 고르기/ })).toHaveAttribute('href', '/repos');
-    cleanup();
-
-    connectMockServer(noCards([runningJob]));
-    mountApp([page(<HomePage />, '/')], '/');
-    const running = await screen.findByRole('region', { name: /^이어서 하기/ });
-    await within(running).findByText('auth-service');
-    expect(within(running).queryByText('레포를 하나 골라 보세요')).not.toBeInTheDocument();
-  });
-
-  it('지금 상태는 레포, 경험 카드, 공고, 자소서 순서이고, 확정하지 않은 카드가 있으면 경험 카드 칸에 확인할 카드 수가 보이며 가장 먼저 걸린 작성 중 카드로 간다', async () => {
-    const drafts = mockCards().filter((card) => card.status === 'DRAFT');
-    expect(drafts.length).toBeGreaterThan(1);
-    connectMockServer();
-    mountApp([page(<HomePage />, '/')], '/');
-
-    await screen.findByText(`확인할 카드 ${drafts.length}장`);
-    const tiles = within(screen.getByRole('region', { name: '지금 상태' })).getAllByRole('link');
-    expect(tiles.map((tile) => tile.textContent?.match(/^(레포|경험 카드|공고|자소서)/)?.[0])).toEqual(['레포', '경험 카드', '공고', '자소서']);
-    expect(tiles[1]).toHaveAttribute('href', `/cards/${drafts[0].id}`);
-  });
-
+describe('홈의 한 줄 입력', () => {
   it('한 줄 입력은 VITE_ASSISTANT_ENABLED 가 true 일 때만 보이고, 꺼져 있으면 자주 하는 일 버튼만 보인다', () => {
     vi.stubEnv('VITE_ASSISTANT_ENABLED', 'false');
     mountApp([page(<HomeHero />, '/')], '/');

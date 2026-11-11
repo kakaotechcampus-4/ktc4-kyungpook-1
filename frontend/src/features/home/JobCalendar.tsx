@@ -1,17 +1,19 @@
 import { useId, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CalendarDays, ChevronLeft, ChevronRight, ExternalLink, Plus, X } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button, TitleCount } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
-import { calendarStorageKey, dateKey, daysUntil, monthDays, readSchedules, safeScheduleUrl, scheduleKinds, type JobSchedule, type ScheduleKind } from './calendarModel';
+import { calendarStorageKey, dateKey, daysUntil, monthDays, readSchedules, safeScheduleUrl, scheduleKinds, scheduleShort, type JobSchedule, type ScheduleKind } from './calendarModel';
 
-/** 마감일을 캘린더에 자동으로 띄울 공고 — 홈은 공고 목록 전체가 아니라 '나와 맞는 기업' 의 공고만 넘긴다 */
+/** 마감일을 캘린더에 자동으로 띄울 공고 — 공고 매칭 화면은 받은 목록에서 마감일이 있는 공고 전부를, 홈은 '나와 맞는 기업' 의 공고만 넘긴다 */
 export type CalendarPosting = { id: string; company: string; role: string; expiresAt: string | null; url: string | null };
 
 const weekdayNames = ['일', '월', '화', '수', '목', '금', '토'];
 // 색은 마감(호박)과 나머지(회색) 둘뿐이라 범례도 두 줄로 묶는다
 const legend = [['deadline', scheduleKinds.deadline], ['other', [scheduleKinds.interview, scheduleKinds.result, scheduleKinds.other].join(', ')]] as const;
 const readableDate = (key: string) => new Date(`${key}T12:00:00`).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
+/** 다가오는 일정 줄 — '11월 12일 목요일 마감'처럼 날짜와 종류가 한 덩어리로 읽히게 요일을 풀어 쓴다 */
+const longDate = (key: string) => new Date(`${key}T12:00:00`).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' });
 
 export function JobCalendar({ userId, postings = [], postingsLoading = false, postingsError = false, onRetryPostings }: { userId: string; postings?: CalendarPosting[]; postingsLoading?: boolean; postingsError?: boolean; onRetryPostings?: () => void }) {
   const storageKey = calendarStorageKey(userId);
@@ -66,8 +68,8 @@ export function JobCalendar({ userId, postings = [], postingsLoading = false, po
   };
   return <section className="job-calendar" aria-labelledby={`${formId}-heading`}>
     <div className="job-calendar__head">
-      <div><span className="home-eyebrow">MY CAREER PLAN</span><h2 id={`${formId}-heading`}>캘린더</h2><p>관심 있는 공고부터 면접까지, 다음 일정을 한눈에 확인하세요.</p></div>
-      <Button onClick={add} disabled={Boolean(initial.error)}><Plus size={16} /> 일정 등록</Button>
+      <div><h2 id={`${formId}-heading`}>캘린더</h2></div>
+      <Button variant="secondary" onClick={add} disabled={Boolean(initial.error)}><Plus size={16} /> 일정 등록</Button>
     </div>
     {error && !editing && <p className="calendar-error" role="alert">{error}</p>}
     {postingsLoading && <p className="calendar-storage-note" role="status">공고 마감일을 불러오고 있어요.</p>}
@@ -84,7 +86,7 @@ export function JobCalendar({ userId, postings = [], postingsLoading = false, po
             const key = dateKey(day); const dayEvents = allEvents.filter(event => event.date === key);
             return <div key={key} className={`calendar-day ${day.getMonth() !== month.getMonth() ? 'calendar-day--outside' : ''} ${key === selected ? 'calendar-day--selected' : ''}`}>
               <button type="button" className={`calendar-day__number ${key === today ? 'calendar-day__number--today' : ''}`} aria-label={`${readableDate(key)}, 일정 ${dayEvents.length}개`} aria-pressed={key === selected} aria-current={key === today ? 'date' : undefined} onClick={() => { setSelected(key); if (day.getMonth() !== month.getMonth()) setMonth(new Date(day.getFullYear(), day.getMonth(), 1)); }}>{day.getDate()}</button>
-              {dayEvents.slice(0, 2).map(event => <button type="button" key={event.id} className={`calendar-event calendar-event--${event.kind}`} title={`${event.company}, ${scheduleKinds[event.kind]}`} aria-label={`${event.company}, ${scheduleKinds[event.kind]}`} onClick={() => open(event)}><span>{event.company}</span><span>{scheduleKinds[event.kind]}</span></button>)}
+              {dayEvents.slice(0, 2).map(event => <button type="button" key={event.id} className={`calendar-event calendar-event--${event.kind}`} title={`${event.company}, ${scheduleKinds[event.kind]}`} aria-label={`${event.company}, ${scheduleKinds[event.kind]}`} onClick={() => open(event)}><span>{event.company}</span><span>{scheduleShort[event.kind]}</span></button>)}
               {dayEvents.length > 2 && <button type="button" className="calendar-day__more" onClick={() => setSelected(key)}>+{dayEvents.length - 2}개 더 보기</button>}
             </div>;
           })}
@@ -92,16 +94,16 @@ export function JobCalendar({ userId, postings = [], postingsLoading = false, po
         <div className="calendar-legend">{legend.map(([kind, label]) => <span key={kind}><i className={`calendar-dot calendar-dot--${kind}`} />{label}</span>)}</div>
       </div>
       <aside className="calendar-agenda" data-has-events="true" aria-label="채용 일정 목록">
-        <div className="calendar-agenda__upcoming"><span className="home-eyebrow">UP NEXT</span><h3>다가오는 일정 <span>{upcoming.length}</span></h3>
+        <div className="calendar-agenda__upcoming"><h3>다가오는 일정<TitleCount n={upcoming.length} /></h3>
           {upcoming.length ? upcoming.map(event => {
             const diff = daysUntil(event.date, today);
-            return <button type="button" className="agenda-event" key={event.id} onClick={() => open(event)}><span className={`agenda-event__count agenda-event__count--${event.kind}`}>{diff === 0 ? '오늘' : `D-${diff}`}</span><span><strong>{event.company}</strong><small>{event.role || scheduleKinds[event.kind]}</small><small>{readableDate(event.date)}, {scheduleKinds[event.kind]}</small></span></button>;
-          }) : <div className="calendar-empty"><CalendarDays size={28} strokeWidth={1.4} /><strong>다음 기회를 준비해요</strong><p>관심 기업의 공고 마감일을<br />첫 일정으로 등록해 보세요.</p><Button variant="outline" size="sm" onClick={add} disabled={Boolean(initial.error)}><Plus size={14} /> 첫 일정 등록</Button></div>}
+            return <button type="button" className="agenda-event" key={event.id} onClick={() => open(event)}><span className={`agenda-event__count agenda-event__count--${event.kind}`}>{diff === 0 ? '오늘' : `D-${diff}`}</span><span><strong>{event.company}</strong>{event.role && <small>{event.role}</small>}<small>{longDate(event.date)} {scheduleShort[event.kind]}</small></span></button>;
+          }) : <div className="calendar-empty"><CalendarDays size={28} strokeWidth={1.4} /><strong>다음 기회를 준비해요</strong><p>관심 기업의 공고 마감일을<br />첫 일정으로 등록해 보세요.</p><Button variant="secondary" size="sm" onClick={add} disabled={Boolean(initial.error)}><Plus size={14} /> 첫 일정 등록</Button></div>}
         </div>
         <div className="calendar-agenda__selected"><h3>{readableDate(selected)} <span>{selectedEvents.length}건</span></h3><div className="calendar-agenda__list" role="region" aria-label={`${readableDate(selected)} 공고 및 일정`} tabIndex={selectedEvents.length ? 0 : undefined}>{selectedEvents.length ? selectedEvents.map(event => <div className="selected-event" key={event.id}>{automaticIds.has(event.id) ? <Link className="selected-event__posting" to={`/match/${encodeURIComponent(event.matchId!)}`}><i className="calendar-dot calendar-dot--deadline" /><span><strong>{event.company}</strong><small>{event.role}</small><small>지원 마감, 공고 보기</small></span></Link> : <button type="button" onClick={() => open(event)}><i className={`calendar-dot calendar-dot--${event.kind}`} /><span><strong>{event.company}</strong><small>{event.role ? `${event.role}, ` : ''}{scheduleKinds[event.kind]}</small></span></button>}{event.url && <a href={event.url} target="_blank" rel="noopener noreferrer" aria-label={`${event.company} 공고 보기`}><ExternalLink size={15} /></a>}{event.matchId && !automaticIds.has(event.id) && <button type="button" className="selected-event__remove" aria-label={`${event.company} 일정 캘린더에서 빼기`} title="캘린더에서 빼기" onClick={() => write(events.filter(item => item.id !== event.id))}><X size={15} /></button>}</div>) : <p className="calendar-agenda__none">이 날짜에 마감하는 공고나 등록된 일정이 없어요.</p>}</div></div>
       </aside>
     </div>
-    {editing && <Modal title={editing.id ? '공고 일정 수정' : '공고 일정 등록'} width={500} onClose={() => { setEditing(null); setError(''); }} footer={{ strong: '나의 채용 일정', actions: <>{editing.id && <Button variant="danger" onClick={() => { if (write(events.filter(event => event.id !== editing.id))) setEditing(null); }}>삭제</Button>}<Button variant="outline" onClick={() => { setEditing(null); setError(''); }}>취소</Button><Button type="submit" form={formId}>저장</Button></> }}>
+    {editing && <Modal title={editing.id ? '공고 일정 수정' : '공고 일정 등록'} width={500} onClose={() => { setEditing(null); setError(''); }} footer={{ strong: '나의 채용 일정', actions: <>{editing.id && <Button variant="danger" onClick={() => { if (write(events.filter(event => event.id !== editing.id))) setEditing(null); }}>삭제</Button>}<Button variant="secondary" onClick={() => { setEditing(null); setError(''); }}>취소</Button><Button type="submit" form={formId}>저장</Button></> }}>
       <form id={formId} className="calendar-form" onSubmit={save}>
         {error && <p className="calendar-error" role="alert">{error}</p>}
         <label>기업명 <span>*</span><input className="input" required maxLength={60} value={editing.company} placeholder="예: 관심 기업 이름" onChange={e => setEditing({ ...editing, company: e.target.value })} /></label>

@@ -65,18 +65,21 @@ public class InterviewTurn {
 
     private String choiceReason;
 
+    private String exampleAnswer;
+
     private Instant askedAt;
 
     private Instant answeredAt;
 
     private InterviewTurn(Long cardId, short seq, StarField starSlot, QuestionType questionType,
                           String questionText, TriggerSource triggerSource, Long parentTurnId) {
-        this(cardId, seq, starSlot, questionType, questionText, triggerSource, parentTurnId, null, List.of(), null);
+        this(cardId, seq, starSlot, questionType, questionText, triggerSource, parentTurnId, null, List.of(), null, null);
     }
 
     private InterviewTurn(Long cardId, short seq, StarField starSlot, QuestionType questionType,
                           String questionText, TriggerSource triggerSource, Long parentTurnId,
-                          AnswerMode answerMode, List<String> suggestedAnswers, String choiceReason) {
+                          AnswerMode answerMode, List<String> suggestedAnswers, String choiceReason,
+                          String exampleAnswer) {
         this.cardId = cardId;
         this.seq = seq;
         this.starSlot = starSlot;
@@ -87,6 +90,7 @@ public class InterviewTurn {
         this.answerMode = answerMode;
         this.suggestedAnswers = new ArrayList<>(suggestedAnswers);
         this.choiceReason = choiceReason;
+        this.exampleAnswer = exampleAnswer;
         this.askedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
     }
 
@@ -102,18 +106,19 @@ public class InterviewTurn {
     }
 
     /**
-     * 되묻기 루프에서 AI 가 정한 칸·답 버튼·예상 답변·판단 이유로 질문을 만든다
+     * 되묻기 루프에서 AI 가 정한 칸·답 버튼·예상 답변·판단 이유·예시 답으로 질문을 만든다
      * 사용자가 칸을 지정했으면 USER, AI 가 칸을 골랐으면 AUTO 이고 AUTO 는 바로 앞 질문을 부모로 남긴다
      */
     public static InterviewTurn asked(Long cardId, short seq, StarField starSlot, QuestionType questionType,
                                       String questionText, boolean slotChosenByUser, Long previousTurnId,
-                                      AnswerMode answerMode, List<String> suggestedAnswers, String choiceReason) {
+                                      AnswerMode answerMode, List<String> suggestedAnswers, String choiceReason,
+                                      String exampleAnswer) {
 
         return slotChosenByUser
                 ? new InterviewTurn(cardId, seq, starSlot, questionType, questionText, TriggerSource.USER, null,
-                        answerMode, suggestedAnswers, choiceReason)
+                        answerMode, suggestedAnswers, choiceReason, exampleAnswer)
                 : new InterviewTurn(cardId, seq, starSlot, questionType, questionText, TriggerSource.AUTO,
-                        previousTurnId, answerMode, suggestedAnswers, choiceReason);
+                        previousTurnId, answerMode, suggestedAnswers, choiceReason, exampleAnswer);
 
     }
 
@@ -141,6 +146,13 @@ public class InterviewTurn {
 
         close(TurnOutcome.ANSWERED, text, source);
         this.answerOriginal = original;
+
+    }
+
+    /** AI 가 모자란 답이라 보아 카드에 넣지 않은 질문으로 닫고, 사용자가 친 답과 출처는 그대로 남긴다 */
+    public void insufficient(String text, AnswerSource source) {
+
+        close(TurnOutcome.INSUFFICIENT, text, source);
 
     }
 
@@ -191,11 +203,12 @@ public class InterviewTurn {
 
     }
 
-    /** 답했거나 넘겼거나 측정 결과를 정한 질문이면 true 이고, 결과가 없거나 LATER·INSUFFICIENT 인 질문은 아직 답을 기다린다 */
+    /** 답했거나 넘겼거나 측정 결과를 정했거나 모자란 답으로 닫은 질문이면 true 이고, 결과가 없거나 LATER 인 질문은 아직 답을 기다린다 */
     public boolean isClosed() {
 
         return outcome == TurnOutcome.ANSWERED || outcome == TurnOutcome.MEASURED
-                || outcome == TurnOutcome.NOT_MEASURED || outcome == TurnOutcome.SKIPPED;
+                || outcome == TurnOutcome.NOT_MEASURED || outcome == TurnOutcome.SKIPPED
+                || outcome == TurnOutcome.INSUFFICIENT;
 
     }
 

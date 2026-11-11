@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -78,10 +78,10 @@ describe('정리 실패 화면 — 서버가 모르는 오류 코드를 보내�
     expect(await screen.findByRole('button', { name: '다시 시도' })).toBeEnabled();
   });
 
-  it('부분 결과에 모르는 코드가 붙어도 읽은 범위의 후보로 가는 길이 남는다', async () => {
+  it('부분 결과에 모르는 코드가 붙어도 후보를 직접 고르는 길이 남는다', async () => {
     serve({ '/jobs/job_x': job({ state: 'SUCCEEDED', partial: true, errorCode: 'GITHUB_QUOTA_EXCEEDED' }) });
     mount(<AnalyzePage />, '/repos/r_auth/run?job=job_x', '/repos/:repoId/run');
-    expect(await screen.findByRole('button', { name: '읽은 범위의 후보 보기' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: '후보 직접 고르기' })).toBeInTheDocument();
     expect(screen.getByText(/서버가 작업을 끝내지 못했어요|서버에서 처리하지 못했어요/)).toBeInTheDocument();
   });
 
@@ -148,12 +148,11 @@ describe('카드 목록 — 카드 한 장에 모르는 값이 섞여도 나머�
     expect(screen.queryByText(/장을 표시하지 못했어요/)).not.toBeInTheDocument();
   });
 
-  it('홈도 같은 안내를 보이고, 읽은 카드는 그대로 둔다', async () => {
+  it('홈도 같은 안내를 보인다', async () => {
     serve({ '/cards': withUnknownKind(0) });
     mount(<HomePage />, '/');
     expect(await screen.findByText('카드 1장을 표시하지 못했어요')).toBeInTheDocument();
     expect(screen.queryByText(cards()[0].title)).not.toBeInTheDocument();
-    expect(screen.getAllByText(cards()[2].title).length).toBeGreaterThan(0);
   });
 });
 
@@ -171,12 +170,10 @@ describe('그 밖의 화면 — 모르는 값 하나로 앱이 막히지 않는�
     mount(<MatchListPage />, '/match');
     const card = (await screen.findByRole('heading', { name: list[0].role })).closest('article') as HTMLElement;
     // 목록 카드의 한 줄 요약은 '기타' 분야와 '경력 표시 없음' 을 그리지 않는다 — 원래 값(백엔드·신입)을 지어내지 않고 학력만 남는다
-    const facts = [...card.querySelectorAll('.posting-facts span')].map((el) => el.textContent);
-    expect(facts).toEqual(['학사↑']);
+    expect(card.querySelector('.posting-facts')?.textContent).toBe('학사↑');
     // 아는 값의 공고는 그대로다
     const other = (await screen.findByRole('heading', { name: list[1].role })).closest('article') as HTMLElement;
-    expect(within(other).getByText('백엔드')).toBeInTheDocument();
-    expect(within(other).getByText('신입')).toBeInTheDocument();
+    expect(other.querySelector('.posting-facts')?.textContent).toMatch(/^백엔드, 신입/);
   });
 
   it('레포의 기여 구분을 몰라도 레포 목록이 열린다', async () => {

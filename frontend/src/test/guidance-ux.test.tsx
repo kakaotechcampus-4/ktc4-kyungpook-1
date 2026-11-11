@@ -11,7 +11,7 @@ import { readCommit } from '@/lib/commitMessage';
 import { AiWait } from '@/components/ui/AiWait';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { GithubBanner } from '@/components/layout/GithubBanner';
-import { ProfileMenu } from '@/components/layout/ProfileMenu';
+import { ProfileMenu, placeProfileMenu } from '@/components/layout/ProfileMenu';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 
@@ -43,7 +43,7 @@ describe('GitHub 연결 끊김·권한 오류 안내 (#438)', () => {
   });
 
   it('조회 실패가 연결 문제면 GitHub 다시 연결 버튼을 붙인다', () => {
-    render(<QueryFailure error={new ApiError('GITHUB_UNAUTHORIZED', 'x', 403)} retry={() => {}} />);
+    withMe(<QueryFailure error={new ApiError('GITHUB_UNAUTHORIZED', 'x', 403)} retry={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: 'GitHub 다시 연결' }));
     expect(reconnect).toHaveBeenCalledOnce();
     expect(screen.queryByRole('button', { name: '다시 불러오기' })).not.toBeInTheDocument();
@@ -169,5 +169,74 @@ describe('프로필 메뉴 — 로그아웃을 찾기 쉽게', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
+  });
+
+  it('메뉴는 사이드바 안이 아니라 body 에 그려져 사이드바에 잘리지 않는다', () => {
+    const { container } = withMe(<div className="sidebar"><ProfileMenu variant="sidebar" /></div>);
+    fireEvent.click(screen.getByRole('button', { name: /계정 메뉴/ }));
+    const menu = screen.getByRole('menu');
+    expect(menu.parentElement).toBe(document.body);
+    expect(container.contains(menu)).toBe(false);
+    expect(menu.style.bottom).not.toBe(''); // 자리는 인라인 left·bottom 이다(fixed 는 CSS 가 준다)
+  });
+
+  it('열면 첫 항목에 초점이 가고, 위·아래 화살표로 옮기고, Tab 은 메뉴를 닫고 프로필 버튼으로 돌아온다', () => {
+    withMe(<ProfileMenu variant="sidebar" />);
+    const trigger = screen.getByRole('button', { name: /계정 메뉴/ });
+    fireEvent.click(trigger);
+    const first = screen.getByRole('menuitem', { name: '마이페이지' });
+    const theme = screen.getByRole('menuitem', { name: /다크 모드로|라이트 모드로/ });
+    const out = screen.getByRole('menuitem', { name: '로그아웃' });
+    expect(first).toHaveFocus();
+    fireEvent.keyDown(first, { key: 'ArrowDown' });
+    expect(theme).toHaveFocus();
+    fireEvent.keyDown(theme, { key: 'ArrowDown' });
+    expect(out).toHaveFocus();
+    fireEvent.keyDown(out, { key: 'ArrowDown' });
+    expect(first).toHaveFocus(); // 끝에서 처음으로
+    fireEvent.keyDown(first, { key: 'ArrowUp' });
+    expect(out).toHaveFocus();
+    fireEvent.keyDown(out, { key: 'Tab' });
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('바깥을 누르면 닫히지만 메뉴 안을 누르는 것은 닫지 않는다', () => {
+    withMe(<div><ProfileMenu variant="sidebar" /><p>본문</p></div>);
+    fireEvent.click(screen.getByRole('button', { name: /계정 메뉴/ }));
+    fireEvent.pointerDown(screen.getByRole('menuitem', { name: /다크 모드로|라이트 모드로/ }));
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    fireEvent.pointerDown(screen.getByText('본문'));
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+});
+
+describe('프로필 메뉴 자리 — 화면 안에서 본문 위에 뜬다', () => {
+  const rect = (left: number, top: number, width: number, height: number) => ({ left, top, width, height, right: left + width, bottom: top + height }) as DOMRect;
+  const vp = { width: 1440, height: 900 };
+
+  it('접힌 사이드바는 아바타 오른쪽에 200px 폭으로, 버튼 아래쪽에 맞춘다', () => {
+    const pos = placeProfileMenu('sidebar', rect(0, 840, 72, 44), vp);
+    expect(pos).toEqual({ left: 86, bottom: 16, width: 200 });
+  });
+
+  it('펼친 사이드바는 버튼 폭으로 버튼 바로 위에 둔다', () => {
+    const pos = placeProfileMenu('sidebar', rect(8, 820, 224, 44), vp);
+    expect(pos).toEqual({ left: 8, bottom: 86, width: 224 });
+  });
+
+  it('펼친 사이드바가 200px 보다 좁아도 메뉴는 200px 이상이다', () => {
+    const pos = placeProfileMenu('sidebar', rect(8, 820, 150, 44), vp);
+    expect(pos.width).toBe(200);
+  });
+
+  it('좁은 화면에서는 오른쪽 가장자리를 넘지 않는다', () => {
+    const pos = placeProfileMenu('sidebar', rect(0, 700, 72, 44), { width: 260, height: 800 });
+    expect(pos.left).toBe(260 - 200 - 8);
+  });
+
+  it('모바일 머리글은 버튼 아래, 오른쪽 가장자리에 맞춘다', () => {
+    const pos = placeProfileMenu('mobile', rect(300, 10, 80, 44), { width: 390, height: 800 });
+    expect(pos).toEqual({ top: 60, right: 10 });
   });
 });

@@ -9,7 +9,8 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 레포 추천을 계산하는 동안 후보 회사별 확인 상태와 맞은 조건을 서버 메모리에만 두었다가 레포 추천 조회에 싣는다
+ * 레포 추천을 계산하는 동안 후보 회사별 확인 상태와 맞은 조건을 서버 메모리에 두었다가 레포 추천 조회에 싣는다
+ * 끝난 진행은 추천 줄에도 저장돼 서버가 다시 떠도 남지만, 계산하는 중의 진행은 메모리에만 있다
  * 끝나도 지우지 않아 늦게 연 화면도 과정을 볼 수 있고, 같은 레포의 다음 계산이 시작되면 지우고 후보를 정한 뒤 새 진행을 남긴다
  * 서버가 1대라는 전제다 — 2대로 늘리면 다른 서버가 받은 진행이 보이지 않으므로 Redis 로 옮긴다
  */
@@ -74,6 +75,12 @@ public class RepoRecommendationLiveLog {
         synchronized void finish() {
 
             finished = true;
+
+        }
+
+        synchronized RepoRecommendationLive finishedSnapshot() {
+
+            return new RepoRecommendationLive(cardCount, techs, List.copyOf(candidates), true);
 
         }
 

@@ -123,8 +123,9 @@ function events(plan: DraftPlan, texts: ReturnType<typeof draftTexts>, steps: An
   return [
     ...burst,
     { at: 1.4, slot: slot('R', texts.firstR), step: steps[2] },
-    { at: 4.6, step: steps[3] }, { at: 4.7, step: steps[4] }, { at: 4.8, step: steps[5] },
-    { at: 5, slot: slot('R', texts.R, true, 1), step: steps[6] }, { at: 5.1, step: steps[7] },
+    // 이슈를 열어 본 뒤 다시 쓰기까지 0.4초, 다시 쓴 뒤 카드가 끝나기까지 1.1초를 둔다 — 1초 폴링이 한 번 밀려도 과정 목록에 '다시 썼어요' 가 보인다
+    { at: 3.4, step: steps[3] }, { at: 3.5, step: steps[4] }, { at: 3.6, step: steps[5] },
+    { at: 4, slot: slot('R', texts.R, true, 1), step: steps[6] }, { at: 4.1, step: steps[7] },
     { at: 5.2, end: 'DONE' },
   ];
 }

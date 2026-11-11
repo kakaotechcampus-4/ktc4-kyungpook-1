@@ -9,13 +9,15 @@
 import { POLISH_DELAY_MS, TURN_DELAY_MS } from './coverLetters';
 import { handle } from './router';
 import { restore, seedRepoUpdate, seedSetUpProfile, snapshot } from './store';
+import { DEMO_DB_KEY, DEMO_SCENARIO_KEY, DEMO_SESSION_KEY, demoEnabled } from './sampleTour';
 import { PROFILE_FIRST_SCENARIOS, createScenario, parseScenario, waitForMock } from './scenarios';
 
-export const isDemo = import.meta.env.VITE_API_MOCK !== 'false';
+// 운영 빌드여도 둘러보기를 켠 탭에서는 켜진다(켠 뒤 전체 새로고침으로 들어오므로 로드 시점 값이면 된다)
+export const isDemo = demoEnabled({ VITE_API_MOCK: import.meta.env.VITE_API_MOCK });
 const BASE = import.meta.env.VITE_API_BASE ?? '/api';
-const SESSION_KEY = 'gitory.demo.session';
-const DB_KEY = 'gitory.demo.db';
-const SCENARIO_KEY = 'gitory.demo.scenario';
+const SESSION_KEY = DEMO_SESSION_KEY;
+const DB_KEY = DEMO_DB_KEY;
+const SCENARIO_KEY = DEMO_SCENARIO_KEY;
 
 const ss = {
   get(k: string) { try { return sessionStorage.getItem(k); } catch { return null; } },
@@ -31,7 +33,7 @@ function demoLogout() { ss.del(SESSION_KEY); ss.del(DB_KEY); }
 const persist = () => ss.set(DB_KEY, snapshot());
 
 export function installDemoApi() {
-  if (!isDemo) return;
+  if (!demoEnabled({ VITE_API_MOCK: import.meta.env.VITE_API_MOCK })) return;
   const requested = new URLSearchParams(location.search).get('demoScenario');
   if (requested !== null) ss.set(SCENARIO_KEY, parseScenario(requested));
   const scenario = createScenario(parseScenario(ss.get(SCENARIO_KEY)));
@@ -62,7 +64,7 @@ export function installDemoApi() {
     if (method === 'POST' && /\/questions\/[^/]+\/polish$/.test(path)) await waitForMock(POLISH_DELAY_MS, signal);
     if (method === 'POST' && /\/questions\/[^/]+\/turns(\/open|\/skip)?$/.test(path)) await waitForMock(TURN_DELAY_MS, signal);
 
-    if (path === '/auth/logout') demoLogout();
+    if (path === '/auth/logout' || (method === 'DELETE' && path === '/me')) demoLogout();
     if (path === '/__reset') { ss.del(DB_KEY); }
 
     const before = hasDemoSession() ? scenario.before(method, path) : undefined;

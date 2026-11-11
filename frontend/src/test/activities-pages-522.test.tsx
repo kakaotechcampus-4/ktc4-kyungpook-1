@@ -30,11 +30,11 @@ const routes = () => [
   page(<ActivitiesPage />, '/activities'), page(<ActivityNewPage />, '/activities/new'), page(<ActivityEditPage />, '/activities/:activityId/edit'),
 ];
 const FOLDERS = {
-  auth: '레포 hong-dev, auth-service, 카드 4장, 확인할 카드 2장, 로그인과 세션 인증을 맡는 Spring Boot 서비스, 기술 2 · 경험 2, 기술 Java',
+  auth: '레포 hong-dev, auth-service, 카드 4장, 확인할 카드 2장, 로그인과 세션 인증을 맡는 Spring Boot 서비스, 기술 2, 경험 2, 기술 Java',
   fts: '레포 TaeHuiKKIM, free-tier-sleep, 카드 1장, 무료 요금제로 바꾼 뒤 광고가 쏟아지는 상황을 풍자하는 Unity 게임이에요. 인트로 씬과 광고 연출을 맡았어요.',
   club: '활동, 동아리, 교내 개발 동아리, 카드 2장, 확인할 카드 1장',
   edu: '활동, 교육 과정, 카카오테크캠퍼스, 카드 1장',
-  contest: '활동, 공모전과 해커톤, 해커톤 참가, 카드 0장, 아직 카드가 없어요 · 열어서 만들기',
+  contest: '활동, 공모전과 해커톤, 해커톤 참가, 카드 0장, 아직 카드가 없어요',
 };
 const tiles = (root: ParentNode = document) => root.querySelectorAll('.experience-item');
 const button = (name: string | RegExp) => screen.getByRole('button', { name });
@@ -57,9 +57,9 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     expect(screen.getByRole('link', { name: FOLDERS.club }).querySelector('.folder__desc')).toBeNull();
     expect(screen.getByRole('link', { name: FOLDERS.contest }).querySelector('.folder__desc')).toBeNull();
     // 작은 글: 기술 카드와 경험 카드가 둘 다 있는 폴더만 두 장 수를 나눠 적고, 빈 폴더는 만들러 들어오게 한다. 카드 제목 이어붙임과 '기술 카드만 있어요' 는 없다
-    expect(auth.querySelector('.folder__note')).toHaveTextContent(/^기술 2 · 경험 2$/);
+    expect(auth.querySelector('.folder__note')).toHaveTextContent(/^기술 2, 경험 2$/);
     expect(screen.getByRole('link', { name: FOLDERS.fts }).querySelector('.folder__note')).toBeNull();
-    expect(screen.getByText('아직 카드가 없어요 · 열어서 만들기')).toBeInTheDocument();
+    expect(screen.getByText('아직 카드가 없어요')).toBeInTheDocument();
     expect(screen.queryByText('기술 카드만 있어요')).not.toBeInTheDocument();
     expect(document.querySelector('.folder__peek')).toBeNull();
     // 장 수는 오른쪽 위 작은 글이고, 빈 폴더에는 없다(0장 대신 안내 한 줄이 말한다)
@@ -174,7 +174,7 @@ describe('폴더 안', () => {
     mountApp(routes(), '/cards/repo/r_auth');
     expect(await screen.findByRole('heading', { level: 1, name: 'auth-service' })).toBeInTheDocument();
     expect(screen.getByText('hong-dev')).toBeInTheDocument();
-    expect(screen.getByText('기술 카드 2장 · 경험 카드 2장 · 확정 2장')).toBeInTheDocument();
+    expect(screen.getByText('기술 카드 2장, 경험 카드 2장, 확정 2장')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '후보 보드' })).toHaveAttribute('href', '/repos/r_auth/candidates');
     expect(document.querySelectorAll('.folder-head__actions .btn')).toHaveLength(1);
     const tech = screen.getByRole('region', { name: '기술 카드' });
@@ -200,7 +200,7 @@ describe('폴더 안', () => {
     mountApp(routes(), '/cards/activity/act_club');
     expect(await screen.findByRole('heading', { level: 1, name: '교내 개발 동아리' })).toBeInTheDocument();
     expect(screen.getByText('활동, 동아리')).toBeInTheDocument();
-    expect(screen.getByText('카드 2장 · 확정 1장')).toBeInTheDocument();
+    expect(screen.getByText('카드 2장, 확정 1장')).toBeInTheDocument();
     expect(screen.getByText('동아리, 2025년 3월부터 진행 중, 백엔드 파트장')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '후보 보드' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '기술 카드' })).not.toBeInTheDocument();

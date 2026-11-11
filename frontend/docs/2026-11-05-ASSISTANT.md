@@ -1,6 +1,6 @@
 # 홈 한 줄 명령 — 한 문장으로 맡기면 서버가 걸음마다 실행한다 (2026-11-05)
 
-홈에서 사용자가 한 문장(예: `토스 백엔드 공고에 맞춰 자소서 써 줘`)을 적으면 서버가 실행(run) 하나를 만들고, 백그라운드에서 AI 가 다음 행동을 고르며 도구를 걸음마다 실행한다(공고 찾기 → 내 카드와 맞춰 보기 → 자소서나 레포 정리 시작). 화면은 그 실행을 다시 읽어 대화로 보인다.
+홈에서 사용자가 한 문장(예: `토스 백엔드 공고에 맞춰 자소서 써 줘`)을 적으면 서버가 실행(run) 하나를 만들고, 백그라운드에서 AI 가 다음 행동을 고르며 도구를 걸음마다 실행한다(공고 찾기 → 내 카드와 맞춰 보기 → 모자란 조건 채우기 · 카드 빈 칸 질문 · 자소서 쓰기·첨삭 · 레포 정리). 화면은 그 실행을 다시 읽어 대화로 보인다.
 
 계약만 정한 문서다. 서버 구현은 아직 없고, 화면은 이 문서와 Mock 으로 먼저 만들었다. 스위치(`VITE_ASSISTANT_ENABLED`)가 꺼져 있어 서버가 열리기 전까지 사용자에게는 달라지는 것이 없다.
 
@@ -12,7 +12,7 @@
 | 홈에서 적고 `/ask?q=…` 로 들어옴 | 그 말로 `POST /assistant/runs` 를 한 번 부르고 `/ask/{id}` 로 바꾼다(새로고침해도 같은 실행을 이어 본다) | `RUNNING` |
 | `/ask/{id}` | 도는 동안 입력을 잠그고 `pollAfterMs` 마다 `GET` 을 다시 부른다. 걸음은 하는 중으로 먼저 보이다 결과가 붙는다 | `RUNNING` |
 | 물음 | 마지막 줄이 `ASK` 이면 입력을 열고(`CHOICE` 면 선택지 버튼도), 답을 `POST …/messages` 로 보낸다 | `WAITING_USER` → `RUNNING` |
-| 끝 | 결과로 가는 버튼(자소서 열기, 정리 보기)이 보인다. 끝난 뒤에 적은 말은 새 실행이다 | `DONE` |
+| 끝 | 결과로 가는 버튼(자소서 열기, 정리 보기, 첨삭 보기, 질문에 답하기)이 보인다. 끝난 뒤에 적은 말은 새 실행이다 | `DONE` |
 
 - 응답은 다른 API 와 같은 `{ data, error }` 형식이다. 아래 JSON 은 `data` 만 적는다.
 - 도는 동안(`RUNNING`)에는 화면이 말을 보내지 않는다.
@@ -44,7 +44,8 @@
     { "seq": 3, "kind": "STEP", "tool": "MATCH_POSTING", "ok": true,
       "posting": { "postingId": "UUID", "company": "가온소프트", "title": "백엔드 엔지니어 (Java·Spring)", "daysLeft": 2, "requiredMet": 2, "requiredTotal": 3 },
       "match": { "requiredMet": 2, "requiredTotal": 3, "met": ["관계형 데이터베이스 설계 경험"], "missing": ["Docker 배포 경험"] } },
-    { "seq": 4, "kind": "ASK", "askKind": "QUESTIONS", "text": "자소서를 쓰려면 문항이 필요해요. 지원서에 있는 문항을 그대로 붙여 넣어 주세요." } ],
+    { "seq": 4, "kind": "ASK", "askKind": "CHOICE", "options": ["자주 나오는 문항으로 쓰기", "문항 붙여 넣기"],
+      "text": "가온소프트 공고의 문항은 알 수 없어요. 자주 나오는 문항 3개로 바로 쓸까요, 지원서 문항을 붙여 넣을까요?" } ],
   "createdAt": "ISO", "updatedAt": "ISO" }
 
 // POST /assistant/runs/{id}/messages  { "text": "지원 동기를 적어 주세요\n가장 어려웠던 경험을 적어 주세요" } → 끝난 뒤의 GET
@@ -94,13 +95,17 @@
 |---|---|---|
 | `FIND_POSTINGS` | `find: { company, keywords }` — 찾는 조건. `company` 는 `null` 일 수 있고 `keywords` 는 `[]` 일 수 있다 | `postings`(공고 타일, 5건까지), `totalFound`(맞은 공고 수) |
 | `MATCH_POSTING` | `posting` — 맞춰 볼 공고 | `posting`(`requiredMet`·`requiredTotal` 이 채워진다), `match: { requiredMet, requiredTotal, met[], missing[] }` |
+| `FILL_POSTING_GAPS` | `posting` — 모자란 조건을 채울 공고 | `posting`, `match`(채운 뒤의 값), `gapsFilled`(새로 맞게 된 조건 수) |
+| `ASK_CARD_GAP` | 없음 | `cardId`, `cardTitle`, `question: { field: S\|T\|A\|R, text }` — 물을 게 없으면 `question` 이 `null` |
+| `POLISH_COVER_LETTER` | 없음 | `letterId`, `polished: [{ seq, points }]`(첨삭한 문항과 포인트 수), `remainingQuestions`(첨삭이 안 된 문항 수) |
 | `START_COVER_LETTER` | 없음 | `questionCount`, `coverLetterId` |
 | `START_REPO_ANALYSIS` | `repoName` | `repoId`, `jobId`(분석을 시작했을 때만) |
 
 - 공고(`posting`, `postings[]`)는 `postingId`·`company`·`title`·`daysLeft`(마감까지 남은 날, 마감일이 없으면 `null`)와, 이미 맞춰 본 공고에만 `requiredMet`·`requiredTotal` 이 온다. 타일을 누르면 `/match/{postingId}` 로 간다.
 - `match.missing` 은 모자란 필수 조건의 이름이다. 화면은 이름만 한 줄로 보인다.
-- 실패한 걸음은 `ok: false` 와 `error` 가 온다. 화면이 문장으로 바꾸는 코드는 `NOT_FOUND`(공고나 레포를 찾을 수 없음), `NO_CONFIRMED_CARDS`(확정 카드가 없음), `RATE_LIMITED` 이고, 그 밖의 코드는 "이 일을 끝내지 못했어요" 로 보인다.
-- 결과 버튼은 끝난 실행에서 마지막으로 성공한 시작 걸음을 따른다. `START_COVER_LETTER` 는 `/cover-letters/{coverLetterId}`, `START_REPO_ANALYSIS` 는 `/repos/{repoId}/run?job={jobId}` 로 간다.
+- 실패한 걸음은 `ok: false` 와 `error` 가 온다. 화면이 문장으로 바꾸는 코드는 `NOT_FOUND`(공고나 레포를 찾을 수 없음), `NO_CONFIRMED_CARDS`(확정 카드가 없음), `RATE_LIMITED`, `NOT_MATCHED`(먼저 공고와 맞춰 봐야 함), `GITHUB_DISCONNECTED`(GitHub 연결이 끊김), `CAP_REACHED`(카드 질문을 다 씀), `NOT_READY`(자소서 초안이 아직 끝나지 않음)이고, 그 밖의 코드는 "이 일을 끝내지 못했어요" 로 보인다.
+- 결과 버튼은 끝난 실행에서 마지막으로 성공한 시작 걸음을 따른다. `START_COVER_LETTER` 는 `/cover-letters/{coverLetterId}`, `START_REPO_ANALYSIS` 는 `/repos/{repoId}/run?job={jobId}`, `POLISH_COVER_LETTER` 는 `첨삭 보기` 로 `/cover-letters/{letterId}`, 질문을 연 `ASK_CARD_GAP` 은 `질문에 답하기` 로 `/cards/{cardId}/interview` 로 간다.
+- 마지막으로 끝난 걸음이 `MATCH_POSTING` 이나 `FILL_POSTING_GAPS` 이면 맞춰 본 공고 카드를 보인다. 채운 뒤에는 `FILL_POSTING_GAPS` 가 준 `match` 의 새 값을 쓴다.
 
 ## 오류
 
@@ -116,6 +121,9 @@
 
 | 첫 말 | 대본 |
 |---|---|
-| `자소서` 가 들어 있다 | `FIND_POSTINGS` → `MATCH_POSTING` → `ASK`(`QUESTIONS`, `WAITING_USER`). 문항을 받으면 실제 Mock 자소서를 만드는 `START_COVER_LETTER` → `SAY` → `DONE` |
+| `자소서` 가 들어 있다 | `FIND_POSTINGS` → `MATCH_POSTING` → `ASK`(`CHOICE`, `자주 나오는 문항으로 쓰기` · `문항 붙여 넣기`, `WAITING_USER`). 첫 번째를 고르면 자주 나오는 문항 3개로 Mock 자소서를 만드는 `START_COVER_LETTER`(`questionCount` 3, `defaultQuestions` true) → `SAY` → `DONE`. 두 번째를 고르면 `ASK`(`QUESTIONS`) 로 한 번 더 묻고 받은 문항으로 만든다 |
 | `정리` 나 `레포` 가 들어 있다 | `ASK`(`CHOICE`, 레포 이름 3개, `WAITING_USER`). 이름을 받으면 Mock 분석을 시작하는 `START_REPO_ANALYSIS` → `SAY` → `DONE`. 이름을 못 찾으면 `SAY` 만 하고 `DONE` |
+| `첨삭` 이 들어 있다 | `POLISH_COVER_LETTER`(Mock 자소서 첫 번째, 없으면 하나 만든다, 문항 두 개 · 포인트 3개와 2개) → `SAY` → `DONE` |
+| `채워` 가 들어 있다 | `FIND_POSTINGS` → `MATCH_POSTING`(모자란 조건 두 개) → `FILL_POSTING_GAPS`(`gapsFilled` 2) → `SAY` → `DONE` |
+| `빈 칸` 이나 `질문` 이 들어 있다 | `ASK_CARD_GAP`(확정한 첫 카드, `question` 은 결과 칸 `R`) → `SAY` → `DONE` |
 | 그 밖 | `FIND_POSTINGS`(첫 세 낱말 중 두 글자 이상인 것이 공고의 회사·직무·기술에 들어 있는 공고) → `SAY` → `DONE`. 맞는 공고가 없으면 `totalFound: 0` 과 `SAY` |

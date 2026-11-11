@@ -11,7 +11,6 @@ import { LandingPage } from '@/features/auth/LandingPage';
 import { HomePage } from '@/features/home/HomePage';
 import { AnalyzePage } from '@/features/repos/AnalyzePage';
 import { ReposPage } from '@/features/repos/ReposPage';
-import { LandingBrand } from '@/features/auth/LandingBrand';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 
@@ -90,7 +89,7 @@ describe('정리 화면 (#520 G-13 · A-04 · A-05 · A-08 · A-09 · A-12)', ()
     const rows = Array.from(document.querySelectorAll('.card--paper.row'));
     expect(rows.length).toBeGreaterThanOrEqual(3);
     for (const row of rows) {
-      const title = row.querySelector('.w-600')!.textContent;
+      const title = row.querySelector('.w-bold')!.textContent;
       const action = row.querySelector('.btn')!.textContent;
       expect(action).not.toBe(title); // A-05: 제목과 같은 말을 버튼에 또 쓰지 않는다
       expect(action).not.toBe('이동'); // A-04: 화면 읽기 이름이 같은 버튼 두 개를 만들지 않는다
@@ -107,7 +106,7 @@ describe('정리 화면 (#520 G-13 · A-04 · A-05 · A-08 · A-09 · A-12)', ()
 
   it('일부만 정리한 결과는 클래스로 꾸미고(인라인 스타일 없음) 버튼 이름이 그대로다', () => {
     mountAnalyze('/repos/r_auth/run?job=job', job({ state: 'SUCCEEDED', partial: true, errorCode: 'GITHUB_RATE_LIMITED', retryable: true, retryAfterSec: 720, finishedAt: new Date().toISOString() }));
-    const card = document.querySelector('.partial-card')!;
+    const card = document.querySelector('.run-capnote')!;
     expect(card).not.toBeNull();
     expect(card.getAttribute('style')).toBeNull();
     expect(within(card as HTMLElement).getByRole('button', { name: /뒤 이어 읽기$/ })).toBeDisabled();
@@ -161,7 +160,7 @@ describe('홈 (#520 G-08 · H-01 · H-03)', () => {
   it('홈에는 최근 경험 카드와 카드 검색을 표시하지 않는다', async () => {
     stubApi(() => undefined);
     home();
-    await screen.findByRole('heading', { name: '오늘은 무엇을 할까요?', level: 1 });
+    await screen.findByRole('heading', { name: '지원할 곳', level: 1 });
     expect(screen.queryByRole('textbox', { name: '카드 이름으로 검색' })).not.toBeInTheDocument();
     expect(screen.queryByText('최근 경험 카드')).not.toBeInTheDocument();
     expect(document.querySelector('.home-recent')).toBeNull();
@@ -190,7 +189,7 @@ describe('레포 화면 (#520 G-03 · 용어집)', () => {
 
   it('고르기 전 안내는 명령형이 아니고, 정리한 레포의 카드 수는 장으로 센다', () => {
     repos();
-    expect(screen.getByText('레포를 하나 골라 주세요')).toBeInTheDocument();
+    expect(screen.getByText('정리할 레포를 고르면 다음으로 넘어가요')).toBeInTheDocument();
     expect(screen.queryByText(/고르세요/)).not.toBeInTheDocument();
     expect(screen.getAllByText(/^카드 \d+장$/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/^카드 \d+건$/)).not.toBeInTheDocument();
@@ -213,7 +212,7 @@ describe('로그인 화면 (#520 L-01 · L-03)', () => {
   it('소개 문장은 "레포"와 "한 일"을 쓴다(저장소, 작업 아님)', () => {
     landing('/login');
     const lead = document.querySelector('.landing__lead')!.textContent!.replace(/\s+/g, ' ');
-    expect(lead).toContain('레포를 고르면 내가 한 일을 찾아 상황, 과제, 행동, 결과로 정리해요.');
+    expect(lead).toContain('레포만 고르면, 내가 한 일이 경험 카드와 자소서 초안이 돼요.');
     expect(lead).not.toMatch(/저장소|작업/);
   });
 
@@ -221,13 +220,6 @@ describe('로그인 화면 (#520 L-01 · L-03)', () => {
     landing('/login?error=access_denied');
     expect(screen.getByRole('status')).toHaveTextContent('GitHub 연결을 취소했어요. 준비되면 다시 시작해 주세요.');
     expect(screen.queryByText(/취소하셨네요/)).not.toBeInTheDocument();
-  });
-
-  it('건너뛰기 버튼에 글자 화살표가 없다', () => {
-    // jsdom 에는 matchMedia 가 없어 인트로가 돌지 않는다 — 인트로가 도는 상태(active)로 브랜드 영역만 그린다
-    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }));
-    render(<LandingBrand active onComplete={() => {}} />);
-    expect(screen.getByRole('button', { name: '건너뛰기' }).textContent).toBe('건너뛰기');
   });
 });
 

@@ -4,12 +4,15 @@ import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, BriefcaseBusine
 import { matchSupported } from '@/api/matching';
 import { useActiveJobs } from '@/api/queries';
 import { JobWatcher } from '@/lib/jobWatcher';
+import { CoverLetterWatcher } from '@/lib/coverLetterWatcher';
 import { BrandLogo } from '@/components/ui/BrandLogo';
+import { SampleBand } from './SampleBand';
 import { GithubBanner } from './GithubBanner';
 import { ProfileMenu } from './ProfileMenu';
 import { NoticeBar } from './NoticeBar';
 import { useMatches } from '@/features/coverLetters/panel/useActiveQuestion';
 import { ProfileSetupModal } from '@/features/profile/ProfileSetupModal';
+import { LegalLinks } from '@/features/legal/LegalLinks';
 
 const MENU = [
   { group: '커리어 관리', items: [
@@ -56,6 +59,8 @@ export function AppShell() {
   useEffect(() => { try { localStorage.setItem(RAIL_KEY, rail ? '1' : '0'); } catch { /* noop */ } }, [rail]);
 
   return (
+    <>
+    <SampleBand />
     <div className={`shell ${rail ? 'shell--rail' : ''}`}>
       <a href="#main" className="skip-link">본문으로 건너뛰기</a>
       <header className="mobile-brand">
@@ -80,6 +85,7 @@ export function AppShell() {
           </nav>
         ))}
         <div style={{ marginTop: 'auto' }} />
+        <LegalLinks className="sidebar__legal" report />
         <div className="sidebar__profile"><ProfileMenu variant="sidebar" /></div>
       </aside>
       <div id="main" className="shell__main">
@@ -95,7 +101,9 @@ export function AppShell() {
         ))}
       </nav>
       <JobWatcher active={active} />
+      <CoverLetterWatcher />
       <ProfileSetupModal />
     </div>
+    </>
   );
 }

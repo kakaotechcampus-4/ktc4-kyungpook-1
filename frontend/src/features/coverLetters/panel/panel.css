@@ -13,7 +13,7 @@
 /* scroll-padding — 탭 이동·굴리기로 닿는 줄이 위에 붙은 머리줄(약 44px) 아래에 놓이게 */
 .clp { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; overscroll-behavior: contain; scroll-padding-top: 56px; scroll-padding-bottom: 88px; display: flex; flex-direction: column; gap: 12px; padding: 2px 4px 8px 2px; }
 .clp-head { position: sticky; top: -2px; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 10px 2px; background: var(--bg-surface); }
-.clp-head b { font-size: 16px; line-height: 24px; font-weight: 600; white-space: nowrap; }
+.clp-head b { font-size: 16px; line-height: 24px; font-weight: var(--weight-bold); white-space: nowrap; }
 .clp-head__sub { flex: 1; min-width: 0; font-size: 13px; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .clp-head__x { width: var(--control-touch-size); padding: 0; }
 .clp-card { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 16px; }
@@ -24,31 +24,31 @@
 .clp-note--error { margin: 0 0 12px; color: var(--field-low-text); }
 /* 포커스 — 진한 테두리(대비 3:1 이상) 위에 파란 번짐을 겹친다. 어두운 테마의 border-selected 는 파랑이다 */
 .clp :focus-visible, .clp-bar :focus-visible { outline: 2px solid var(--border-selected); outline-offset: 2px; box-shadow: var(--focus); }
-.clp-block { width: 100%; min-height: 52px; font-size: 16px; font-weight: 600; }
+.clp-block { width: 100%; min-height: 52px; font-size: 16px; font-weight: var(--weight-bold); }
 .clp-link { display: inline-flex; align-items: center; min-height: var(--control-touch-size); padding: 0 4px; border: 0; background: transparent; font: inherit; font-size: 13px; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 
 /* 두세 칸 고르기 — 패널 탭, 아쉬운 점 | 잘한 점 */
 .clp-seg { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--bg-subtle); margin-bottom: 10px; }
-.clp-seg button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: var(--control-touch-size); border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 14px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; cursor: pointer; }
-.clp-seg button[aria-selected="true"], .clp-seg button[aria-pressed="true"] { background: var(--bg-surface); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+.clp-seg button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: var(--control-touch-size); border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 14px; font-weight: var(--weight-regular); color: var(--text-secondary); white-space: nowrap; cursor: pointer; }
+.clp-seg button[aria-selected="true"], .clp-seg button[aria-pressed="true"] { background: var(--bg-surface); color: var(--text-primary); font-weight: var(--weight-bold); box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
 .clp-tabs { margin: 0; }
 .clp-tabs button { font-size: 13px; padding: 0 2px; }
-.clp-badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-full); background: var(--field-low-bg); color: var(--field-low-text); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+.clp-badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-full); background: var(--field-low-bg); color: var(--field-low-text); font-size: 11px; font-weight: var(--weight-bold); line-height: 18px; text-align: center; }
 
 /* 알림 줄 — 살펴볼 것이 있을 때만 */
 .clp-notices { display: flex; flex-direction: column; gap: 6px; }
 .clp-notice { position: relative; display: flex; padding: 8px 6px 2px 12px; border-radius: var(--radius-md); background: var(--field-low-bg); }
 .clp-notice__body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.clp-notice__t { padding-right: 40px; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--text-primary); }
+.clp-notice__t { padding-right: 40px; font-size: 13px; line-height: 20px; font-weight: var(--weight-bold); color: var(--text-primary); }
 .clp-notice__w { font-size: 12px; line-height: 20px; color: var(--text-secondary); }
-.clp-notice__go { display: inline-flex; align-items: center; min-height: var(--control-touch-size); padding: 0 4px; border: 0; background: transparent; font: inherit; font-size: 13px; font-weight: 600; color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; vertical-align: middle; cursor: pointer; }
+.clp-notice__go { display: inline-flex; align-items: center; min-height: var(--control-touch-size); padding: 0 4px; border: 0; background: transparent; font: inherit; font-size: 13px; font-weight: var(--weight-bold); color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; vertical-align: middle; cursor: pointer; }
 .clp-notice__x { position: absolute; top: 0; right: 0; min-width: var(--control-touch-size); min-height: var(--control-touch-size); padding: 0 8px; border: 0; border-radius: var(--radius-md); background: transparent; font: inherit; font-size: 13px; color: var(--text-tertiary); cursor: pointer; }
 .clp-notice__x:hover { color: var(--text-primary); }
 
 /* 진단·첨삭 — 기다림 두 단계 */
 .clp-steps { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .clp-steps li { display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--text-tertiary); }
-.clp-steps li.is-now { color: var(--text-primary); font-weight: 600; }
+.clp-steps li.is-now { color: var(--text-primary); font-weight: var(--weight-bold); }
 .clp-steps li.is-done { color: var(--text-secondary); }
 .clp-steps__dot { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border-strong); }
 .clp-steps li.is-now .clp-steps__dot { border-color: transparent; }
@@ -59,21 +59,21 @@
 /* 결과 — 종합 평가 · 포인트 · 고친 글 */
 .clp-box, .clp-sec { scroll-margin-top: 56px; }
 .clp-box { padding: 14px 16px; border-radius: var(--radius-md); background: var(--bg-subtle); }
-.clp-box h4 { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--text-strong); }
+.clp-box h4 { margin: 0 0 6px; font-size: 14px; font-weight: var(--weight-bold); color: var(--text-strong); }
 .clp-box p { margin: 0; font-size: 15px; line-height: 1.6; }
-.clp-sec { display: flex; align-items: baseline; gap: 8px; margin: 20px 0 8px; font-size: 14px; font-weight: 600; color: var(--text-strong); }
-.clp-sec small { font-size: 12px; font-weight: 500; color: var(--text-tertiary); }
+.clp-sec { display: flex; align-items: baseline; gap: 8px; margin: 20px 0 8px; font-size: 14px; font-weight: var(--weight-bold); color: var(--text-strong); }
+.clp-sec small { font-size: 12px; font-weight: var(--weight-regular); color: var(--text-tertiary); }
 .clp-pts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .clp-pt { display: block; width: 100%; min-height: var(--control-touch-size); padding: 10px 12px; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-surface); font: inherit; text-align: left; color: var(--text-primary); cursor: pointer; }
 .clp-pt:hover { border-color: var(--border-strong); }
 .clp-pt--open { border-color: var(--accent-decoration); background: var(--bg-selected); }
 .clp-pt__row { display: flex; align-items: center; gap: 8px; }
-.clp-pt__t { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.clp-pt__t { flex: 1; min-width: 0; font-size: 15px; font-weight: var(--weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .clp-pt--open .clp-pt__t { white-space: normal; }
 .clp-pt__chev { flex: none; color: var(--text-tertiary); transition: transform .2s; }
 .clp-pt--open .clp-pt__chev { transform: rotate(180deg); }
 .clp-pt__w { display: block; margin-top: 6px; font-size: 14px; color: var(--text-secondary); }
-.clp-chip { flex: none; display: inline-block; padding: 2px 8px; border-radius: var(--radius-full); font-size: 12px; line-height: 18px; font-weight: 600; color: var(--text-strong); background: var(--bg-subtle); }
+.clp-chip { flex: none; display: inline-block; padding: 2px 8px; border-radius: var(--radius-full); font-size: 12px; line-height: 18px; font-weight: var(--weight-bold); color: var(--text-strong); background: var(--bg-subtle); }
 .clp-rewrite { padding: 14px 16px; border: 1px solid var(--border-default); border-radius: var(--radius-md); font-size: 15px; line-height: 1.8; word-break: keep-all; white-space: pre-wrap; }
 .clp-rewrite p { margin: 0 0 10px; }
 .clp-rewrite p.clp-rewrite__count { margin: 0; text-align: right; font-size: 12px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: normal; }
@@ -82,8 +82,8 @@
 .clp-rs--lit { background: var(--pastel-blue); box-shadow: 0 0 0 2px var(--pastel-blue); }
 .clp-actions { position: sticky; bottom: -8px; z-index: 2; display: flex; gap: 8px; margin-top: 12px; padding: 12px 0 8px; background: var(--bg-surface); border-top: 1px solid var(--border-default); }
 .clp-actions .btn { min-height: 52px; font-size: 15px; }
-.clp-actions .clp-actions__main { flex: 1; font-size: 16px; font-weight: 600; }
-.clp-applied { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 8px 8px 16px; border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-strong); font-size: 15px; font-weight: 600; }
+.clp-actions .clp-actions__main { flex: 1; font-size: 16px; font-weight: var(--weight-bold); }
+.clp-applied { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 8px 8px 16px; border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-strong); font-size: 15px; font-weight: var(--weight-bold); }
 .clp-applied > span { display: inline-flex; align-items: center; gap: 6px; }
 
 /* 첨삭 전 살펴볼 곳 — 주 버튼은 '첨삭 받기' 하나라 줄은 글자 버튼으로 */
@@ -98,20 +98,20 @@
 .clp-infs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .clp-inf { padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-md); }
 .clp-inf__go { display: block; width: 100%; min-height: var(--control-touch-size); padding: 0; border: 0; background: transparent; font: inherit; text-align: left; color: var(--text-primary); cursor: pointer; }
-.clp-inf__lab { display: block; font-size: 12px; font-weight: 600; color: var(--field-low-text); }
+.clp-inf__lab { display: block; font-size: 12px; font-weight: var(--weight-bold); color: var(--field-low-text); }
 .clp-inf__t { display: block; margin-top: 4px; font-size: 15px; line-height: 1.55; }
 .clp-inf__t mark { background: var(--field-low-bg); color: inherit; box-shadow: inset 0 -2px 0 var(--caution-300); border-radius: 3px; }
 .clp-inf__acts { display: flex; gap: 4px; margin-top: 8px; }
 
 /* 채우기(#733) — 자소서 하나에 대화 하나. AI 는 왼쪽(회색), 내 말은 오른쪽(파랑 바탕), 끝난 말은 가운데 흐린 한 줄 */
 .clp-chat { display: flex; flex-direction: column; gap: 12px; }
-.chat-done .clp-link { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.chat-fail .clp-link { color: var(--text-primary); font-weight: 600; }
+.chat-done .clp-link { font-size: 14px; font-weight: var(--weight-bold); color: var(--text-primary); }
+.chat-fail .clp-link { color: var(--text-primary); font-weight: var(--weight-bold); }
 /* 입력 줄은 패널 아래에 붙는다 — 대화가 길어도 보내기가 늘 보인다 */
 .clp-reply { position: sticky; bottom: -8px; z-index: 2; display: flex; flex-direction: column; gap: 4px; padding: 10px 0 8px; background: var(--bg-surface); border-top: 1px solid var(--border-default); }
 /* 패널의 초점 테두리와 겹쳐 두 줄이 되지 않게 글 칸은 테두리 색으로만 알린다 */
 .clp .chat-composer__input:focus-visible { outline: none; }
-.clp-reply__other { align-self: flex-start; font-weight: 600; color: var(--text-primary); }
+.clp-reply__other { align-self: flex-start; font-weight: var(--weight-bold); color: var(--text-primary); }
 .clp-reply__sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--text-tertiary); }
 .clp-reply__meta { display: inline-flex; align-items: center; gap: 4px; }
 .clp-reply__count { font-variant-numeric: tabular-nums; }
@@ -128,7 +128,7 @@
   .cl-draft .pq--active::before { left: -12px; top: 30px; }
   .clp-bar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; gap: 2px; padding: 4px 8px calc(4px + env(safe-area-inset-bottom)); background: var(--bg-surface); border-top: 1px solid var(--border-default); }
   .clp-bar button { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; border: 0; border-radius: 12px; background: transparent; font: inherit; font-size: 12px; color: var(--text-secondary); cursor: pointer; }
-  .clp-bar button[aria-pressed="true"] { background: var(--bg-selected); color: var(--text-primary); font-weight: 600; }
+  .clp-bar button[aria-pressed="true"] { background: var(--bg-selected); color: var(--text-primary); font-weight: var(--weight-bold); }
   .clp-bar .clp-badge { position: absolute; top: 4px; left: calc(50% + 8px); }
   .clp--sheet { position: fixed; left: 0; right: 0; top: auto; bottom: calc(64px + env(safe-area-inset-bottom)); z-index: 22; height: 55svh; max-height: none; gap: 0; padding: 0 16px; background: var(--bg-surface); border-radius: var(--radius-xl) var(--radius-xl) 0 0; box-shadow: var(--shadow-dialog); }
   .clp--sheet .clp-head { top: 0; padding: 16px 0 8px; background: var(--bg-surface); }
@@ -142,3 +142,15 @@
   .clp--sheet { bottom: calc(var(--mobile-nav-height) + 64px + env(safe-area-inset-bottom)); height: 50svh; }
   .cl-draft { padding-bottom: 80px; }
 }
+
+/* 쓸거리 제안 — 대화 위. 한 덩어리 안에 제안마다 흰 카드, 큰 버튼 하나씩 */
+.clp-sg { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: var(--radius-lg); background: var(--bg-subtle); }
+.clp-sg--folded { padding: 4px 8px; }
+.clp-sg__title { margin: 0; font-size: 16px; line-height: 24px; font-weight: var(--weight-bold); color: var(--text-strong); }
+.clp-sg__why { margin: 0; font-size: 14px; line-height: 22px; color: var(--text-secondary); }
+.clp-sg__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.clp-sg__item { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); }
+.clp-sg__chip { padding: 1px 10px; border: 1px solid var(--border-default); border-radius: var(--radius-full); font-size: 12px; line-height: 20px; color: var(--text-secondary); }
+.clp-sg__name { font-size: 16px; line-height: 24px; font-weight: var(--weight-bold); color: var(--text-strong); }
+.clp-sg__angle { font-size: 14px; line-height: 22px; color: var(--text-secondary); }
+.clp-sg__row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

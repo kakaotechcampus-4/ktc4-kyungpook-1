@@ -5,12 +5,12 @@ import { installContractFixture } from './contract-fixture';
 test('unreleased profile is hidden: no home prompt, no MyPage row, a direct route says not open, and no /profile request is ever sent', async ({ page }) => {
   const http = await installContractFixture(page);
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: '오늘은 무엇을 할까요?', level: 1 })).toBeVisible();
-  await expect(page.getByRole('region', { name: '지금 상태' })).toBeVisible(); // 홈이 다 그려진 뒤에 안내가 없음을 본다
+  await expect(page.getByRole('heading', { name: '지원할 곳', level: 1 })).toBeVisible();
+  await expect(page.getByRole('region', { name: '지원 준비' })).toBeVisible(); // 홈이 다 그려진 뒤에 안내가 없음을 본다
   await expect(page.getByRole('region', { name: '매칭에 쓸 인적사항을 입력해 주세요' })).toHaveCount(0);
 
   await page.goto('/settings');
-  await expect(page.getByRole('link', { name: /GitHub 연결 관리/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /GitHub 연결/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /인적사항/ })).toHaveCount(0);
 
   await page.goto('/settings/profile');
@@ -20,7 +20,7 @@ test('unreleased profile is hidden: no home prompt, no MyPage row, a direct rout
   const guarded = await page.evaluate(async () => {
     const source = '/src/api/profile.ts';
     const { profileApi } = await import(/* @vite-ignore */ source);
-    const empty = { educations: [], careers: [], languages: [], certifications: [] };
+    const empty = { interests: ['BACKEND'] };
     return Promise.all([profileApi.get(), profileApi.save(empty)].map((p: Promise<unknown>) => p.catch((e: { code: string }) => e.code)));
   });
   expect(guarded).toEqual(['FEATURE_UNAVAILABLE', 'FEATURE_UNAVAILABLE']);

@@ -48,12 +48,17 @@ export function cellLabel(cell: ChecklistCell): string {
   return parts.length ? parts.join(', ') : '통과';
 }
 
-/** ⑥ 종이 아래 칩(#727) — 근거 · 겹침 · 짐작 세 칸만 짧게. 글자 수는 옆 숫자가 말한다 */
-export const DRAFT_CHIP_GROUPS: CheckGroup[] = ['evidence', 'repeat', 'inference'];
+/** ⑥ 종이 아래 칩(#727) — 문장에 걸리는 검사 넷(근거 · 겹침 · 문항 적합 · 짐작)만 짧게. 글자 수는 문항 전체 검사라 옆 숫자가 말한다 */
+export const DRAFT_CHIP_GROUPS: CheckGroup[] = ['evidence', 'repeat', 'fit', 'inference'];
 export function chipLabel(group: CheckGroup, cell: ChecklistCell): string {
   if (group === 'evidence') return cell.marked > 0 ? `근거 확인 ${cell.marked}` : cell.fixed > 0 ? `근거 고침 ${cell.fixed}` : '근거 통과';
+  if (group === 'fit') return cell.marked > 0 ? `문항 벗어남 ${cell.marked}` : cell.fixed > 0 ? `문항 고침 ${cell.fixed}` : '문항에 맞음';
   return cell.marked > 0 ? `${GROUP_LABEL[group]} ${cell.marked}` : `${GROUP_LABEL[group]} 없음`;
 }
+
+/** 아직 쓰기 시작하지 않은 문항의 상태 — 다른 문항이 쓰는 중이면 차례를 기다리는 것이고, 아무도 쓰지 않으면 이 문항이 첫 문장을 준비하는 중이다 */
+export const WAIT_TURN = '차례를 기다리는 중';
+export const WAIT_FIRST = '재료를 읽고 첫 문장을 준비하는 중';
 
 export type QuestionNotes = { threads: NoteThread[]; questionNotes: NoteThread[]; checklist: Checklist; phase: string | null };
 
@@ -63,8 +68,9 @@ const line = (step: DraftStep) => draftLine(step, [])?.text ?? null;
 /**
  * 한 문항의 메모·점검표.
  * currentText 는 지금 화면의 글(⑥ 은 글상자 값, ⑤ 는 서버 글). 원문이 지금 글에 없으면 내가 고친 것으로 본다(규칙 6).
+ * othersWriting 은 다른 문항이 지금 쓰는 중인지 — 쓰기 전인 문항의 상태 글만 가른다.
  */
-export function buildQuestionNotes(q: Pick<CoverLetterQuestion, 'id' | 'draft' | 'writing'>, steps: DraftStep[], currentText: string, mode: 'live' | 'edit'): QuestionNotes {
+export function buildQuestionNotes(q: Pick<CoverLetterQuestion, 'id' | 'draft' | 'writing'>, steps: DraftStep[], currentText: string, mode: 'live' | 'edit', othersWriting = true): QuestionNotes {
   const mine = steps.filter((s) => s.questionId === q.id).sort((a, b) => a.seq - b.seq);
   const threads = new Map<string, NoteThread>();
   const general: NoteThread = { key: `q:${q.id}`, sentence: null, value: null, group: null, items: [], status: 'kept' };
@@ -186,7 +192,7 @@ export function buildQuestionNotes(q: Pick<CoverLetterQuestion, 'id' | 'draft' |
     if (t.status === 'marked' || t.status === 'inferred') cell.marked += 1;
     else if (t.status === 'fixed-ai' || t.status === 'fixed-user') cell.fixed += 1;
   }
-  if (!phase && mode === 'live' && !checked) phase = q.writing ? '쓰는 중' : '차례를 기다리는 중';
+  if (!phase && mode === 'live' && !checked) phase = q.writing ? '쓰는 중' : othersWriting ? WAIT_TURN : WAIT_FIRST;
   return { threads: sentenceNotes, questionNotes, checklist, phase };
 }
 
@@ -221,7 +227,7 @@ export function paperStatus(mode: 'assign' | 'ask' | 'live', q: Pick<CoverLetter
     return { text: phase ?? '맞는 카드가 없어요', tone: 'end' };
   }
   if (phase == null) return { text: '다 썼어요', tone: 'done' };
-  return { text: phase, tone: phase === '차례를 기다리는 중' ? 'wait' : 'now' };
+  return { text: phase, tone: phase === WAIT_TURN || phase === WAIT_FIRST ? 'wait' : 'now' };
 }
 
 /** 문항에 속하지 않는 단계(검토 AI 의 전체 검토·실패, 카드 고르기의 전체 확인) — 종이 아래 한 줄로 */

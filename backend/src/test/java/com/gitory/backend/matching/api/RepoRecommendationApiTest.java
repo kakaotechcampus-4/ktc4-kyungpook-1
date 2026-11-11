@@ -243,7 +243,7 @@ class RepoRecommendationApiTest {
         RecommendedCompany krafton = new RecommendedCompany("krafton", "크래프톤", added.getId(), 1, 0, List.of("JAVA"), List.of(2L));
         RepoRecommendation recommendation = RepoRecommendation.ready(myUserId, repo, List.of(daangn),
                 Instant.parse("2026-10-31T00:00:00Z"));
-        recommendation.refresh(List.of(daangn, krafton), Instant.parse("2026-11-01T00:00:00Z"));
+        recommendation.refresh(List.of(daangn, krafton), null, Instant.parse("2026-11-01T00:00:00Z"));
         recommendations.save(recommendation);
 
         mvc.perform(get("/api/repos/" + repoPublicId + "/recommendations").with(loggedIn()))

@@ -3,14 +3,14 @@ import { getAssistantRun, sayToAssistantRun, startAssistantRun, type AssistantRe
 import { mockMatchDetail, mockMatchedPostings, mockMatchList, mockOverall, mockRefreshRepoRecommendation, mockRepoRecommendation, mockStartGapFill, startMockOverall } from './matching';
 import { getProfile, putProfile } from './profile';
 import { listNotices, readAllNotices, readNotice, seedNotices } from './notifications';
-import { applyPolish, chooseCards, confirmInference, createCoverLetter, deleteCoverLetter, discardPolish, getCoverLetter, listCoverLetters, listCoverLetterTurns, openCoverLetterTurn, polishQuestion, replyCoverLetterTurn, retryCoverLetter, saveAnswers, saveDraft, skipCoverLetterTurn, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
+import { applyPolish, chooseCards, confirmInference, createCoverLetter, deleteCoverLetter, discardPolish, getCoverLetter, listCoverLetters, listCoverLetterTurns, openCoverLetterTurn, polishQuestion, replyCoverLetterTurn, rewriteCoverLetterQuestion, retryCoverLetter, saveAnswers, saveDraft, skipCoverLetterTurn, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
 /**
  * 목 API 라우터 — 순수 함수. 요청을 받아 { status, data, error } 를 돌려준다.
  * 실서버(Spring) 의 응답 형태를 그대로 흉내낸다. 노드·브라우저 어디서도 돈다.
  *
  * "에러가 아닌 것"은 200 으로 내려보낸다 — 후보 0개(verdict) · 부분 결과(partial) · 작업 실패(state).
  */
-import { db, viewJob, boardFor, activityView, removeActivity, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, skipTurn, nextId, recallFor, resetDb, repoUpdateList, markRepoUpdateSeen, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata, settleCard } from './store';
+import { db, viewJob, boardFor, activityView, removeActivity, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, replyTurn, skipTurn, nextId, recallFor, resetDb, repoUpdateList, markRepoUpdateSeen, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata, settleCard } from './store';
 import { now } from './fixtures';
 import { chooseThemes, queueAiThemes } from './store'; // 문항 유형(#564)
 import { CONFIG } from '@/lib/config';
@@ -34,6 +34,12 @@ export const isPublicPath = (path: string) => path.startsWith('/auth/') || path 
 // ───────────────────────────── 인증 ─────────────────────────────
 on('POST', '/__reset', () => { resetDb(); return ok({ ok: true }); }); // 목 전용 (E2E). 실서버엔 없다
 on('POST', '/events', () => ok({ ok: true })); // 지표는 받기만 한다 (api.logger)
+on('POST', '/feedback', ({ body }) => {
+  const message = typeof body.message === 'string' ? body.message.trim() : '';
+  const path = body.path ?? '';
+  if (message.length < 1 || message.length > 1000 || typeof path !== 'string' || path.length > 255) return fail(400, 'INVALID_REQUEST', '신고 내용을 확인해 주세요.');
+  return ok(null);
+});
 on('GET', '/notifications', () => ok(listNotices(db.notifications)));
 on('POST', '/notifications/read-all', () => { readAllNotices(db.notifications); return ok({ ok: true }); });
 on('POST', '/notifications/:id/read', ({ params }) => readNotice(db.notifications, params[0]) ? ok({ ok: true }) : fail(404, 'NOT_FOUND', '알림을 찾을 수 없습니다.'));
@@ -85,6 +91,7 @@ on('GET', '/cover-letters/:id/turns', ({ params }) => letter(listCoverLetterTurn
 on('POST', '/cover-letters/:id/questions/:qid/turns/open', ({ params }) => letter(openCoverLetterTurn(params[0], params[1])));
 on('POST', '/cover-letters/:id/questions/:qid/turns/skip', ({ params }) => letter(skipCoverLetterTurn(params[0], params[1])));
 on('POST', '/cover-letters/:id/questions/:qid/turns', ({ params, body }) => letter(replyCoverLetterTurn(params[0], params[1], body)));
+on('POST', '/cover-letters/:id/questions/:qid/rewrite', ({ params, body }) => letter(rewriteCoverLetterQuestion(params[0], params[1], body)));
 on('DELETE', '/cover-letters/:id', ({ params }) => letter(deleteCoverLetter(params[0])));
 // 홈 한 줄 명령 — 계약 검증과 진행은 mock/assistant.ts
 const assist = (r: AssistantResult): MockResult => (r.ok ? ok(r.data) : fail(r.status, r.code, r.message));
@@ -110,6 +117,7 @@ on('DELETE', '/cards/:id', ({ params }) => {
   delete db.interview[card.id];
   return ok({ ok: true });
 });
+on('DELETE', '/me', () => { resetDb(); return ok(null); });
 on('POST', '/auth/logout', () => ok({ ok: true }));
 on('GET', '/me', () => {
   const confirmed = db.cards.filter((c) => c.status === 'CONFIRMED').length;
@@ -387,7 +395,7 @@ on('POST', '/cards/:id/confirm', ({ params }) => {
   if (v.situation == null || isCardBlank(v.situation) || v.action == null || isCardBlank(v.action)) return fail(422, 'NOT_CONFIRMABLE', '확정하려면 최소 S · A 가 필요합니다');
   c.status = 'CONFIRMED'; c.confirmedAt = now(); c.updatedAt = c.confirmedAt;
   queueAiThemes(c); // 유형이 빈 경험 카드는 확정을 저장한 뒤 몇 초 안에 AI 가 붙인다(#564)
-  v._confirmed = true; // 현재 버전을 고정한다 — 같은 내용의 가짜 이력을 추가하지 않는다
+  pushVersion(c, v.source, {})._confirmed = true; // 실서버처럼 같은 글의 확정본을 새 버전으로 남긴다 — 바뀐 횟수(changeCount)에는 세지 않는다
   const used = c.candidate ? [c.candidate.id] : [];
   used.forEach((id) => { const cand = db.candidates.find((x) => x.id === id); if (cand) { cand.status = 'USED'; cand.usedByCardId = c.id; } });
   const remaining = c.repo ? db.candidates.filter((x) => x.repoId === c.repo.id && x.status === 'NEW').length : 0;
@@ -457,6 +465,18 @@ on('POST', '/cards/:id/interview/:turn/answer', ({ params, body }) => {
   const updated = body.kind === 'SKIP' ? skipTurn(c, Number(params[1]))
     : answerTurn(c, Number(params[1]), String(body.text ?? ''), body.source ?? 'USER_STATED');
   return updated ? ok(cardView(updated)) : fail(404, 'TURN_NOT_FOUND', '질문을 찾을 수 없습니다');
+});
+
+// 답을 AI 가 먼저 읽는다 — 카드에 넣었는지 여부는 응답의 outcome 이 말한다
+on('POST', '/cards/:id/interview/:turn/reply', ({ params, body }) => {
+  const c = findCard(params[0]);
+  if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
+  const turn = db.interview[c.id]?.find((t: Any) => t.turnNo === Number(params[1]));
+  if (!turn) return fail(404, 'TURN_NOT_FOUND', '질문을 찾을 수 없습니다');
+  const text = String(body.text ?? '').trim();
+  if (!text) return fail(400, 'INVALID_REQUEST', '답을 적어 주세요');
+  if (turn.answer || (turn.outcome && turn.outcome !== 'LATER')) return fail(409, 'INVALID_STATE', '이미 끝난 질문입니다');
+  return ok(replyTurn(c, turn, text, body.source ?? 'USER_STATED'));
 });
 
 /** 한 요청 처리. path 는 /api 접두사를 뗀 것. */

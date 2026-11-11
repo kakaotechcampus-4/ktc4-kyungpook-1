@@ -1,10 +1,11 @@
 import { StrictMode } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createMemoryRouter, Outlet, RouterProvider, useLocation } from 'react-router-dom';
+import { createMemoryRouter, MemoryRouter, Outlet, RouterProvider, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssistantItem, AssistantRun } from '@/api/assistant';
 import { AskPage } from '@/features/assistant/AskPage';
+import { HomeHero } from '@/features/home/HomeSections';
 import { stepLine } from '@/features/assistant/askCopy';
 import { handle } from '@/mock/router';
 import { db, resetDb } from '@/mock/store';
@@ -42,10 +43,11 @@ const routes = () => [{
     { path: '/', element: <p>홈 화면</p> },
     { path: '/ask', element: <AskPage /> },
     { path: '/ask/:runId', element: <AskPage /> },
+    { path: '/cover-letters/:id', element: <p>자소서 화면</p> },
   ],
 }];
 /** 실제 앱(main.tsx)처럼 StrictMode 안에서 연다 — 효과가 두 번 도는 개발 모드에서도 같아야 한다 */
-function mount(path: string, server = connectMockServer()) {
+function mount(path: string | { pathname: string; search: string; state: unknown }, server = connectMockServer()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const router = createMemoryRouter(routes(), { initialEntries: [path] });
   render(<StrictMode><QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider></StrictMode>);
@@ -61,7 +63,7 @@ const json = (data: unknown) => new Response(JSON.stringify({ data, error: null 
 const rawRun = (id: string, state: string, items: unknown[]) =>
   ({ id, state, stepsUsed: 0, stepLimit: 6, pollAfterMs: null, errorCode: null, items, createdAt: '2026-11-05T09:00:00Z', updatedAt: '2026-11-05T09:00:05Z' });
 
-beforeEach(() => { resetDb(); shift = 0; Date.now = realNow; vi.stubEnv('VITE_ASSISTANT_ENABLED', 'true'); });
+beforeEach(() => { window.scrollTo = vi.fn(); resetDb(); shift = 0; Date.now = realNow; vi.stubEnv('VITE_ASSISTANT_ENABLED', 'true'); });
 afterEach(() => { cleanup(); Date.now = realNow; vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 describe('홈 한 줄 명령 화면', () => {
@@ -250,7 +252,7 @@ describe('홈 한 줄 명령 목 서버', () => {
     const [, find, match, question] = waiting.items;
     expect(find).toMatchObject({ find: { company: '가온소프트' }, totalFound: 1, postings: [{ company: '가온소프트' }] });
     expect(match).toMatchObject({ posting: { company: '가온소프트' }, match: { requiredMet: expect.any(Number), requiredTotal: expect.any(Number) } });
-    expect(question).toMatchObject({ askKind: 'QUESTIONS', text: '자소서를 쓰려면 문항이 필요해요. 지원서에 있는 문항을 그대로 붙여 넣어 주세요.' });
+    expect(question).toMatchObject({ askKind: 'CHOICE', text: '가온소프트 공고의 문항은 알 수 없어요. 자주 나오는 문항 3개로 바로 쓸까요, 지원서 문항을 붙여 넣을까요?', options: ['자주 나오는 문항으로 쓰기', '문항 붙여 넣기'] });
 
     const answered = reply(made.id, '지원 동기를 적어 주세요\n\n가장 어려웠던 경험을 적어 주세요\n');
     expect(answered.state).toBe('RUNNING');
@@ -274,5 +276,301 @@ describe('홈 한 줄 명령 목 서버', () => {
     expect(read(running.id).state).toBe('DONE');
     expect(say()).toMatchObject({ status: 409, error: { code: 'INVALID_STATE' } });
     expect(shape(running.id)).toEqual(['USER', 'STEP:FIND_POSTINGS:true', 'SAY']); // 말이 더해지지 않았다
+  });
+});
+
+describe('문항을 모를 때 고르기', () => {
+  const A = '자주 나오는 문항으로 쓰기', B = '문항 붙여 넣기';
+  const user = { seq: 1, kind: 'USER', text: '토스 백엔드 공고에 맞춰서 자소서 써줘' };
+  const choice = { seq: 9, kind: 'ASK', text: '토스 공고의 문항은 알 수 없어요', askKind: 'CHOICE', options: [A, B] };
+
+  it('Q1 문항 물음은 버튼 둘로 보이고 예전의 안내 상자는 없다', async () => {
+    const run = rawRun('run_g', 'WAITING_USER', [user, choice]);
+    mount('/ask/run_g', connectMockServer((call) => (call.path === '/assistant/runs/run_g' ? json(run) : undefined)));
+    await screen.findByText('토스 공고의 문항은 알 수 없어요', SEEN);
+    expect(screen.getByRole('button', { name: A })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: B })).toBeInTheDocument();
+    expect(screen.queryByText('문항이 아직 없나요?')).not.toBeInTheDocument();
+  });
+
+  it('Q2 자주 나오는 문항을 고르면 그 말을 보내고, 끝난 줄은 3개 문항으로 시작했다고 말하며 자소서를 열어 준다', async () => {
+    const made = begin('가온소프트 공고에 맞춰 자소서 써 줘');
+    advance(10);
+    mount(`/ask/${made.id}`);
+    fireEvent.click(await screen.findByRole('button', { name: A }));
+    await screen.findByText(A, SEEN);
+    advance(10);
+    const done = read(made.id);
+    expect(done.items.find((i) => i.tool === 'START_COVER_LETTER')).toMatchObject({ defaultQuestions: true, questionCount: 3 });
+    // 끝난 실행은 다음 확인(폴링) 때 화면에 오므로 기본 1초보다 길게 기다린다
+    expect(await screen.findByText('자주 나오는 문항 3개로 자소서를 쓰기 시작했어요', SEEN, { timeout: 5000 })).toBeInTheDocument();
+    // 지켜본 실행이라 자소서가 저절로 열린다 — 머무르면 열기 링크가 남는다
+    expect(await screen.findByText('자소서를 열고 있어요', SEEN, { timeout: 5000 })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '여기 머무르기' }));
+    expect(await screen.findByRole('link', { name: '자소서 열기' })).toBeInTheDocument();
+  });
+
+  it('Q3 문항 붙여 넣기를 고르면 붙여 넣으라는 입력 안내가 나온다', async () => {
+    const made = begin('가온소프트 공고에 맞춰 자소서 써 줘');
+    advance(10);
+    mount(`/ask/${made.id}`);
+    fireEvent.click(await screen.findByRole('button', { name: B }));
+    advance(10);
+    await waitFor(() => expect(composer().placeholder).toBe('지원서에 있는 문항을 그대로 붙여 넣어 주세요'), { timeout: 4000 });
+  });
+});
+
+describe('맞춰 본 공고 결과', () => {
+  const user = { seq: 1, kind: 'USER', text: '토스 백엔드 공고 찾아서 나랑 맞는지 봐 줘' };
+  const tile = (id: string, company: string, title: string) => ({ postingId: id, company, title });
+  const found = { seq: 2, kind: 'STEP', tool: 'FIND_POSTINGS', ok: true, totalFound: 2, postings: [tile('p/1', '토스', '백엔드'), tile('p2', '다른곳', '서버')] };
+  const matched = (over: object = {}) => ({
+    seq: 3, kind: 'STEP', tool: 'MATCH_POSTING', ok: true, posting: tile('p/1', '토스', '백엔드'),
+    match: { requiredMet: 3, requiredTotal: 5, met: [], missing: [] }, ...over,
+  });
+  const answer = { seq: 4, kind: 'SAY', text: '필수 조건 3개가 맞아요' };
+  const open = async (state: string, items: unknown[]) => {
+    const run = rawRun('run_m', state, items);
+    mount('/ask/run_m', connectMockServer((call) => (call.path === '/assistant/runs/run_m' ? json(run) : undefined)));
+    await screen.findByText('필수 조건 3개가 맞아요', SEEN);
+  };
+  const HEADING = '토스, 백엔드';
+
+  it('M1 끝난 실행의 마지막 걸음이 맞춰 보기면 공고 이름, 맞는 조건 수, 공고 보기와 자소서 쓰기 링크가 있는 카드를 보인다', async () => {
+    await open('DONE', [user, found, matched(), answer]);
+    expect(screen.getByRole('heading', { name: HEADING })).toBeInTheDocument();
+    expect(screen.getByText('필수 조건 5개 중 3개가 맞아요')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '공고 보기' })).toHaveAttribute('href', '/match/p%2F1');
+    expect(screen.getByRole('link', { name: '이 공고로 자소서 쓰기' })).toHaveAttribute('href', '/cover-letters/new?postingId=p%2F1');
+  });
+
+  it('M2 실행이 도는 중이거나 답을 기다리는 중에는 카드를 보이지 않는다', async () => {
+    await open('RUNNING', [user, found, matched(), answer]);
+    expect(screen.queryByRole('heading', { name: HEADING })).not.toBeInTheDocument();
+    cleanup();
+    await open('WAITING_USER', [user, found, matched(), answer]);
+    expect(screen.queryByRole('heading', { name: HEADING })).not.toBeInTheDocument();
+  });
+
+  it('M3 이미 자소서를 시작했으면 그 버튼만 보이고 공고 카드는 보이지 않는다', async () => {
+    const started = { seq: 5, kind: 'STEP', tool: 'START_COVER_LETTER', ok: true, coverLetterId: 'cl_1' };
+    await open('DONE', [user, found, started, matched(), answer]);
+    expect(screen.getByRole('link', { name: '자소서 열기' })).toHaveAttribute('href', '/cover-letters/cl_1');
+    expect(screen.queryByRole('heading', { name: HEADING })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '공고 보기' })).not.toBeInTheDocument();
+  });
+
+  it('M4 맞춰 본 공고가 있으면 찾은 공고 목록을 접고, 맞추는 중이거나 실패했으면 목록을 남긴다', async () => {
+    const listed = () => screen.queryByRole('link', { name: /다른곳/ });
+    await open('DONE', [user, found, matched(), answer]);
+    expect(listed()).not.toBeInTheDocument();
+    cleanup();
+    await open('RUNNING', [user, found, matched({ ok: null, match: null }), answer]);
+    expect(listed()).toBeInTheDocument();
+    cleanup();
+    await open('DONE', [user, found, matched({ ok: false, error: 'NOT_FOUND', posting: null, match: null }), answer]);
+    expect(listed()).toBeInTheDocument();
+  });
+
+  it('M5 맞춘 결과가 없거나 필수 조건이 0개면 맞는 정도 줄만 빼고 카드와 링크는 보인다', async () => {
+    await open('DONE', [user, found, matched({ match: null }), answer]);
+    expect(screen.getByRole('heading', { name: HEADING })).toBeInTheDocument();
+    expect(screen.queryByText(/필수 조건 \d+개 중/)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '공고 보기' })).toBeInTheDocument();
+    cleanup();
+    await open('DONE', [user, found, matched({ match: { requiredMet: 0, requiredTotal: 0, met: [], missing: [] } }), answer]);
+    expect(screen.queryByText(/필수 조건 \d+개 중/)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '이 공고로 자소서 쓰기' })).toBeInTheDocument();
+  });
+
+  it('M6 홈 입력 칸과 대화 첫 화면의 안내 문장이 같다', () => {
+    const hint = '예: 토스 백엔드 공고 찾아서 나랑 맞는지 봐 줘';
+    render(<MemoryRouter><HomeHero /></MemoryRouter>);
+    expect(screen.getByLabelText('할 일')).toHaveAttribute('placeholder', hint);
+    cleanup();
+    mount('/ask');
+    expect(composer()).toHaveAttribute('placeholder', hint);
+  });
+});
+
+describe('홈 대화 — 앞 대화', () => {
+  it('C6 일이 끝난 뒤 새 일을 적으면 앞 대화가 위에 남는다', async () => {
+    const done = settled(begin('spring 공고 보여 줘'));
+    mount(`/ask/${done.id}`);
+    fireEvent.change(await screen.findByLabelText('할 일이나 답'), { target: { value: '레포 하나 정리해 줘' } });
+    fireEvent.click(screen.getByRole('button', { name: '보내기' }));
+    await waitFor(() => expect(where()).not.toBe(`/ask/${done.id}`));
+    const before = await screen.findByText('spring 공고 보여 줘', SEEN);
+    const now = await screen.findByText('레포 하나 정리해 줘', SEEN);
+    expect(before.compareDocumentPosition(now) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('C7 홈에서 새로 들어온 대화는 앞 대화 없이 시작한다', async () => {
+    const done = settled(begin('spring 공고 보여 줘'));
+    mount({ pathname: '/ask', search: `?q=${encodeURIComponent('레포 하나 정리해 줘')}`, state: { earlier: [done.id] } });
+    await waitFor(() => expect(where()).toMatch(/^\/ask\/run_\d+$/));
+    expect(await screen.findByText('레포 하나 정리해 줘', SEEN)).toBeInTheDocument();
+    expect(screen.queryByText('spring 공고 보여 줘', SEEN)).toBeNull();
+  });
+});
+
+describe('새 도구 걸음 — 모자란 조건 채우기 · 카드 빈 칸 질문 · 자소서 첨삭', () => {
+  const user = { seq: 1, kind: 'USER', text: '토스 공고 모자란 조건 채워 줘' };
+  const posting = { postingId: 'p/1', company: '토스', title: '백엔드' };
+  const matched = { seq: 2, kind: 'STEP', tool: 'MATCH_POSTING', ok: true, posting, match: { requiredMet: 3, requiredTotal: 5, met: [], missing: ['Docker 배포 경험', 'Kafka 운영 경험'] } };
+  const filled = (over: object = {}) => ({
+    seq: 3, kind: 'STEP', tool: 'FILL_POSTING_GAPS', ok: true, posting, gapsFilled: 2,
+    match: { requiredMet: 3, requiredTotal: 5, met: [], missing: ['Docker 배포 경험', 'Kafka 운영 경험'] }, ...over,
+  });
+  const asked = (over: object = {}) => ({ seq: 2, kind: 'STEP', tool: 'ASK_CARD_GAP', ok: true, cardId: 'card/3', cardTitle: '토큰 만료 자동 재발급', question: { field: 'R', text: '결과는 어땠나요?' }, ...over });
+  const polished = (over: object = {}) => ({ seq: 2, kind: 'STEP', tool: 'POLISH_COVER_LETTER', ok: true, letterId: 'cl/1', polished: [{ seq: 1, points: 3 }, { seq: 2, points: 2 }], remainingQuestions: 0, ...over });
+  const say = (text: string) => ({ seq: 9, kind: 'SAY', text });
+  const open = async (state: string, items: unknown[], said: string) => {
+    const run = rawRun('run_n', state, [...items, say(said)]);
+    mount('/ask/run_n', connectMockServer((call) => (call.path === '/assistant/runs/run_n' ? json(run) : undefined)));
+    await screen.findByText(said, SEEN);
+  };
+
+  it('F1 세 도구의 걸음은 하는 중, 끝남, 실패를 문장으로 구분해 보인다', () => {
+    const step = (raw: object) => AssistantItem.parse({ seq: 1, kind: 'STEP', ...raw });
+    const lines = (tool: string, input: object, done: object, error: string) => [
+      stepLine(step({ tool, ...input })), stepLine(step({ tool, ok: true, ...input, ...done })), stepLine(step({ tool, ok: false, error, ...input })),
+    ];
+    expect([
+      lines('FILL_POSTING_GAPS', { posting }, { gapsFilled: 2 }, 'NOT_MATCHED'),
+      lines('ASK_CARD_GAP', {}, { cardTitle: '토큰 재발급', question: { field: 'R', text: '결과는?' } }, 'CAP_REACHED'),
+      lines('POLISH_COVER_LETTER', {}, { polished: [{ seq: 1, points: 3 }, { seq: 2, points: 2 }] }, 'NOT_READY'),
+    ]).toEqual([
+      ['모자란 조건을 레포에서 찾고 있어요', '모자란 조건 2개의 근거를 레포에서 찾았어요', '먼저 공고와 맞춰 봐야 해요'],
+      ['카드 빈 칸 질문을 준비하고 있어요', "'토큰 재발급' 카드에 결과 질문을 열었어요", '이 카드는 질문을 다 썼어요'],
+      ['자소서를 첨삭하고 있어요', '문항 2개를 첨삭했어요(포인트 5개)', '초안이 아직 끝나지 않았어요'],
+    ]);
+    // 값이 비어 있는 끝남
+    expect(stepLine(step({ tool: 'FILL_POSTING_GAPS', ok: true, gapsFilled: 0 }))).toBe('레포에서 더 찾은 건 없었어요');
+    expect(stepLine(step({ tool: 'ASK_CARD_GAP', ok: true, cardTitle: '토큰 재발급', question: null }))).toBe("'토큰 재발급' 카드는 더 물을 게 없어요");
+    expect(stepLine(step({ tool: 'POLISH_COVER_LETTER', ok: true, polished: [{ seq: 3, points: 1 }], remainingQuestions: 2 }))).toBe('문항 1개를 첨삭했어요(포인트 1개). 남은 문항 2개');
+  });
+
+  it('F2 모자란 조건의 근거를 찾고 끝나면 그 공고 카드를 보이고, 맞는 조건 수와 모자란 조건 줄은 그대로다(근거는 공고 화면에서 카드로 만든다)', async () => {
+    await open('DONE', [user, matched, filled()], '모자란 조건 두 개의 근거를 찾았어요');
+    expect(screen.getByRole('heading', { name: '토스, 백엔드' })).toBeInTheDocument();
+    expect(screen.getByText('필수 조건 5개 중 3개가 맞아요')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '공고 보기' })).toHaveAttribute('href', '/match/p%2F1');
+    expect(screen.getByText('Docker 배포 경험, Kafka 운영 경험')).toBeInTheDocument();
+  });
+
+  it('F3 카드에 질문을 열었으면 질문에 답하기 버튼이 그 카드의 질문 화면으로 간다. 물을 게 없으면 버튼이 없다', async () => {
+    await open('DONE', [user, asked()], '질문을 열어 뒀어요');
+    expect(screen.getByRole('link', { name: '질문에 답하기' })).toHaveAttribute('href', '/cards/card%2F3/interview');
+    cleanup();
+    await open('DONE', [user, asked({ question: null })], '더 물을 게 없어요');
+    expect(screen.queryByRole('link', { name: '질문에 답하기' })).not.toBeInTheDocument();
+  });
+
+  it('F4 자소서를 첨삭했으면 첨삭 보기 버튼이 그 자소서로 간다', async () => {
+    await open('DONE', [user, polished()], '첨삭했어요');
+    expect(screen.getByRole('link', { name: '첨삭 보기' })).toHaveAttribute('href', '/cover-letters/cl%2F1?tab=polish');
+  });
+
+  it('F5 새 실패 코드는 정해진 문장으로 보이고, 모르는 코드는 끝내지 못했다고만 보인다', async () => {
+    const fail = (tool: string, error: string, seq: number) => ({ seq, kind: 'STEP', tool, ok: false, error });
+    await open('DONE', [
+      user, fail('FILL_POSTING_GAPS', 'NOT_MATCHED', 2), fail('FILL_POSTING_GAPS', 'GITHUB_DISCONNECTED', 3),
+      fail('ASK_CARD_GAP', 'CAP_REACHED', 4), fail('POLISH_COVER_LETTER', 'NOT_READY', 5), fail('POLISH_COVER_LETTER', 'SOMETHING_NEW', 6),
+    ], '하지 못했어요');
+    for (const line of ['먼저 공고와 맞춰 봐야 해요', 'GitHub 연결이 끊겨 있어요', '이 카드는 질문을 다 썼어요', '초안이 아직 끝나지 않았어요', '이 일을 끝내지 못했어요']) {
+      expect(screen.getByText(line, SEEN)).toBeInTheDocument();
+    }
+    expect(screen.queryByRole('link', { name: /질문에 답하기|첨삭 보기/ })).not.toBeInTheDocument();
+  });
+
+  it('F6 목 서버는 채워, 빈 칸, 첨삭이 든 말을 각 도구 대본으로 진행하고 값이 계약에 맞는다', () => {
+    const fill = begin('가온소프트 공고 모자란 조건 채워 줘');
+    advance(10);
+    const filledRun = read(fill.id);
+    expect(filledRun.state).toBe('DONE');
+    expect(shape(fill.id)).toEqual(['USER', 'STEP:FIND_POSTINGS:true', 'STEP:MATCH_POSTING:true', 'STEP:FILL_POSTING_GAPS:true', 'SAY']);
+    expect(filledRun.items.find((i) => i.tool === 'FILL_POSTING_GAPS')).toMatchObject({ gapsFilled: 2, match: { missing: ['Docker 배포 경험', 'Kafka 운영 경험'] } }); // 채우기는 맞는 조건 수를 바꾸지 않는다
+
+    const gap = begin('카드 빈 칸 질문해 줘');
+    advance(10);
+    expect(read(gap.id).items.find((i) => i.tool === 'ASK_CARD_GAP')).toMatchObject({ cardId: expect.any(String), question: { field: 'R', text: '결과는 어땠나요?' } });
+
+    const polish = begin('자소서 첨삭해 줘');
+    advance(10);
+    expect(read(polish.id).items.find((i) => i.tool === 'POLISH_COVER_LETTER')).toMatchObject({ letterId: db.coverLetters[0].id, polished: [{ seq: 1, points: 3 }, { seq: 2, points: 2 }], remainingQuestions: 0 });
+  });
+});
+
+describe('J2 한 줄 명령으로 자소서를 시작하면 바로 연다', () => {
+  const user = { seq: 1, kind: 'USER', text: '토스 공고로 자소서 써 줘' };
+  const started = { seq: 2, kind: 'STEP', tool: 'START_COVER_LETTER', ok: true, coverLetterId: 'cl_9' };
+  const said = { seq: 3, kind: 'SAY', text: '자소서를 시작했어요' };
+  const serve = (state: () => string) =>
+    connectMockServer((call) => (call.path === '/assistant/runs/run_j' ? json(rawRun('run_j', state(), [user, started, said])) : undefined));
+
+  it('도는 걸 지켜보다 끝나면 한 줄을 보이고 1.5초 뒤 자소서로 간다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let state = 'RUNNING';
+    const { client } = mount('/ask/run_j', serve(() => state));
+    await screen.findByText('자소서를 시작했어요', SEEN);
+    state = 'DONE';
+    await act(async () => { await client.invalidateQueries(); });
+    expect(await screen.findByText('자소서를 열고 있어요')).toBeInTheDocument();
+    expect(where()).toBe('/ask/run_j');
+    await act(async () => { await vi.advanceTimersByTimeAsync(1600); });
+    expect(where()).toBe('/cover-letters/cl_9');
+  });
+
+  it('여기 머무르기를 누르면 타이머가 멈추고 자소서 열기 버튼이 남는다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let state = 'RUNNING';
+    const { client } = mount('/ask/run_j', serve(() => state));
+    await screen.findByText('자소서를 시작했어요', SEEN);
+    state = 'DONE';
+    await act(async () => { await client.invalidateQueries(); });
+    fireEvent.click(await screen.findByRole('button', { name: '여기 머무르기' }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(where()).toBe('/ask/run_j');
+    expect(screen.getByRole('link', { name: '자소서 열기' })).toHaveAttribute('href', '/cover-letters/cl_9');
+  });
+
+  it('이미 끝난 실행을 다시 열면 자동으로 가지 않는다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mount('/ask/run_j', serve(() => 'DONE'));
+    expect(await screen.findByRole('link', { name: '자소서 열기' })).toBeInTheDocument();
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(screen.queryByText('자소서를 열고 있어요')).not.toBeInTheDocument();
+    expect(where()).toBe('/ask/run_j');
+  });
+});
+
+describe('J3 실패했을 때 이어갈 일', () => {
+  const user = { seq: 1, kind: 'USER', text: '토스 공고로 자소서 써 줘' };
+  const failStep = (error: string) => ({ seq: 2, kind: 'STEP', tool: 'START_COVER_LETTER', ok: false, error });
+  const open = async (state: string, items: unknown[]) => {
+    mount('/ask/run_f', connectMockServer((call) => (call.path === '/assistant/runs/run_f' ? json(rawRun('run_f', state, items)) : undefined)));
+    await screen.findByText(user.text, SEEN);
+  };
+
+  it('실행이 실패하면 다시 하기가 처음 적은 말로 /ask?q= 에 간다', async () => {
+    await open('FAILED', [user]);
+    fireEvent.click(await screen.findByRole('button', { name: '다시 하기' }));
+    await waitFor(() => expect(where()).toBe(`/ask?q=${encodeURIComponent(user.text)}`));
+  });
+
+  it('확정 카드가 없어서 끝났으면 카드 확정하러 가기가 카드 화면으로 잇는다', async () => {
+    await open('DONE', [user, failStep('NO_CONFIRMED_CARDS')]);
+    expect(await screen.findByRole('link', { name: '카드 확정하러 가기' })).toHaveAttribute('href', '/cards');
+  });
+
+  it('GitHub 연결이 끊겨서 끝났으면 GitHub 다시 연결이 설정으로 잇는다', async () => {
+    await open('DONE', [user, failStep('GITHUB_DISCONNECTED')]);
+    expect(await screen.findByRole('link', { name: 'GitHub 다시 연결' })).toHaveAttribute('href', '/settings/github');
+  });
+
+  it('다른 이유로 걸음이 실패했으면 다시 하기를 보인다', async () => {
+    await open('DONE', [user, failStep('RATE_LIMITED')]);
+    expect(await screen.findByRole('button', { name: '다시 하기' })).toBeInTheDocument();
   });
 });

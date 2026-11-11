@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CircleHelp, MessageSquarePlus, PenLine, X } from 'lucide-react';
 import { useApplyPolish, useConfirmInference, usePolish, useSaveDraft, type CoverLetter, type CoverLetterQuestion } from '@/api/coverLetters';
 import { errorView } from '@/api/errorView';
 import { checkMessage } from '@/lib/coverLetterCopy';
 import { buildQuestionNotes, flaggedSentences } from '@/lib/coverLetterNotes';
 import { locateSentence, withoutSentence } from '@/lib/draftPaper';
+import { blankCount } from '@/lib/draftText';
 import { track } from '@/lib/track';
 import { useReducedMotion } from '@/lib/useLiveText';
 import { FillTab, type AutoAsk } from './FillTab';
@@ -13,6 +15,7 @@ import { Notices } from './Notices';
 import { PANEL_TABS, PanelTabs, tabId, tabPanelId, type PanelTab } from './PanelTabs';
 import { PolishTab, type Flag, type PolishView } from './PolishTab';
 import './panel.css';
+import { buttonClass } from '@/components/ui';
 
 /** 첨삭 요청은 하나지만 '살펴보는 중'을 이만큼 보인 뒤 '고치는 중'으로 넘긴다 */
 export const POLISH_STEP_MS = 600;
@@ -33,8 +36,11 @@ export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, on
   talk: { questionId: string } | null; onTalk: (questionId: string) => void; onTalked: () => void;
   onShowFilled: (questionId: string, sentence: string | null) => void;
 }) {
-  const [tab, setTab] = useState<PanelTab>('fill');
-  const [sheet, setSheet] = useState<PanelTab | null>(null);
+  // 한 줄 명령의 '첨삭 보기' 처럼 주소의 tab 으로 들어오면 그 탭에서 시작한다(처음 한 번만 읽는다)
+  const [sp] = useSearchParams();
+  const [first] = useState(() => PANEL_TABS.find((t) => t.key === sp.get('tab'))?.key ?? null);
+  const [tab, setTab] = useState<PanelTab>(first ?? 'fill');
+  const [sheet, setSheet] = useState<PanelTab | null>(mobile ? first : null);
   const [running, setRunning] = useState<string | null>(null);
   const [step, setStep] = useState<1 | 2>(1);
   const [applied, setApplied] = useState<Record<string, boolean>>({});
@@ -109,10 +115,13 @@ export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, on
   };
   const applyTo = (x: CoverLetterQuestion) => {
     setError(null);
+    const before = blankCount(textOf(x));
     apply.mutate({ questionId: x.id }, {
       onSuccess: (l) => {
         const next = l.questions.find((y) => y.id === x.id)?.draft?.text;
         if (next != null) onText(x.id, next);
+        // 첨삭이 글 끝에 '더 쓸 거리' 같은 빈칸을 새로 만들었으면 대화가 그 문항 이야기를 바로 연다 — 닫힌 대화가 '채울 곳이 생기면 물어볼게요' 라고 해 놓고 가만히 있지 않게
+        if (next != null && blankCount(next) > before) onTalk(x.id);
         setApplied((a) => ({ ...a, [x.id]: true }));
       },
       onError: (e) => setError({ id: x.id, message: errorView(e).message }),
@@ -184,7 +193,7 @@ export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, on
         {sheet && (
           <aside className="clp clp-scroll clp--sheet" aria-label={label}>
             <span className="clp-grab" aria-hidden />
-            {head(<button type="button" className="btn btn--text clp-head__x" aria-label="닫기" onClick={() => setSheet(null)}><X size={18} aria-hidden /></button>)}
+            {head(<button type="button" className={buttonClass('text', undefined, 'clp-head__x')} aria-label="닫기" onClick={() => setSheet(null)}><X size={18} aria-hidden /></button>)}
             <section className="clp-card">{body(sheet)}</section>
           </aside>
         )}

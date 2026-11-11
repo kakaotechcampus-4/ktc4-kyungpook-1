@@ -86,6 +86,10 @@ it('맞춰 본 결과는 읽은 카드 수 → 견준 조건 수 → 조건마�
   expect(screen.queryByText(/2\/3 맞음/)).not.toBeInTheDocument();
   await advance(4000);
   expect(tiles()).toBe(5);
+  // 다 펼친 뒤에는 과정 줄 둘이 접히고 결과 한 줄만 남는다
+  expect(screen.queryByText(/^확정 카드.*읽었어요$/)).not.toBeInTheDocument();
+  expect(screen.queryByText('필수 3개, 우대 2개와 견줬어요')).not.toBeInTheDocument();
+  expect(screen.getByText(/맞춰 봤어요$/)).toBeInTheDocument();
   expect(screen.getAllByText(/2\/3 맞음/)).toHaveLength(2);
 });
 
@@ -126,7 +130,7 @@ it('조건마다 찾아볼지와 이유 → 한 일 → 결론이 보이고, 찾
   expect(screen.getByText(/^찾지 않기로 했어요 — 다른 분야의 일이라 거리가 멀어요/)).toBeInTheDocument();
   expect(screen.getByText('채울 자료를 찾지 못했어요.')).toBeInTheDocument();
   expect(screen.getByText('시간이 부족해 여기까지 찾았어요.')).toBeInTheDocument();
-  expect(screen.getByText('제안 1개, 찾지 못함 1개, 찾지 않음 1개, 시간 초과 1개')).toBeInTheDocument();
+  expect(screen.getByText(/맞춰 봤고 제안 1개를 찾았어요$/)).toBeInTheDocument();
   // 다섯 번째 ✕ 조건은 서버가 찾지 않아(상한) 아래에 아무것도 없다
   expect(document.querySelectorAll('.gap-fill')).toHaveLength(4);
   const buttons = screen.getAllByRole('button', { name: '그래도 찾아보기' });
@@ -232,9 +236,12 @@ it('고른 제안만 진행하기로 넘긴다 — 후보로 카드 만들기는
   mount({ ...five, gapFill });
   const create = vi.spyOn(endpoints, 'createCardsFromCandidates').mockResolvedValue({ jobId: 'job_9', cardIds: ['card_90', 'card_91'] });
   expect(await screen.findByRole('button', { name: '제안을 골라 진행하기' })).toBeDisabled();
-  expect(screen.getByRole('link', { name: '이 공고로 자소서 쓰기' })).toBeInTheDocument();
+  // J1 자소서 버튼이 늘 진한 버튼이고, 제안 버튼은 고른 뒤에도 보조 버튼이며 글자 링크는 따로 없다
+  expect(screen.getByRole('link', { name: '이 공고로 자소서 쓰기' })).toHaveClass('btn--primary');
+  expect(screen.getByRole('button', { name: '제안을 골라 진행하기' })).toHaveClass('btn--secondary');
   fireEvent.click(screen.getByRole('checkbox', { name: '후보로 카드 만들기 — 로그인 API 응답 속도 개선' }));
   fireEvent.click(screen.getByRole('checkbox', { name: '후보로 카드 만들기 — 5.12 결제모듈 6커밋' }));
+  expect(screen.getByRole('button', { name: '고른 2개 진행하기' })).toHaveClass('btn--secondary');
   fireEvent.click(screen.getByRole('button', { name: '고른 2개 진행하기' }));
   await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
   expect(create).toHaveBeenCalledWith('r_auth', ['c_51', 'c_pay']);

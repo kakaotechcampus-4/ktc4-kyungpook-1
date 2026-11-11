@@ -2,7 +2,8 @@ package com.gitory.backend.ingest.domain;
 
 import java.util.List;
 
-public record Disclosure(List<String> reads, List<String> skips, int estimatedSeconds) {
+public record Disclosure(List<String> reads, List<String> skips, int estimatedSeconds, Integer newCommits,
+                         Integer newPullRequests, Integer reanalyzeSeconds) {
 
     static final int UNCOUNTED_SECONDS = 60;
     static final double BASE_SECONDS = 5;
@@ -26,8 +27,48 @@ public record Disclosure(List<String> reads, List<String> skips, int estimatedSe
                         + "개·최근 이슈 " + limits.maxIssues() + "개와 리뷰의 제목·본문 앞부분",
                 "카드로 고른 커밋의 코드 변경 부분");
 
-        return new Disclosure(reads, SKIPS,
-                counted ? estimatedSecondsOf(repository, limits, groupingEnabled) : UNCOUNTED_SECONDS);
+        int estimatedSeconds = counted ? estimatedSecondsOf(repository, limits, groupingEnabled) : UNCOUNTED_SECONDS;
+
+        if (!counted || repository.lastAnalyzedAt() == null || repository.analyzedCommitCount() == null
+                || repository.analyzedPrCount() == null) {
+            return new Disclosure(reads, SKIPS, estimatedSeconds, null, null, null);
+        }
+
+        int newCommits = Math.max(repository.commitCount() - repository.analyzedCommitCount(), 0);
+        int newPullRequests = Math.max(repository.prCount() - repository.analyzedPrCount(), 0);
+
+        return new Disclosure(reads, SKIPS, estimatedSeconds, newCommits, newPullRequests,
+                reanalyzeSecondsOf(repository, limits, groupingEnabled, newCommits, newPullRequests));
+
+    }
+
+    // 저장된 행은 남의 커밋을 빼고 상한에 걸려 GitHub 수와 범위가 달라 지난 정리 때의 GitHub 수와 견준다
+    // 새 기록이 없으면 AI 가 경험 그룹화를 건너뛰므로 그 시간은 새 기록이 있을 때만 더한다
+    private static int reanalyzeSecondsOf(RepositorySummary repository, IngestLimits limits, boolean groupingEnabled,
+                                          int newCommits, int newPullRequests) {
+
+        int commits = Math.min(repository.commitCount(), limits.maxCommits());
+        int commitListPages = (commits + COMMITS_PER_LIST_PAGE - 1) / COMMITS_PER_LIST_PAGE;
+        int githubCalls = commitListPages + newCommits + GITHUB_CALLS_PER_PULL_REQUEST * newPullRequests;
+        double seconds = BASE_SECONDS + SECONDS_PER_GITHUB_CALL * githubCalls;
+
+        if (groupingEnabled && newCommits + newPullRequests > 0) {
+            seconds += GROUPING_BASE_SECONDS + GROUPING_SECONDS_PER_OWN_PULL_REQUEST * newPullRequests;
+        }
+
+        return (int) Math.round(seconds);
+
+    }
+
+    private static int collectedPullRequestsOf(RepositorySummary repository, IngestLimits limits) {
+
+        int recentPullRequests = Math.min(repository.prCount(), limits.maxPullRequests());
+        int olderPullRequests = Math.max(repository.prCount() - limits.maxPullRequests(), 0);
+        // 내 PR 이 모두 최근 상한 밖에 있다고 보고 가장 많이 읽는 경우로 어림한다
+        int olderOwnPullRequests = Math.min(Math.min(repository.ownPrCount(), olderPullRequests),
+                limits.maxOwnPullRequests());
+
+        return recentPullRequests + olderOwnPullRequests;
 
     }
 
@@ -37,12 +78,7 @@ public record Disclosure(List<String> reads, List<String> skips, int estimatedSe
         // 남의 커밋과 merge 커밋은 목록으로만 훑고 내용은 내 커밋만 하나씩 받는다
         int commitListPages = (commits + COMMITS_PER_LIST_PAGE - 1) / COMMITS_PER_LIST_PAGE;
         int ownCommits = Math.min(repository.ownCommitCount(), commits);
-        int recentPullRequests = Math.min(repository.prCount(), limits.maxPullRequests());
-        int olderPullRequests = Math.max(repository.prCount() - limits.maxPullRequests(), 0);
-        // 내 PR 이 모두 최근 상한 밖에 있다고 보고 가장 많이 읽는 경우로 어림한다
-        int olderOwnPullRequests = Math.min(Math.min(repository.ownPrCount(), olderPullRequests),
-                limits.maxOwnPullRequests());
-        int pullRequests = recentPullRequests + olderOwnPullRequests;
+        int pullRequests = collectedPullRequestsOf(repository, limits);
         int githubCalls = commitListPages + ownCommits + GITHUB_CALLS_PER_PULL_REQUEST * pullRequests;
         double seconds = BASE_SECONDS + SECONDS_PER_GITHUB_CALL * githubCalls;
 

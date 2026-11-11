@@ -16,6 +16,8 @@ const fail = (status: number, code: string, message: string): AssistantResult =>
 
 const STEP_MS = 1000, POLL_MS = 1000, STEP_LIMIT = 6, DAY_MS = 86_400_000;
 const MOCK_MISSING = 'Docker 배포 경험';
+const OPTION_DEFAULT = '자주 나오는 문항으로 쓰기', OPTION_PASTE = '문항 붙여 넣기';
+const DEFAULT_QUESTIONS = ['지원 동기와 입사 후 포부를 적어 주세요', '직무와 관련된 기술로 문제를 해결한 경험을 적어 주세요', '팀과 협업하며 성과를 낸 경험을 적어 주세요'];
 
 /** result 가 있으면 걸음이다 — item 은 하는 중의 모습이고 result 는 끝난 뒤에 붙는 값 */
 type Part = { item: Any; result?: Any };
@@ -31,12 +33,50 @@ const postingOf = (p: Posting) => ({
 });
 const haystack = (p: Posting) => [p.company, p.role, p.category, ...p.techs].join(' ').toLowerCase();
 
-type Script = 'LETTER' | 'REPO' | 'FIND';
-const scriptOf = (text: string): Script => (text.includes('자소서') ? 'LETTER' : /정리|레포/.test(text) ? 'REPO' : 'FIND');
+type Script = 'LETTER' | 'REPO' | 'FIND' | 'FILL' | 'ASK' | 'POLISH';
+// 새 도구의 말('자소서 첨삭', '채워', '질문')이 자소서·찾기 대본보다 먼저 걸리게 둔다
+const scriptOf = (text: string): Script => {
+  if (text.includes('첨삭')) return 'POLISH';
+  if (text.includes('채워')) return 'FILL';
+  if (/빈 ?칸|질문/.test(text)) return 'ASK';
+  return text.includes('자소서') ? 'LETTER' : /정리|레포/.test(text) ? 'REPO' : 'FIND';
+};
 
-/** 첫 말로 정해진 대본의 앞부분 — 자소서와 정리는 사용자에게 물어야 이어지고, 공고 찾기는 한 번에 끝난다 */
+/** 첫 말로 정해진 대본의 앞부분 — 자소서와 정리는 사용자에게 물어야 이어지고, 공고 찾기와 새 도구들은 한 번에 끝난다 */
 function firstParts(script: Script, text: string): Part[] {
   const list = mockMatchList();
+  if (script === 'FILL') {
+    const company = list.find((p) => text.includes(p.company))?.company ?? null;
+    const found = company ? list.filter((p) => p.company === company) : list;
+    const target = found[0];
+    // 모자란 조건 두 개를 채우는 장면이 되도록 맞춰 본 값을 두 개 모자란 상태에서 시작한다
+    const total = Math.max(target.required.total, 2);
+    const posting = postingOf(target);
+    const before = { requiredMet: total - 2, requiredTotal: total, met: [], missing: [MOCK_MISSING, 'Kafka 운영 경험'] };
+    return [
+      step('FIND_POSTINGS', { find: { company, keywords: [] } }, { postings: found.slice(0, 3).map(postingOf), totalFound: found.length }),
+      step('MATCH_POSTING', { posting }, { posting: { ...posting, requiredMet: before.requiredMet, requiredTotal: total }, match: before }),
+      // 채우기는 카드 제안까지만 하고 맞는 조건 수는 그대로다 — 근거를 찾은 조건 수만 돌려준다
+      step('FILL_POSTING_GAPS', { posting }, { posting: { ...posting, requiredMet: before.requiredMet, requiredTotal: total }, match: before, gapsFilled: 2 }),
+      say('레포에서 모자란 조건 두 개를 더 찾았어요.'),
+    ];
+  }
+  if (script === 'ASK') {
+    const card = db.cards.find((c: Any) => c.status === 'CONFIRMED');
+    if (!card) return [stepFailed('ASK_CARD_GAP', {}, 'NOT_FOUND')];
+    return [
+      step('ASK_CARD_GAP', {}, { cardId: card.id, cardTitle: card.title, question: { field: 'R', text: '결과는 어땠나요?' } }),
+      say('카드에 질문을 열어 뒀어요. 답하면 빈 칸이 채워져요.'),
+    ];
+  }
+  if (script === 'POLISH') {
+    const letter = db.coverLetters[0] ?? (createCoverLetter({ jobRole: '백엔드 개발자', memo: '', postingId: list[0].id, questions: [{ text: '지원 동기를 적어 주세요', charLimit: null }, { text: '가장 어려웠던 경험을 적어 주세요', charLimit: null }] }, undefined) as { ok: boolean; data: Any }).data;
+    if (!letter) return [stepFailed('POLISH_COVER_LETTER', {}, 'NOT_READY')];
+    return [
+      step('POLISH_COVER_LETTER', {}, { letterId: letter.id, polished: [{ seq: 1, points: 3 }, { seq: 2, points: 2 }], remainingQuestions: 0 }),
+      say('문항 두 개를 첨삭했어요. 열어서 고칠 곳을 볼 수 있어요.'),
+    ];
+  }
   if (script === 'LETTER') {
     const company = list.find((p) => text.includes(p.company))?.company ?? null;
     const found = company ? list.filter((p) => p.company === company) : list;
@@ -46,7 +86,7 @@ function firstParts(script: Script, text: string): Part[] {
     return [
       step('FIND_POSTINGS', { find: { company, keywords: [] } }, { postings: found.slice(0, 3).map(postingOf), totalFound: found.length }),
       step('MATCH_POSTING', { posting }, { posting: { ...posting, requiredMet: met, requiredTotal: total }, match: { requiredMet: met, requiredTotal: total, met: [], missing: met < total ? [MOCK_MISSING] : [] } }),
-      ask('QUESTIONS', '자소서를 쓰려면 문항이 필요해요. 지원서에 있는 문항을 그대로 붙여 넣어 주세요.'),
+      ask('CHOICE', `${posting.company} 공고의 문항은 알 수 없어요. 자주 나오는 문항 3개로 바로 쓸까요, 지원서 문항을 붙여 넣을까요?`, [OPTION_DEFAULT, OPTION_PASTE]),
     ];
   }
   if (script === 'REPO') return [ask('CHOICE', '어느 레포를 정리할까요?', db.repos.slice(0, 3).map((r) => r.name))];
@@ -62,11 +102,13 @@ function firstParts(script: Script, text: string): Part[] {
 function answerParts(run: Any, text: string): Part[] {
   if (run.script === 'LETTER') {
     const posting = run.entries.find((e: Any) => e.item.tool === 'MATCH_POSTING').item.posting;
-    const questions = text.split('\n').map((line) => line.trim()).filter(Boolean).slice(0, L.QUESTIONS).map((line) => ({ text: line, charLimit: null }));
-    const made = createCoverLetter({ jobRole: posting.title, memo: `${posting.company} 공고에 지원하려고 홈에서 자소서를 부탁했어요`, postingId: posting.postingId, questions }, undefined);
+    if (text === OPTION_PASTE) return [ask('QUESTIONS', '자소서를 쓰려면 문항이 필요해요. 지원서에 있는 문항을 그대로 붙여 넣어 주세요.')];
+    const byDefault = text === OPTION_DEFAULT;
+    const questions = byDefault ? DEFAULT_QUESTIONS.map((line) => ({ text: line, charLimit: null })) : text.split('\n').map((line) => line.trim()).filter(Boolean).slice(0, L.QUESTIONS).map((line) => ({ text: line, charLimit: null }));
+    const made = createCoverLetter({ jobRole: posting.title, memo: `${posting.company} 공고에 지원하려고 홈에서 자소서를 부탁했어요`, postingId: posting.postingId, questions, defaultQuestions: byDefault }, undefined);
     if (!made.ok) return [stepFailed('START_COVER_LETTER', {}, made.code)];
     return [
-      step('START_COVER_LETTER', {}, { questionCount: questions.length, coverLetterId: (made.data as Any).id }),
+      step('START_COVER_LETTER', {}, { questionCount: questions.length, coverLetterId: (made.data as Any).id, ...(byDefault ? { defaultQuestions: true } : {}) }),
       say('자소서를 쓰기 시작했어요. 열어서 초안이 나오는 걸 볼 수 있어요.'),
     ];
   }

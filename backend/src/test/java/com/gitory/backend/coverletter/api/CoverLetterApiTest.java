@@ -18,6 +18,9 @@ import com.gitory.backend.coverletter.domain.MaterialAnswer;
 import com.gitory.backend.coverletter.domain.MaterialAsk;
 import com.gitory.backend.coverletter.domain.MaterialItem;
 import com.gitory.backend.coverletter.domain.QuestionTheme;
+import com.gitory.backend.coverletter.domain.CoverLetterService;
+import com.gitory.backend.coverletter.domain.CoverLetterView;
+import com.gitory.backend.coverletter.domain.NewQuestion;
 import com.gitory.backend.coverletter.infra.CardMaterialAnswerRepository;
 import com.gitory.backend.coverletter.infra.CoverLetterQuestionRepository;
 import com.gitory.backend.coverletter.infra.CoverLetterRepository;
@@ -97,6 +100,9 @@ class CoverLetterApiTest {
     JdbcTemplate jdbc;
 
     @Autowired
+    CoverLetterService coverLetters;
+
+    @Autowired
     CoverLetterRepository letters;
 
     @Autowired
@@ -145,6 +151,24 @@ class CoverLetterApiTest {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM cover_letter WHERE running_since IS NULL", Integer.class))
                 .isEqualTo(1);
         verify(rateLimiter).acquire(RateLimitedAction.COVER_LETTER, myUserId, 1);
+
+    }
+
+    @Test
+    @DisplayName("직접 만든 자소서는 기본 문항 표시가 false 이고, 서비스가 기본 문항으로 만들면 true 로 저장되어 응답에 보인다")
+    void showsDefaultQuestionsFlag() throws Exception {
+
+        confirmedCard(myUserId, "배포 시간 단축", "A");
+
+        create(BODY, "key-1")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.defaultQuestions").value(false));
+        CoverLetterView view = coverLetters.create(myUserId, "백엔드", null, List.of(),
+                List.of(new NewQuestion("지원 동기를 쓰세요", null)), null, "key-2", true);
+
+        assertThat(view.defaultQuestions()).isTrue();
+        assertThat(jdbc.queryForObject("SELECT default_questions FROM cover_letter WHERE idempotency_key = 'key-2'",
+                Boolean.class)).isTrue();
 
     }
 
@@ -818,6 +842,24 @@ class CoverLetterApiTest {
     }
 
     @Test
+    @DisplayName("빈칸만 남은 문항은 목록에 빈 문항 수로 센다")
+    void listCountsQuestionsLeftWithOnlyBlanks() throws Exception {
+
+        CoverLetter withEmpty = draftedLetterWithBlankQuestion();
+        CoverLetter withText = draftedLetter("초안");
+        jdbc.update("UPDATE cover_letter SET created_at = created_at - interval '1 day' WHERE id = ?", withText.getId());
+
+        mvc.perform(get("/api/cover-letters").with(loggedInAs(myUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value(withEmpty.getPublicId().toString()))
+                .andExpect(jsonPath("$.data[0].questionCount").value(2))
+                .andExpect(jsonPath("$.data[0].emptyQuestionCount").value(1))
+                .andExpect(jsonPath("$.data[1].id").value(withText.getPublicId().toString()))
+                .andExpect(jsonPath("$.data[1].emptyQuestionCount").value(0));
+
+    }
+
+    @Test
     @DisplayName("지우기는 도는 단계여도 내 자소서와 문항을 지우고 카드에 기억한 답은 남기며, 남의 자소서는 404 와 거절 기록이다")
     void deletesMyLetterAtAnyStage() throws Exception {
 
@@ -969,6 +1011,29 @@ class CoverLetterApiTest {
         question.drafted(aiText, List.of(new DraftSentence(1, "가".repeat(90))), 91, 0,
                 marks, List.of(MaterialItem.LEARNING), DraftSource.LLM);
         questions.save(question);
+        letter.claim();
+        letter.assigned(List.of());
+        letter.startAsking();
+        letter.claim();
+        letter.asked();
+        letter.startDrafting();
+        letter.claim();
+        letter.drafted(List.of(new DraftStep(1, "SUB_AGENT", "WROTE", 1, null, "91", null, null, null, null)));
+        return letters.save(letter);
+
+    }
+
+    private CoverLetter draftedLetterWithBlankQuestion() {
+
+        CoverLetter letter = letters.save(CoverLetter.start(myUserId, "백엔드 개발", null, null));
+        CoverLetterQuestion blank = CoverLetterQuestion.of(letter.getId(), 1, "지원 이유를 쓰세요", 700);
+        blank.drafted("[지원 이유: 이 회사를 고른 이유를 적어 주세요]", List.of(), 0, 0,
+                List.of(), List.of(), DraftSource.LLM);
+        questions.save(blank);
+        CoverLetterQuestion written = CoverLetterQuestion.of(letter.getId(), 2, "협업 경험을 쓰세요", 700);
+        written.drafted("초안", List.of(new DraftSentence(1, "가".repeat(90))), 91, 0,
+                List.of(), List.of(MaterialItem.LEARNING), DraftSource.LLM);
+        questions.save(written);
         letter.claim();
         letter.assigned(List.of());
         letter.startAsking();

@@ -7,75 +7,88 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { profileSupported } from '@/api/capabilities';
 import { ProfileSettingsRow } from '@/features/profile/ProfileSettingsRow';
+import { useLogin } from '@/features/auth/useLogin';
+import { COLLECTED, COVER_LETTER_COLLECTED, PROFILE_COLLECTED } from '@/lib/legal';
+import { LegalLinks } from '@/features/legal/LegalLinks';
 
-const COLLECTED = [
-  ['GitHub 아이디와 프로필 사진', '로그인 식별', '보관'],
-  ['공개 레포 원본 (커밋, PR, 리뷰)', '재현성과 근거 검증', '보관'],
-  ['확정한 경험 카드와 버전', '서비스 핵심 데이터', '보관'],
-  ['질문 답변 원문', '카드의 근거', '보관'],
-  ['활동 이름, 종류, 기간, 역할', '레포 밖 경험을 카드로 묶기', '보관'],
-  ['GitHub 액세스 토큰', '수집에만 사용', '탈퇴 시 즉시 파기'],
-] as const;
-
-/** 인적사항은 서버 지원이 열린 환경에서만 수집한다 — 안 받는 정보를 받는다고 적지 않는다 */
-const PROFILE_COLLECTED = [['인적사항 (학력, 경력, 어학, 자격증)', '공고 매칭의 지원 자격 비교, 자소서 AI 참고', '보관']] as const;
-
-/** F2 마이페이지 — 수집 항목 투명 공개. 지표·크레딧 UI 없음 (과금 단위 미정). */
+/** F2 마이페이지 — 내 정보, 설정, 내 데이터 순서로 묶는다. 지표·크레딧 UI 없음 (과금 단위 미정). */
 export function MyPage() {
   useDocumentTitle('마이페이지');
   const me = useMe();
+  const login = useLogin();
   const logout = useLogout();
   const nav = useNavigate();
   const [theme, setT] = useState<Theme>(getTheme());
-  const s = me.data?.stats;
   const pick = (t: Theme) => { setTheme(t); setT(t); };
+  const github = login.isDemo ? { kind: 'NEUTRAL' as const, label: '샘플 계정' }
+    : me.data?.github.connected ? { kind: 'CONFIRMED' as const, label: '연결됨' }
+    : { kind: 'CAUTION' as const, label: '연결 끊김' };
   return (
-    <main className="main settings-page">
+    <main className="main settings-page set-page">
       <PageTitle>마이페이지</PageTitle>
       {!me.data ? <Skeleton h={90} /> : (
-        <div className="profile-summary">
+        <div className="set-who">
           <UserAvatar src={me.data.avatarUrl} login={me.data.login} size={64} />
-          <div className="stack grow" style={{ gap: 5 }}>
-            <span className="w-600" style={{ fontSize: 20 }}>{me.data.login}</span>
+          <div className="set-who__text">
+            <span className="set-who__name">{me.data.login}</span>
+            <span className="set-who__sub">GitHub 계정으로 로그인했어요</span>
           </div>
         </div>
       )}
-      <section className="settings-section stack" style={{ gap: 14 }}>
-        <div className="row"><span className="w-600" style={{ fontSize: 14 }}>화면 테마</span></div>
-        <div className="row" style={{ gap: 8 }} role="radiogroup" aria-label="테마">
-          {(['light', 'dark'] as Theme[]).map((t) => (
-            <Button key={t} variant={theme === t ? 'primary' : 'outline'} size="sm" role="radio" aria-checked={theme === t} onClick={() => pick(t)}>{t === 'light' ? '라이트' : '다크'}</Button>
-          ))}
+
+      <section className="set-group">
+        <h2>내 정보</h2>
+        <div className="set-list">
+          <ProfileSettingsRow />
+          <Link to="/settings/github" className="set-row">
+            <div className="set-row__text"><b>GitHub 연결</b><span>공개 레포만 읽어요</span></div>
+            {me.data && <Badge kind={github.kind}>{github.label}</Badge>}
+            <span className="set-row__go" aria-hidden="true">›</span>
+          </Link>
         </div>
       </section>
-      <section className="settings-section settings-links stack">
-        <ProfileSettingsRow />
-        <Link to="/settings/github" className="kv" style={{ padding: '14px 0' }}>
-          <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 14 }}>GitHub 연결 관리</span><span className="t-12 c-2">권한 확인, 다시 연결, 연결 해제</span></div>
-          <span className="c-3" style={{ fontSize: 16 }}>›</span>
-        </Link>
-        {/* 아직 없는 기능은 눌러지는 것처럼 보이지 않게 — 화살표 없이 흐리게 */}
-        <div className="kv" style={{ padding: '14px 0' }} aria-disabled="true">
-          <div className="stack grow" style={{ gap: 3 }}><span className="w-600 c-3" style={{ fontSize: 14 }}>탈퇴와 데이터 삭제</span><span className="t-12 c-3">준비 중이에요</span></div>
-        </div>
-        <div className="row" style={{ padding: '16px 0 6px' }}><Button variant="text" loading={logout.isPending} onClick={async () => { await logout.mutateAsync(); nav('/login'); }}>로그아웃</Button></div>
-      </section>
-      <section className="settings-section stat-grid">
-        {[['확정한 카드', s ? `${s.confirmedCards}장` : '—'], ['정리한 레포', s ? `${s.analyzedRepos}개` : '—'], ['작성한 답변', s ? `${s.interviewTurns}개` : '—'], ['남은 후보', s ? `${s.remainingCandidates}개` : '—']].map(([k, v]) => (
-          <div key={k} className="stat"><span className="t-12 c-2">{k}</span><b>{v}</b></div>
-        ))}
-      </section>
-      <details className="settings-section settings-storage">
-        <summary>저장과 보관 정보</summary>
-        <div className="stack" style={{ gap: 12, marginTop: 16 }}>
-          {[...COLLECTED, ...(profileSupported() ? PROFILE_COLLECTED : [])].map(([name, why, keep]) => (
-            <div key={name} className="kv settings-data-row">
-              <div className="settings-data-copy"><span className="w-500">{name}</span><span className="t-12 c-2">{why}</span></div>
-              <Badge kind={keep === '보관' ? 'NEUTRAL' : 'CAUTION'}>{keep}</Badge>
+
+      <section className="set-group">
+        <h2>설정</h2>
+        <div className="set-list">
+          <div className="set-row">
+            <div className="set-row__text"><b>화면 테마</b></div>
+            <div className="row" style={{ gap: 8 }} role="radiogroup" aria-label="테마">
+              {(['light', 'dark'] as Theme[]).map((t) => (
+                <Button key={t} variant={theme === t ? 'primary' : 'secondary'} role="radio" aria-checked={theme === t} onClick={() => pick(t)}>{t === 'light' ? '라이트' : '다크'}</Button>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
-      </details>
+      </section>
+
+      <section className="set-group">
+        <h2>내 데이터</h2>
+        <div className="set-list">
+          <details className="set-details">
+            <summary className="set-row">
+              <div className="set-row__text"><b>저장과 보관 정보</b><span>어떤 정보를 왜 보관하는지 볼 수 있어요</span></div>
+            </summary>
+            <div className="set-details__body">
+              {[...COLLECTED, ...COVER_LETTER_COLLECTED, ...(profileSupported() ? PROFILE_COLLECTED : [])].map(([name, why, keep]) => (
+                <div key={name} className="kv settings-data-row">
+                  <div className="settings-data-copy"><span className="w-regular">{name}</span><span className="set-data__why">{why}</span></div>
+                  <Badge kind={keep === '보관' ? 'NEUTRAL' : 'CAUTION'}>{keep}</Badge>
+                </div>
+              ))}
+            </div>
+          </details>
+          <Link to="/settings/leave" className="set-row">
+            <div className="set-row__text"><b>탈퇴와 데이터 삭제</b><span>계정과 모든 정보를 지워요</span></div>
+            <span className="set-row__go" aria-hidden="true">›</span>
+          </Link>
+        </div>
+      </section>
+
+      <div className="set-group">
+        <Button variant="secondary" className="set-logout" loading={logout.isPending} onClick={async () => { await logout.mutateAsync(); nav('/login'); }}>로그아웃</Button>
+      </div>
+      <LegalLinks report />
     </main>
   );
 }

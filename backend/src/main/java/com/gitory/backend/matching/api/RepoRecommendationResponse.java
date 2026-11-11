@@ -13,7 +13,7 @@ public record RepoRecommendationResponse(
         @Schema(description = "마지막으로 계산을 마친 시각. 계산한 적이 없으면 null") Instant computedAt,
         @Schema(description = "추천 기업. 많아야 3곳이고 순위 순서") List<Company> companies,
         @Schema(description = "카드가 바뀌어 다시 계산이 예약돼 있고 아직 시작하지 않았으면 true. 계산을 시작하면 false 가 되고, 계산하는 중에 카드가 또 바뀌면 다시 true") boolean queued,
-        @Schema(description = "가장 최근 계산에서 후보 회사를 하나씩 확인한 과정. 서버 메모리에만 있어 계산이 끝난 뒤에도 남지만 서버가 다시 뜨면 사라지고, 새 계산이 후보를 정하는 동안에도 비어 있으며, 없으면 null") Live live) {
+        @Schema(description = "가장 최근 계산에서 후보 회사를 하나씩 확인한 과정. 계산하는 중에는 서버 메모리의 진행이고, 서버 메모리에 없으면 마지막으로 끝난 계산의 진행을 저장해 둔 것이라 서버가 다시 떠도 남는다. 새 계산이 후보를 정하는 동안에는 지난 계산의 저장본이 오고, 저장본이 없는 옛 결과는 null") Live live) {
 
     public record Company(String companyId, String companyName,
                           @Schema(description = "https 로고 주소. 없으면 null") String logoUrl, Posting posting,

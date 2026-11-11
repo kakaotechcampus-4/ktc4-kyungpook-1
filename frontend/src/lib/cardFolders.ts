@@ -114,8 +114,8 @@ export const deckLayers = (count: number): 0 | 1 | 2 => (count >= 3 ? 2 : count 
 
 /** 앞판 이름 아래의 작은 글. 기술 카드와 경험 카드가 둘 다 있는 폴더만 두 장 수를 나눠 적고, 빈 폴더는 열어서 첫 카드를 만들게 한다 */
 export function folderCounts(folder: Pick<CardFolder, 'cards' | 'techCount' | 'experienceCount'>): string | null {
-  if (folder.cards.length === 0) return '아직 카드가 없어요 · 열어서 만들기';
-  return folder.techCount > 0 && folder.experienceCount > 0 ? `기술 ${folder.techCount} · 경험 ${folder.experienceCount}` : null;
+  if (folder.cards.length === 0) return '아직 카드가 없어요';
+  return folder.techCount > 0 && folder.experienceCount > 0 ? `기술 ${folder.techCount}, 경험 ${folder.experienceCount}` : null;
 }
 
 /** 폴더에서 아직 확정하지 않은(확인할) 카드 수 */
@@ -140,3 +140,9 @@ export function folderLabel(folder: CardFolder): string {
   if (folder.techs.length) parts.push(`기술 ${folder.techs.map((tech) => techLabels[tech] ?? tech).join(', ')}`);
   return parts.join(', ');
 }
+
+/** 공고에서 채우러 온 카드 화면이 끝난 뒤 돌아갈 곳 — 이동 상태에 문자열로 실려 오지 않으면 카드 폴더가 대신한다 */
+export const returnToOf = (state: unknown): string | null => {
+  const to = (state as { returnTo?: unknown } | null)?.returnTo;
+  return typeof to === 'string' ? to : null;
+};

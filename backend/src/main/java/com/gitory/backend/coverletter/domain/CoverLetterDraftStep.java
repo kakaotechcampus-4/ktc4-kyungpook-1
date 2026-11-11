@@ -75,13 +75,19 @@ class CoverLetterDraftStep {
         Map<Integer, CoverLetterQuestion> bySeq = questions.findByCoverLetterIdOrderBySeq(letter.getId()).stream()
                 .collect(Collectors.toMap(question -> (int) question.getSeq(), Function.identity()));
         for (CoverLetterDrafts.Draft draft : result.drafts()) {
-            bySeq.get(draft.questionId()).drafted(draft.text(),
-                    draft.sentences().stream().map(sentence -> new DraftSentence(sentence.seq(), sentence.text())).toList(),
-                    draft.charCount(), draft.overBy(),
-                    draft.marks().stream().map(mark -> new DraftMark(mark.sentenceSeq(), mark.code(), mark.value())).toList(),
-                    draft.blanks().stream().map(MaterialItem::valueOf).toList(), DraftSource.valueOf(draft.source()));
+            apply(bySeq.get(draft.questionId()), draft);
         }
         letter.drafted(result.steps().stream().map(CoverLetterDraftStep::stepOf).toList());
+
+    }
+
+    static void apply(CoverLetterQuestion question, CoverLetterDrafts.Draft draft) {
+
+        question.drafted(draft.text(),
+                draft.sentences().stream().map(sentence -> new DraftSentence(sentence.seq(), sentence.text())).toList(),
+                draft.charCount(), draft.overBy(),
+                draft.marks().stream().map(mark -> new DraftMark(mark.sentenceSeq(), mark.code(), mark.value())).toList(),
+                draft.blanks().stream().map(MaterialItem::valueOf).toList(), DraftSource.valueOf(draft.source()));
 
     }
 
@@ -95,7 +101,15 @@ class CoverLetterDraftStep {
     private static CoverLetterDraftsRequest.Question requestOf(CoverLetterQuestion question,
                                                                Map<Long, CardMaterial> cards) {
 
-        CardMaterial primary = CoverLetterCardDetails.primaryOf(question, cards);
+        return requestOf(question, CoverLetterCardDetails.primaryOf(question, cards),
+                CoverLetterCardDetails.supportingOf(question, cards));
+
+    }
+
+    /** 문항에 아직 저장하지 않은 카드로도 같은 요청을 만들 수 있게 카드를 따로 받는다 */
+    static CoverLetterDraftsRequest.Question requestOf(CoverLetterQuestion question, CardMaterial primary,
+                                                       CardMaterial supporting) {
+
         Set<MaterialItem> answered = question.getAnswers().stream()
                 .filter(answer -> !answer.skipped())
                 .map(MaterialAnswer::item)
@@ -104,7 +118,7 @@ class CoverLetterDraftStep {
         return new CoverLetterDraftsRequest.Question(question.getSeq(), question.getText(), question.getCharLimit(),
                 question.getTheme() == null ? null : question.getTheme().name(),
                 CoverLetterCardDetails.detail(primary),
-                CoverLetterCardDetails.detail(CoverLetterCardDetails.supportingOf(question, cards)),
+                CoverLetterCardDetails.detail(supporting),
                 answersOf(question, primary),
                 question.getAsks().stream()
                         .filter(MaterialAsk::required)

@@ -1,0 +1,1229 @@
+[
+ {
+  "id": "conflict-card",
+  "question": {
+   "question_id": 1,
+   "text": "팀원과 의견이 달랐던 경험과 그것을 어떻게 풀었는지 쓰세요.",
+   "char_limit": 700,
+   "question_theme": "CONFLICT"
+  },
+  "job_role": "백엔드 개발자",
+  "memo": null,
+  "cards": [
+   {
+    "card_id": 1,
+    "title": "캐시 방식 합의",
+    "card_kind": "QUALITATIVE",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "리뷰어와 캐시 방식을 두고 의견이 갈렸다. 두 안의 속도를 재 보여 주고 합의했다"
+   },
+   {
+    "card_id": 2,
+    "title": "배포 스크립트",
+    "card_kind": "TECH",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "배포 명령을 스크립트로 묶었다"
+   },
+   {
+    "card_id": 3,
+    "title": "로그 포맷 정리",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "로그를 JSON 으로 바꿨다"
+   },
+   {
+    "card_id": 4,
+    "title": "테스트 보강",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "결제 모듈 단위 테스트를 추가했다"
+   }
+  ],
+  "candidates": [
+   {
+    "candidate_id": "c-1",
+    "title": "README 정리",
+    "reason": "문서를 고침",
+    "repo_name": "me/docs",
+    "commit_messages": [
+     "docs: README 수정"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-2",
+    "title": "의존성 업데이트",
+    "reason": "라이브러리를 올림",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "chore: 의존성 업데이트"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-3",
+    "title": "초기 설정",
+    "reason": "프로젝트를 만듦",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "init"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-4",
+    "title": "린트 설정",
+    "reason": "린트를 추가",
+    "repo_name": "me/shop",
+    "commit_messages": [
+     "chore: eslint 추가"
+    ],
+    "review_comment_count": 1
+   }
+  ],
+  "gold": [
+   {
+    "source": "CARD",
+    "id": "1"
+   }
+  ],
+  "forbid": [
+   {
+    "source": "CANDIDATE",
+    "id": "c-1"
+   },
+   {
+    "source": "CANDIDATE",
+    "id": "c-2"
+   }
+  ],
+  "note": "카드 하나만 맞는다"
+ },
+ {
+  "id": "conflict-candidate",
+  "question": {
+   "question_id": 1,
+   "text": "팀원과 의견이 달랐던 경험과 그것을 어떻게 풀었는지 쓰세요.",
+   "char_limit": 700,
+   "question_theme": "CONFLICT"
+  },
+  "job_role": "백엔드 개발자",
+  "memo": null,
+  "cards": [
+   {
+    "card_id": 1,
+    "title": "배포 스크립트",
+    "card_kind": "TECH",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "배포 명령을 스크립트로 묶었다"
+   },
+   {
+    "card_id": 2,
+    "title": "테스트 보강",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "결제 모듈 단위 테스트를 추가했다"
+   },
+   {
+    "card_id": 3,
+    "title": "로그 포맷 정리",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "로그를 JSON 으로 바꿨다"
+   },
+   {
+    "card_id": 4,
+    "title": "캐시 도입",
+    "card_kind": "TECH",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "조회 응답에 캐시를 넣었다"
+   }
+  ],
+  "candidates": [
+   {
+    "candidate_id": "c-1",
+    "title": "페이징 방식 논의",
+    "reason": "리뷰 댓글에서 페이징 방식을 두고 의견을 주고받음",
+    "repo_name": "me/shop",
+    "commit_messages": [
+     "refactor: 커서 방식으로 변경",
+     "fix: 리뷰 반영 페이징"
+    ],
+    "review_comment_count": 14
+   },
+   {
+    "candidate_id": "c-2",
+    "title": "의존성 업데이트",
+    "reason": "라이브러리를 올림",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "chore: 의존성 업데이트"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-3",
+    "title": "초기 설정",
+    "reason": "프로젝트를 만듦",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "init"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-4",
+    "title": "오타 수정",
+    "reason": "문서 오타",
+    "repo_name": "me/docs",
+    "commit_messages": [
+     "docs: typo"
+    ],
+    "review_comment_count": 0
+   }
+  ],
+  "gold": [
+   {
+    "source": "CANDIDATE",
+    "id": "c-1"
+   }
+  ],
+  "forbid": [
+   {
+    "source": "CANDIDATE",
+    "id": "c-3"
+   },
+   {
+    "source": "CANDIDATE",
+    "id": "c-4"
+   }
+  ],
+  "note": "경험 후보 하나만 맞는다"
+ },
+ {
+  "id": "problem-both",
+  "question": {
+   "question_id": 1,
+   "text": "어려운 문제를 해결한 경험을 쓰세요.",
+   "char_limit": 700,
+   "question_theme": "PROBLEM_SOLVING"
+  },
+  "job_role": "백엔드 개발자",
+  "memo": null,
+  "cards": [
+   {
+    "card_id": 1,
+    "title": "느린 조회 개선",
+    "card_kind": "TECH",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "주문 조회가 느려 쿼리를 추적해 N+1 을 찾고 한 번에 가져오게 고쳤다"
+   },
+   {
+    "card_id": 2,
+    "title": "동아리 회식",
+    "card_kind": "QUALITATIVE",
+    "source_name": "동아리",
+    "period": null,
+    "summary": "회식 장소를 정했다"
+   },
+   {
+    "card_id": 3,
+    "title": "배포 스크립트",
+    "card_kind": "TECH",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "배포 명령을 스크립트로 묶었다"
+   },
+   {
+    "card_id": 4,
+    "title": "린트 정리",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "린트 경고를 없앴다"
+   }
+  ],
+  "candidates": [
+   {
+    "candidate_id": "c-1",
+    "title": "메모리 누수 추적",
+    "reason": "서버가 주기적으로 죽는 원인을 힙 덤프로 찾음",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "fix: 커넥션 반환 누락",
+     "test: 누수 재현"
+    ],
+    "review_comment_count": 3
+   },
+   {
+    "candidate_id": "c-2",
+    "title": "README 정리",
+    "reason": "문서를 고침",
+    "repo_name": "me/docs",
+    "commit_messages": [
+     "docs: README"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-3",
+    "title": "폴더 이동",
+    "reason": "폴더 구조를 옮김",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "refactor: move"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-4",
+    "title": "초기 설정",
+    "reason": "프로젝트를 만듦",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "init"
+    ],
+    "review_comment_count": 0
+   }
+  ],
+  "gold": [
+   {
+    "source": "CARD",
+    "id": "1"
+   },
+   {
+    "source": "CANDIDATE",
+    "id": "c-1"
+   }
+  ],
+  "forbid": [
+   {
+    "source": "CARD",
+    "id": "2"
+   },
+   {
+    "source": "CANDIDATE",
+    "id": "c-2"
+   }
+  ],
+  "note": "카드와 후보가 모두 맞는다"
+ },
+ {
+  "id": "collab-people",
+  "question": {
+   "question_id": 1,
+   "text": "협업으로 성과를 낸 경험을 쓰세요.",
+   "char_limit": 700,
+   "question_theme": "COLLABORATION"
+  },
+  "job_role": "백엔드 개발자",
+  "memo": null,
+  "cards": [
+   {
+    "card_id": 1,
+    "title": "API 문서 역할 나누기",
+    "card_kind": "QUALITATIVE",
+    "source_name": "팀 프로젝트",
+    "period": null,
+    "summary": "역할이 겹쳐 팀원과 나눠 맡을 범위를 정하고 문서를 함께 썼다"
+   },
+   {
+    "card_id": 2,
+    "title": "캐시 도입",
+    "card_kind": "TECH",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "조회 응답에 캐시를 넣었다"
+   },
+   {
+    "card_id": 3,
+    "title": "배포 스크립트",
+    "card_kind": "TECH",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "배포 명령을 스크립트로 묶었다"
+   },
+   {
+    "card_id": 4,
+    "title": "로그 포맷 정리",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "로그를 JSON 으로 바꿨다"
+   },
+   {
+    "card_id": 5,
+    "title": "테스트 보강",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "결제 모듈 단위 테스트를 추가했다"
+   }
+  ],
+  "candidates": [
+   {
+    "candidate_id": "c-1",
+    "title": "의존성 업데이트",
+    "reason": "라이브러리를 올림",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "chore: deps"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-2",
+    "title": "린트 설정",
+    "reason": "린트를 추가",
+    "repo_name": "me/shop",
+    "commit_messages": [
+     "chore: eslint"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-3",
+    "title": "초기 설정",
+    "reason": "프로젝트를 만듦",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "init"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-4",
+    "title": "오타 수정",
+    "reason": "문서 오타",
+    "repo_name": "me/docs",
+    "commit_messages": [
+     "docs: typo"
+    ],
+    "review_comment_count": 0
+   }
+  ],
+  "gold": [
+   {
+    "source": "CARD",
+    "id": "1"
+   }
+  ],
+  "forbid": [
+   {
+    "source": "CARD",
+    "id": "2"
+   },
+   {
+    "source": "CARD",
+    "id": "3"
+   }
+  ],
+  "note": "협업 문항은 사람 사이의 일이 보이는 카드"
+ },
+ {
+  "id": "failure-card",
+  "question": {
+   "question_id": 1,
+   "text": "실패했던 경험과 거기서 배운 점을 쓰세요.",
+   "char_limit": 700,
+   "question_theme": "FAILURE"
+  },
+  "job_role": "백엔드 개발자",
+  "memo": null,
+  "cards": [
+   {
+    "card_id": 1,
+    "title": "배포 장애 회고",
+    "card_kind": "QUALITATIVE",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "배포 중 설정 값을 잘못 넣어 서비스가 20분 멈췄다. 이후 배포 전 점검표를 만들었다"
+   },
+   {
+    "card_id": 2,
+    "title": "캐시 도입",
+    "card_kind": "TECH",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "조회 응답에 캐시를 넣었다"
+   },
+   {
+    "card_id": 3,
+    "title": "로그 포맷 정리",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "로그를 JSON 으로 바꿨다"
+   },
+   {
+    "card_id": 4,
+    "title": "테스트 보강",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "결제 모듈 단위 테스트를 추가했다"
+   }
+  ],
+  "candidates": [
+   {
+    "candidate_id": "c-1",
+    "title": "초기 설정",
+    "reason": "프로젝트를 만듦",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "init"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-2",
+    "title": "린트 설정",
+    "reason": "린트를 추가",
+    "repo_name": "me/shop",
+    "commit_messages": [
+     "chore: eslint"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-3",
+    "title": "오타 수정",
+    "reason": "문서 오타",
+    "repo_name": "me/docs",
+    "commit_messages": [
+     "docs: typo"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-4",
+    "title": "폴더 이동",
+    "reason": "폴더 구조를 옮김",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "refactor: move"
+    ],
+    "review_comment_count": 0
+   }
+  ],
+  "gold": [
+   {
+    "source": "CARD",
+    "id": "1"
+   }
+  ],
+  "forbid": [
+   {
+    "source": "CARD",
+    "id": "2"
+   },
+   {
+    "source": "CARD",
+    "id": "3"
+   }
+  ],
+  "note": "실패와 대응이 보이는 카드"
+ },
+ {
+  "id": "growth-candidate",
+  "question": {
+   "question_id": 1,
+   "text": "스스로 성장하기 위해 꾸준히 노력한 경험을 쓰세요.",
+   "char_limit": 700,
+   "question_theme": "GROWTH"
+  },
+  "job_role": "백엔드 개발자",
+  "memo": null,
+  "cards": [
+   {
+    "card_id": 1,
+    "title": "배포 스크립트",
+    "card_kind": "TECH",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "배포 명령을 스크립트로 묶었다"
+   },
+   {
+    "card_id": 2,
+    "title": "로그 포맷 정리",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "로그를 JSON 으로 바꿨다"
+   },
+   {
+    "card_id": 3,
+    "title": "캐시 도입",
+    "card_kind": "TECH",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "조회 응답에 캐시를 넣었다"
+   },
+   {
+    "card_id": 4,
+    "title": "테스트 보강",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "결제 모듈 단위 테스트를 추가했다"
+   }
+  ],
+  "candidates": [
+   {
+    "candidate_id": "c-1",
+    "title": "JPA 학습 기록",
+    "reason": "JPA 조회 문제를 공부하며 주마다 예제를 바꿔 가며 적용함",
+    "repo_name": "me/study",
+    "commit_messages": [
+     "study: week1 fetch join",
+     "study: week2 batch size",
+     "study: week3 entity graph"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-2",
+    "title": "의존성 업데이트",
+    "reason": "라이브러리를 올림",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "chore: deps"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-3",
+    "title": "초기 설정",
+    "reason": "프로젝트를 만듦",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "init"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-4",
+    "title": "오타 수정",
+    "reason": "문서 오타",
+    "repo_name": "me/docs",
+    "commit_messages": [
+     "docs: typo"
+    ],
+    "review_comment_count": 0
+   }
+  ],
+  "gold": [
+   {
+    "source": "CANDIDATE",
+    "id": "c-1"
+   }
+  ],
+  "forbid": [
+   {
+    "source": "CANDIDATE",
+    "id": "c-3"
+   },
+   {
+    "source": "CANDIDATE",
+    "id": "c-4"
+   }
+  ],
+  "note": "꾸준함이 보이는 후보"
+ },
+ {
+  "id": "leadership-card",
+  "question": {
+   "question_id": 1,
+   "text": "팀을 이끌며 목표를 이룬 경험을 쓰세요.",
+   "char_limit": 700,
+   "question_theme": "LEADERSHIP"
+  },
+  "job_role": "백엔드 개발자",
+  "memo": null,
+  "cards": [
+   {
+    "card_id": 1,
+    "title": "스터디 운영",
+    "card_kind": "QUALITATIVE",
+    "source_name": "스터디",
+    "period": null,
+    "summary": "스터디장을 맡아 주차별 계획을 짜고 발표를 돌아가며 맡겨 8주를 이어 갔다"
+   },
+   {
+    "card_id": 2,
+    "title": "캐시 도입",
+    "card_kind": "TECH",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "조회 응답에 캐시를 넣었다"
+   },
+   {
+    "card_id": 3,
+    "title": "로그 포맷 정리",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "로그를 JSON 으로 바꿨다"
+   },
+   {
+    "card_id": 4,
+    "title": "테스트 보강",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "결제 모듈 단위 테스트를 추가했다"
+   }
+  ],
+  "candidates": [
+   {
+    "candidate_id": "c-1",
+    "title": "린트 설정",
+    "reason": "린트를 추가",
+    "repo_name": "me/shop",
+    "commit_messages": [
+     "chore: eslint"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-2",
+    "title": "오타 수정",
+    "reason": "문서 오타",
+    "repo_name": "me/docs",
+    "commit_messages": [
+     "docs: typo"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-3",
+    "title": "초기 설정",
+    "reason": "프로젝트를 만듦",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "init"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-4",
+    "title": "폴더 이동",
+    "reason": "폴더 구조를 옮김",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "refactor: move"
+    ],
+    "review_comment_count": 0
+   }
+  ],
+  "gold": [
+   {
+    "source": "CARD",
+    "id": "1"
+   }
+  ],
+  "forbid": [
+   {
+    "source": "CARD",
+    "id": "2"
+   },
+   {
+    "source": "CARD",
+    "id": "3"
+   }
+  ],
+  "note": "리더십이 보이는 카드"
+ },
+ {
+  "id": "challenge-candidate",
+  "question": {
+   "question_id": 1,
+   "text": "도전적인 목표를 세우고 이룬 경험을 쓰세요.",
+   "char_limit": 700,
+   "question_theme": "CHALLENGE"
+  },
+  "job_role": "백엔드 개발자",
+  "memo": null,
+  "cards": [
+   {
+    "card_id": 1,
+    "title": "로그 포맷 정리",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "로그를 JSON 으로 바꿨다"
+   },
+   {
+    "card_id": 2,
+    "title": "테스트 보강",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "결제 모듈 단위 테스트를 추가했다"
+   },
+   {
+    "card_id": 3,
+    "title": "린트 정리",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "린트 경고를 없앴다"
+   },
+   {
+    "card_id": 4,
+    "title": "배포 스크립트",
+    "card_kind": "TECH",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "배포 명령을 스크립트로 묶었다"
+   }
+  ],
+  "candidates": [
+   {
+    "candidate_id": "c-1",
+    "title": "동시성 제어 도전",
+    "reason": "재고 차감에서 동시 요청이 겹치는 문제를 락으로 풀려고 여러 방식을 시도함",
+    "repo_name": "me/shop",
+    "commit_messages": [
+     "feat: 낙관적 락",
+     "refactor: 비관적 락으로 전환",
+     "test: 동시 요청 100개"
+    ],
+    "review_comment_count": 6
+   },
+   {
+    "candidate_id": "c-2",
+    "title": "README 정리",
+    "reason": "문서를 고침",
+    "repo_name": "me/docs",
+    "commit_messages": [
+     "docs: README"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-3",
+    "title": "초기 설정",
+    "reason": "프로젝트를 만듦",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "init"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-4",
+    "title": "오타 수정",
+    "reason": "문서 오타",
+    "repo_name": "me/docs",
+    "commit_messages": [
+     "docs: typo"
+    ],
+    "review_comment_count": 0
+   }
+  ],
+  "gold": [
+   {
+    "source": "CANDIDATE",
+    "id": "c-1"
+   }
+  ],
+  "forbid": [
+   {
+    "source": "CANDIDATE",
+    "id": "c-3"
+   }
+  ],
+  "note": "도전적인 시도가 보이는 후보"
+ },
+ {
+  "id": "nothing-fits-1",
+  "question": {
+   "question_id": 1,
+   "text": "팀원과 의견이 달랐던 경험과 그것을 어떻게 풀었는지 쓰세요.",
+   "char_limit": 700,
+   "question_theme": "CONFLICT"
+  },
+  "job_role": "백엔드 개발자",
+  "memo": null,
+  "cards": [
+   {
+    "card_id": 1,
+    "title": "배포 스크립트",
+    "card_kind": "TECH",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "배포 명령을 스크립트로 묶었다"
+   },
+   {
+    "card_id": 2,
+    "title": "로그 포맷 정리",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "로그를 JSON 으로 바꿨다"
+   },
+   {
+    "card_id": 3,
+    "title": "테스트 보강",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "결제 모듈 단위 테스트를 추가했다"
+   },
+   {
+    "card_id": 4,
+    "title": "린트 정리",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "린트 경고를 없앴다"
+   }
+  ],
+  "candidates": [
+   {
+    "candidate_id": "c-1",
+    "title": "README 정리",
+    "reason": "문서를 고침",
+    "repo_name": "me/docs",
+    "commit_messages": [
+     "docs: README"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-2",
+    "title": "초기 설정",
+    "reason": "프로젝트를 만듦",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "init"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-3",
+    "title": "오타 수정",
+    "reason": "문서 오타",
+    "repo_name": "me/docs",
+    "commit_messages": [
+     "docs: typo"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-4",
+    "title": "폴더 이동",
+    "reason": "폴더 구조를 옮김",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "refactor: move"
+    ],
+    "review_comment_count": 0
+   }
+  ],
+  "gold": [],
+  "forbid": [
+   {
+    "source": "CARD",
+    "id": "1"
+   },
+   {
+    "source": "CARD",
+    "id": "2"
+   },
+   {
+    "source": "CARD",
+    "id": "3"
+   },
+   {
+    "source": "CARD",
+    "id": "4"
+   },
+   {
+    "source": "CANDIDATE",
+    "id": "c-1"
+   },
+   {
+    "source": "CANDIDATE",
+    "id": "c-2"
+   },
+   {
+    "source": "CANDIDATE",
+    "id": "c-3"
+   },
+   {
+    "source": "CANDIDATE",
+    "id": "c-4"
+   }
+  ],
+  "note": "맞는 것이 없어 빈 목록이어야 한다"
+ },
+ {
+  "id": "nothing-fits-2",
+  "question": {
+   "question_id": 1,
+   "text": "팀을 이끌며 목표를 이룬 경험을 쓰세요.",
+   "char_limit": 700,
+   "question_theme": "LEADERSHIP"
+  },
+  "job_role": "백엔드 개발자",
+  "memo": null,
+  "cards": [
+   {
+    "card_id": 1,
+    "title": "캐시 도입",
+    "card_kind": "TECH",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "조회 응답에 캐시를 넣었다"
+   },
+   {
+    "card_id": 2,
+    "title": "로그 포맷 정리",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "로그를 JSON 으로 바꿨다"
+   },
+   {
+    "card_id": 3,
+    "title": "테스트 보강",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "결제 모듈 단위 테스트를 추가했다"
+   },
+   {
+    "card_id": 4,
+    "title": "린트 정리",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "린트 경고를 없앴다"
+   }
+  ],
+  "candidates": [
+   {
+    "candidate_id": "c-1",
+    "title": "의존성 업데이트",
+    "reason": "라이브러리를 올림",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "chore: deps"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-2",
+    "title": "초기 설정",
+    "reason": "프로젝트를 만듦",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "init"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-3",
+    "title": "오타 수정",
+    "reason": "문서 오타",
+    "repo_name": "me/docs",
+    "commit_messages": [
+     "docs: typo"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-4",
+    "title": "폴더 이동",
+    "reason": "폴더 구조를 옮김",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "refactor: move"
+    ],
+    "review_comment_count": 0
+   }
+  ],
+  "gold": [],
+  "forbid": [
+   {
+    "source": "CARD",
+    "id": "1"
+   },
+   {
+    "source": "CARD",
+    "id": "2"
+   },
+   {
+    "source": "CARD",
+    "id": "3"
+   },
+   {
+    "source": "CARD",
+    "id": "4"
+   },
+   {
+    "source": "CANDIDATE",
+    "id": "c-1"
+   },
+   {
+    "source": "CANDIDATE",
+    "id": "c-2"
+   },
+   {
+    "source": "CANDIDATE",
+    "id": "c-3"
+   },
+   {
+    "source": "CANDIDATE",
+    "id": "c-4"
+   }
+  ],
+  "note": "리더십 장면이 없어 빈 목록이어야 한다"
+ },
+ {
+  "id": "only-candidates",
+  "question": {
+   "question_id": 1,
+   "text": "어려운 문제를 해결한 경험을 쓰세요.",
+   "char_limit": 700,
+   "question_theme": "PROBLEM_SOLVING"
+  },
+  "job_role": "백엔드 개발자",
+  "memo": null,
+  "cards": [],
+  "candidates": [
+   {
+    "candidate_id": "c-1",
+    "title": "슬로우 쿼리 개선",
+    "reason": "느린 쿼리를 찾아 인덱스를 추가해 고침",
+    "repo_name": "me/shop",
+    "commit_messages": [
+     "perf: 인덱스 추가",
+     "fix: 쿼리 재작성"
+    ],
+    "review_comment_count": 4
+   },
+   {
+    "candidate_id": "c-2",
+    "title": "README 정리",
+    "reason": "문서를 고침",
+    "repo_name": "me/docs",
+    "commit_messages": [
+     "docs: README"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-3",
+    "title": "초기 설정",
+    "reason": "프로젝트를 만듦",
+    "repo_name": "me/api",
+    "commit_messages": [
+     "init"
+    ],
+    "review_comment_count": 0
+   },
+   {
+    "candidate_id": "c-4",
+    "title": "오타 수정",
+    "reason": "문서 오타",
+    "repo_name": "me/docs",
+    "commit_messages": [
+     "docs: typo"
+    ],
+    "review_comment_count": 0
+   }
+  ],
+  "gold": [
+   {
+    "source": "CANDIDATE",
+    "id": "c-1"
+   }
+  ],
+  "forbid": [
+   {
+    "source": "CANDIDATE",
+    "id": "c-3"
+   }
+  ],
+  "note": "카드가 없을 때 후보만 고른다"
+ },
+ {
+  "id": "only-cards",
+  "question": {
+   "question_id": 1,
+   "text": "팀원과 의견이 달랐던 경험과 그것을 어떻게 풀었는지 쓰세요.",
+   "char_limit": 700,
+   "question_theme": "CONFLICT"
+  },
+  "job_role": "백엔드 개발자",
+  "memo": null,
+  "cards": [
+   {
+    "card_id": 1,
+    "title": "코드 리뷰 의견 조율",
+    "card_kind": "QUALITATIVE",
+    "source_name": "me/shop",
+    "period": null,
+    "summary": "리뷰어와 예외 처리 방식이 달라 사례를 모아 서로 맞췄다"
+   },
+   {
+    "card_id": 2,
+    "title": "팀 규칙 만들기",
+    "card_kind": "QUALITATIVE",
+    "source_name": "팀 프로젝트",
+    "period": null,
+    "summary": "커밋 규칙을 두고 의견이 갈려 투표 대신 한 주 써 보고 정했다"
+   },
+   {
+    "card_id": 3,
+    "title": "로그 포맷 정리",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "로그를 JSON 으로 바꿨다"
+   },
+   {
+    "card_id": 4,
+    "title": "테스트 보강",
+    "card_kind": "TECH",
+    "source_name": "me/api",
+    "period": null,
+    "summary": "결제 모듈 단위 테스트를 추가했다"
+   }
+  ],
+  "candidates": [],
+  "gold": [
+   {
+    "source": "CARD",
+    "id": "1"
+   },
+   {
+    "source": "CARD",
+    "id": "2"
+   }
+  ],
+  "forbid": [
+   {
+    "source": "CARD",
+    "id": "3"
+   },
+   {
+    "source": "CARD",
+    "id": "4"
+   }
+  ],
+  "note": "후보가 없을 때 카드 둘이 맞는다"
+ }
+]

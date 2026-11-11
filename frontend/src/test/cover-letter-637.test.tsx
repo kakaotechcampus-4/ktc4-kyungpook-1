@@ -113,11 +113,11 @@ describe('① 공고에서 시작한 입력 화면', () => {
 
 describe('자소서 화면과 목록', () => {
   const summary = (over: Record<string, unknown>) => CoverLetterSummary.parse({
-    id: 'a', stage: 'DRAFTED', jobRole: '백엔드 개발', posting: null, questionCount: 1, firstQuestion: '지원 동기',
+    id: 'a', stage: 'DRAFTED', jobRole: '백엔드 개발', posting: null, questionCount: 1, emptyQuestionCount: 0, firstQuestion: '지원 동기',
     createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-01T00:00:00Z', ...over,
   });
 
-  it('목록은 직무가 공고 제목 그대로면 회사만, 다르면 회사 · 제목, 공고가 없으면 더 보이지 않는다', () => {
+  it('목록은 직무가 공고 제목 그대로면 제목을 다시 쓰지 않고, 다르면 기업 아래에 공고 제목을 따로 보이고, 공고가 없으면 기업을 보이지 않는다', () => {
     mount('/cover-letters', (c) => c.setQueryData(coverLetterKeys.all, [
       summary({ id: 'a', jobRole: POSTING.title, posting: POSTING }),
       summary({ id: 'b', jobRole: '서버 개발', posting: POSTING }),
@@ -125,7 +125,9 @@ describe('자소서 화면과 목록', () => {
     ]));
     const rows = screen.getAllByRole('listitem');
     expect(within(rows[0]).getByText('가온소프트')).toBeInTheDocument();
-    expect(within(rows[1]).getByText('가온소프트, 백엔드 엔지니어 (Java·Spring)')).toBeInTheDocument();
+    expect(within(rows[0]).getAllByText(POSTING.title)).toHaveLength(1);
+    expect(within(rows[1]).getByText('가온소프트')).toBeInTheDocument();
+    expect(within(rows[1]).getByText(POSTING.title)).toBeInTheDocument();
     expect(within(rows[2]).queryByText(/가온소프트/)).not.toBeInTheDocument();
   });
 
@@ -143,7 +145,7 @@ describe('자소서 화면과 목록', () => {
 describe('계약 읽기와 Mock 서버', () => {
   it('posting 칸이 없는 옛 응답은 null 로 읽는다', () => {
     expect(CoverLetter.parse({ id: 'x', stage: 'ASSIGNING', jobRole: 'a', createdAt: 't', updatedAt: 't', questions: [] }).posting).toBeNull();
-    expect(CoverLetterSummary.parse({ id: 'x', stage: 'DRAFTED', jobRole: 'a', questionCount: 1, createdAt: 't', updatedAt: 't' }).posting).toBeNull();
+    expect(CoverLetterSummary.parse({ id: 'x', stage: 'DRAFTED', jobRole: 'a', questionCount: 1, emptyQuestionCount: 0, createdAt: 't', updatedAt: 't' }).posting).toBeNull();
   });
 
   it('Mock 은 없는 공고 id 면 404 NOT_FOUND, 있으면 조회·목록 응답에 posting 을 싣는다', () => {

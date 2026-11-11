@@ -28,6 +28,7 @@ INTERNAL_PATHS = {
     "/internal/interview-turns",
     "/internal/interview-measured-sentence",
     "/internal/interview-polished-sentence",
+    "/internal/interview-replies",
     "/internal/card-themes",
     "/internal/interview-answer-evaluations",
     "/internal/job-postings/extract",
@@ -45,7 +46,9 @@ INTERNAL_PATHS = {
     "/internal/cover-letter-drafts/stream",
     "/internal/cover-letter-polish",
     "/internal/cover-letter-turns",
+    "/internal/cover-letter-append",
     "/internal/cover-letter-fill",
+    "/internal/cover-letter-suggestions",
     "/internal/repo-summary",
     "/internal/assistant/next-step",
 }

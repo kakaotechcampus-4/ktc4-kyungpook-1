@@ -79,8 +79,8 @@ class InterviewAskApiTest {
     private static final String ASK_PATH = "/api/cards/{id}/interview";
 
     // FE schemas.ts 의 InterviewTurn 이 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
-    private static final String[] TURN_KEYS = {"turnNo", "field", "askedBy", "sourceType", "questionType", "found",
-            "missing", "question", "reason", "options", "answerMode", "outcome", "answer", "remaining", "maxTurns"};
+    private static final String[] TURN_KEYS = {"turnNo", "field", "askedBy", "sourceType", "questionType", "question",
+            "reason", "exampleAnswer", "options", "answerMode", "outcome", "answer", "remaining", "maxTurns"};
 
     @Container
     @ServiceConnection
@@ -315,8 +315,8 @@ class InterviewAskApiTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"LATER", "INSUFFICIENT"})
-    @DisplayName("결과가 LATER·INSUFFICIENT 면 답 글이 남아 있어도 답을 기다리는 질문으로 보고 answer 가 null 인 그 질문을 돌려준다")
+    @ValueSource(strings = {"LATER"})
+    @DisplayName("결과가 LATER 면 답 글이 남아 있어도 답을 기다리는 질문으로 보고 answer 가 null 인 그 질문을 돌려준다")
     void treatsOtherOutcomesAsOpen(String outcome) throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);
@@ -415,7 +415,7 @@ class InterviewAskApiTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"S", "T", "A", "R"})
-    @DisplayName("질문을 받으면 요청한 칸의 질문을 200 으로 돌려주고, FE InterviewTurn 의 13개 키를 모두 담는다")
+    @DisplayName("질문을 받으면 요청한 칸의 질문을 200 으로 돌려주고, FE InterviewTurn 의 14개 키를 모두 담는다")
     void returnsTheNewQuestionWithTwelveKeys(String field) throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);
@@ -433,8 +433,6 @@ class InterviewAskApiTest {
                 .containsEntry("askedBy", "USER_REQUEST")
                 .containsEntry("sourceType", "DIRECT_CARD")
                 .containsEntry("questionType", "RECALL_AID")
-                .containsEntry("found", List.of())
-                .containsEntry("missing", List.of())
                 .containsEntry("question", "  앞뒤 공백이 있는 질문  ")
                 .containsEntry("options", List.of())
                 .containsEntry("answer", null)

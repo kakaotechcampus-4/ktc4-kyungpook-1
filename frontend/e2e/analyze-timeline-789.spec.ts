@@ -6,7 +6,8 @@ const SHOTS = 'docs/screenshots/2026-11-04-analyze-timeline';
 /** 정리 진행 화면(#789) — 단계 4개를 점과 선으로 그리고 지금 단계만 펼친다. 목의 정리는 12초 동안 돈다 */
 async function startAnalysis(page: Page, repoId: string) {
   await page.goto(`/repos?select=${repoId}&disclose=1`);
-  await page.getByRole('button', { name: '정리 시작' }).click();
+  // 정리한 적 있는 레포(r_auth)는 다시 정리 창이라 버튼 이름이 다르다
+  await page.getByRole('button', { name: /정리 시작|다시 정리/ }).click();
   await expect(page.getByRole('heading', { name: '레포를 읽고 있어요' })).toBeVisible();
 }
 
@@ -58,6 +59,6 @@ test('상한까지만 읽었으면 그 단계가 호박색 점으로 어디까�
   await startAnalysis(page, 'r_capped');
   await expect(page.getByRole('heading', { name: '읽은 데까지 정리했어요' })).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.tl__item--cap')).toHaveCount(1);
-  await expect(page.getByRole('button', { name: '읽은 범위의 후보 보기' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '후보 직접 고르기' })).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/partial-1440-light.png`, fullPage: true, animations: 'disabled' });
 });

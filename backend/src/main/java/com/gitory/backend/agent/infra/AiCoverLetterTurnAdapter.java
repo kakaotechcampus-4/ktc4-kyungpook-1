@@ -15,7 +15,9 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -95,22 +97,28 @@ public class AiCoverLetterTurnAdapter implements CoverLetterTurnPort {
                 AiCoverLetterDraftsAdapter.text(node, "text"), questionId,
                 item.isNull() || item.isMissingNode() ? null : AiCoverLetterDraftsAdapter.oneOf(node, "item", ITEMS));
 
-        CoverLetterTurnReply.Answer answer = answer(data.path("answer"));
+        List<CoverLetterTurnReply.Answer> answers = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (JsonNode each : AiCoverLetterDraftsAdapter.array(data, "answers")) {
+            CoverLetterTurnReply.Answer answer = answer(each);
+            // 같은 항목이 두 번 오면 어느 답이 맞는지 알 수 없어 이상 응답으로 본다
+            if (!seen.add(answer.item())) {
+                throw AiClientException.invalidResponse();
+            }
+            answers.add(answer);
+        }
         String status = AiCoverLetterDraftsAdapter.oneOf(data, "status", STATUSES);
         boolean replied = USER_REPLY.equals(request.trigger());
-        if ((answer != null && !replied) || ("FILLED".equals(status) && answer == null)) {
+        if ((!answers.isEmpty() && !replied) || ("FILLED".equals(status) && answers.isEmpty())) {
             throw AiClientException.invalidResponse();
         }
 
-        return new CoverLetterTurnReply(message, answer, status);
+        return new CoverLetterTurnReply(message, List.copyOf(answers), status);
 
     }
 
     private static CoverLetterTurnReply.Answer answer(JsonNode node) {
 
-        if (node.isNull() || node.isMissingNode()) {
-            return null;
-        }
         String text = AiCoverLetterDraftsAdapter.text(node, "text");
         if (text.length() > ANSWER_MAX_LENGTH || !node.path("sufficient").isBoolean()) {
             throw AiClientException.invalidResponse();
@@ -123,7 +131,7 @@ public class AiCoverLetterTurnAdapter implements CoverLetterTurnPort {
 
     // 과정은 저장하지 않지만, 모르는 값이 오면 AI 와 계약이 어긋난 것이라 다시 쓴 글도 믿지 않는다
     // AI 는 다시 쓴 글이 새 문제를 남기거나 다른 문장을 많이 바꾸면 앞 글로 되돌리고 과정에 REVERTED 를 남긴다
-    private static CoverLetterFill filled(JsonNode data, int questionId) {
+    static CoverLetterFill filled(JsonNode data, int questionId) {
 
         CoverLetterDrafts.Draft draft = AiCoverLetterDraftsAdapter.draft(data.path("draft"));
         if (draft.questionId() != questionId) {
@@ -139,7 +147,7 @@ public class AiCoverLetterTurnAdapter implements CoverLetterTurnPort {
     }
 
     // AI 는 LLM 이 실패하면 503 을 돌려주므로, 그 실패는 다시 해 볼 만하다
-    private static AgentUnavailableException unavailable(String what, AiClientException failure) {
+    static AgentUnavailableException unavailable(String what, AiClientException failure) {
 
         boolean retryable = failure.temporary();
         return new AgentUnavailableException("AI 자소서 대화 " + what + " 실패 (" + failure.errorCode() + ")",

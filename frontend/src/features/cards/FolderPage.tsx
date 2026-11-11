@@ -2,13 +2,13 @@ import { useId, useMemo, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Pencil, PenLine } from 'lucide-react';
 import { useActivities } from '@/api/activities';
-import { matchSupported } from '@/api/matching';
 import { useCards, useRepo } from '@/api/queries';
 import type { CardSummary } from '@/api/schemas';
 import { NextStep } from '@/components/cards/NextStep';
-import { Breadcrumb, Button, PageTitle, SectionHead, Skeleton } from '@/components/ui';
+import { Breadcrumb, Button, ButtonLink, PageTitle, SectionHead, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { ActivityDeleteDialog } from '@/features/activities/ActivityDeleteDialog';
+import { matchSupported } from '@/api/matching';
 import { RepoMatch } from '@/features/match/RepoMatch';
 import { CardGridItem } from '@/features/home/HomePage';
 import { activityMeta } from '@/lib/activityLabels';
@@ -49,7 +49,7 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
 
   const crumbs = (last: string) => [{ label: '홈', to: '/' }, { label: '경험 카드', to: '/cards' }, { label: last }];
   const failed = cards.isError && !cards.data ? cards : kind === 'activity' && activities.isError && !activities.data ? activities : null;
-  if (failed) return <main className="main"><Breadcrumb items={crumbs('폴더')} /><QueryFailure error={failed.error} retry={() => failed.refetch()} pending={failed.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
+  if (failed) return <main className="main"><Breadcrumb items={crumbs('폴더')} /><QueryFailure error={failed.error} retry={() => failed.refetch()} pending={failed.isFetching} /><ButtonLink to="/cards" variant="secondary">경험 카드 목록</ButtonLink></main>;
   if (cards.isPending || (kind === 'activity' && activities.isPending)) return <main className="main"><Skeleton h={16} w={240} /><Skeleton h={40} w={320} /><Skeleton h={160} /></main>;
 
   if (!folder || (kind === 'activity' && !activity)) {
@@ -61,10 +61,10 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
         <div className="folder-missing">
           <p className="c-2">{message}</p>
           <div className="folder-head__actions">
-            {kind === 'repo' && <Link to={`/repos/${encodeURIComponent(id ?? '')}/candidates`} className="btn btn--outline">후보 보드</Link>}
-            {kind === 'repo' && <Link to={`/repos/${encodeURIComponent(id ?? '')}/candidates?add=1`} className="btn btn--outline">기술 카드 만들기</Link>}
-            {kind === 'direct' && <Link to="/cards/new" className="btn btn--primary"><PenLine size={14} aria-hidden />직접 작성</Link>}
-            <Link to="/cards" className="btn btn--outline">경험 카드 목록</Link>
+            {kind === 'repo' && <ButtonLink to={`/repos/${encodeURIComponent(id ?? '')}/candidates`} variant="secondary">후보 보드</ButtonLink>}
+            {kind === 'repo' && <ButtonLink to={`/repos/${encodeURIComponent(id ?? '')}/candidates?add=1`} variant="secondary">기술 카드 만들기</ButtonLink>}
+            {kind === 'direct' && <ButtonLink to="/cards/new" variant="primary"><PenLine size={14} aria-hidden />직접 작성</ButtonLink>}
+            <ButtonLink to="/cards" variant="secondary">경험 카드 목록</ButtonLink>
           </div>
         </div>
       </main>
@@ -76,10 +76,10 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
   const ordered = [...techCards, ...experienceCards];
   const order = ordered.map((card) => card.id);
   const justConfirmed = !!justId && order.includes(justId);
-  const next = folderNext({ cards: ordered, justConfirmed, matchOn: matchSupported() });
+  const next = folderNext({ cards: ordered, justConfirmed, matchOn: matchSupported(), repoFolder: kind === 'repo' });
   const confirmed = folder.cards.filter((card) => card.status === 'CONFIRMED').length;
   const boardLink = kind === 'repo' ? `/repos/${encodeURIComponent(id ?? '')}/candidates` : null;
-  const facts = kind === 'repo' ? `기술 카드 ${techCards.length}장 · 경험 카드 ${experienceCards.length}장 · 확정 ${confirmed}장` : `카드 ${folder.cards.length}장 · 확정 ${confirmed}장`;
+  const facts = kind === 'repo' ? `기술 카드 ${techCards.length}장, 경험 카드 ${experienceCards.length}장, 확정 ${confirmed}장` : `카드 ${folder.cards.length}장, 확정 ${confirmed}장`;
   const experienceHint = kind === 'repo' ? '코드에 남지 않은 이 레포의 경험을 써요' : kind === 'activity' ? '이 활동에서 한 경험을 써요' : '레포·활동 없이 경험을 써요';
 
   return (
@@ -95,8 +95,8 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
         </div>
         {kind !== 'direct' && (
           <div className="folder-head__actions">
-            {boardLink && <Link to={boardLink} className="btn btn--outline">후보 보드</Link>}
-            {kind === 'activity' && <Link to={`/activities/${encodeURIComponent(id ?? '')}/edit`} className="btn btn--outline">활동 고치기</Link>}
+            {boardLink && <ButtonLink to={boardLink} variant="secondary">후보 보드</ButtonLink>}
+            {kind === 'activity' && <ButtonLink to={`/activities/${encodeURIComponent(id ?? '')}/edit`} variant="secondary">활동 고치기</ButtonLink>}
             {kind === 'activity' && <Button variant="danger" onClick={() => setDeleting(true)}>활동 삭제</Button>}
           </div>
         )}

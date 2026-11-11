@@ -1,11 +1,11 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { keys } from '@/api/keys';
 import { Job, RepoDetail } from '@/api/schemas';
 import { AnalyzePage } from '@/features/repos/AnalyzePage';
-import { activityLine, READ_LINES, revealDelay, stepLines, type ActivityLine } from '@/lib/agentActivity';
+import { activityLine, foldedJudgeCount, JUDGE_LINES, READ_LINES, REVEAL_MS, stepLines, type ActivityLine, useActivityFeed } from '@/lib/agentActivity';
 import { handle } from '@/mock/router';
 import { resetDb, viewJob, startAnalyze } from '@/mock/store';
 
@@ -72,10 +72,38 @@ describe('activity 한 줄 만들기', () => {
     expect(stepLines(lines, 'REASON', false).map((l) => l.text)).toEqual(['A', 'B']);
   });
 
-  it('한꺼번에 온 판단 줄은 남은 수가 많을수록 빨리 보인다', () => {
-    expect(revealDelay(1)).toBe(600);
-    expect(revealDelay(8)).toBeLessThan(revealDelay(2));
-    expect(revealDelay(100)).toBe(150);
+  it('지금 읽는 단계의 판단 줄은 최근 3줄만 보이고 접은 수를 알려 준다', () => {
+    const lines = Array.from({ length: 5 }, (_, i) => activityLine(described(i + 1, `이유 ${i + 1}`))).filter((l): l is ActivityLine => !!l);
+    expect(stepLines(lines, 'REASON', true).map((l) => l.text)).toEqual(['이유 3', '이유 4', '이유 5'].slice(-JUDGE_LINES));
+    expect(foldedJudgeCount(lines, 'REASON', true)).toBe(2);
+    expect(foldedJudgeCount(lines.slice(0, 3), 'REASON', true)).toBe(0);
+  });
+
+  it('끝난 단계는 판단 줄이 3줄을 넘으면 모두 접고, 3줄 이하면 그대로 둔다', () => {
+    const lines = Array.from({ length: 5 }, (_, i) => activityLine(described(i + 1, `이유 ${i + 1}`))).filter((l): l is ActivityLine => !!l);
+    expect(stepLines(lines, 'REASON', false)).toEqual([]);
+    expect(foldedJudgeCount(lines, 'REASON', false)).toBe(5);
+    expect(stepLines(lines.slice(0, 2), 'REASON', false)).toHaveLength(2);
+  });
+
+  it('판단 줄은 밀린 수와 상관없이 같은 간격으로 하나씩 보인다', () => {
+    vi.useFakeTimers();
+    try {
+      // 두 단계에 3줄씩 — 건너뛰지 않는 범위에서 밀린 줄을 많이 두어, 밀린 수로 빨라지면 잡힌다
+      const grouped = (seq: number) => ({ seq, step: 'COMPRESS', kind: 'GROUPED', units: seq, experiences: 1 });
+      const activity = [grouped(1), grouped(2), grouped(3), described(4, '이유 4번'), described(5, '이유 5번'), described(6, '이유 6번')];
+      const { result } = renderHook(() => useActivityFeed(job({ activity })));
+      const shown = () => result.current.lines.filter((l) => l.tone === 'judge').length;
+      expect(shown()).toBe(0);
+      act(() => { vi.advanceTimersByTime(REVEAL_MS - 1); });
+      expect(shown()).toBe(0);
+      act(() => { vi.advanceTimersByTime(1); });
+      expect(shown()).toBe(1);
+      act(() => { vi.advanceTimersByTime(REVEAL_MS); });
+      expect(shown()).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('이전 서버처럼 activity 가 없어도 Job 을 받는다', () => {
@@ -104,6 +132,19 @@ describe('분석 화면에 AI 가 읽고 판단한 줄', () => {
     await screen.findByText('후보 보드 화면', {}, { timeout: 5000 });
   });
 
+  it('끝난 고른 이유 단계가 5개면 "추천 이유 5개를 붙였어요" 한 줄과 후보 보드 링크만 보이고, 2개면 그대로 보인다', async () => {
+    const done = steps('REASON').map((s) => ({ ...s, state: 'DONE' }));
+    const base = { state: 'SUCCEEDED', finishedAt: '2026-10-29T00:00:10Z', pollAfterMs: 0, steps: done }; // 오래전에 끝나 한꺼번에 보인다
+    mount(job({ ...base, activity: [1, 2, 3, 4, 5].map((n) => described(n, `이유 ${n}번`)) }));
+    expect(await screen.findByText('추천 이유 5개를 붙였어요')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '후보 보드에서 보기' })).toHaveAttribute('href', '/repos/r_auth/candidates');
+    expect(screen.queryByText('이유 1번')).not.toBeInTheDocument();
+    cleanup();
+    mount(job({ ...base, activity: [1, 2].map((n) => described(n, `이유 ${n}번`)) }));
+    expect(await screen.findByText('이유 2번')).toBeInTheDocument();
+    expect(screen.queryByText(/추천 이유 \d+개를 붙였어요/)).not.toBeInTheDocument();
+  });
+
   it('폴링으로 같은 seq 가 다시 와도 한 번만 그린다', () => {
     const client = mount(job({ activity: [commit(1), commit(2)] }));
     client.setQueryData(keys.job('job'), job({ activity: [commit(2), commit(3)] }));
@@ -119,7 +160,7 @@ describe('Mock 이 실서버처럼 activity 를 낸다', () => {
     const started = startAnalyze('r_auth', null)!;
     const real = Date.now; const base = real();
     try {
-      Date.now = () => base + 11_500;
+      Date.now = () => base + 8_500; // 9초짜리 정리의 마지막 단계 도중
       const v = Job.parse(viewJob(started.id));
       const seqs = v.activity!.map((a) => a.seq);
       expect(new Set(seqs).size).toBe(seqs.length);

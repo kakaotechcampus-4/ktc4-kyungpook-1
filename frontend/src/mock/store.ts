@@ -7,7 +7,7 @@ import { seedActivities, seedCards, seedCandidates, seedInterview, seedRecall, s
 import { draftPlans, draftSchedule, draftStepsOf, draftTexts, liveDraftOf, type DraftPlan } from './draftLive';
 import { Profile, emptyProfile } from '@/api/profile';
 import { resetMatchState } from './matchState';
-import { draftedNotice, failedNotice, pushNotice } from './notifications';
+import { draftedNotice, failedNotice, letterCardNotices, pushNotice } from './notifications';
 
 type Any = Record<string, any>;
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -26,6 +26,7 @@ export const db = {
   profile: emptyProfile(), // 인적사항(BE #552 계약) — 사용자당 한 문서. 처음엔 비어 있고 savedAt 이 null 이다
   overall: null as { startedAt: number; computedAt: string | null } | null, // 전체 매칭(#614) — 누른 적이 없으면 null
   repoUpdates: [] as { repoId: string; repoName: string; cardCount: number; finishedAt: string; seen: boolean }[], // 서버가 스스로 다시 읽은 레포 — 기본은 없다
+  flags: { replyUnavailable: false }, // 시험용 스위치 — 켜면 답 읽기 API 가 '문장으로 다듬지 못함' 으로 답한다
   jobs: new Map<string, Any>(),
   idem: new Map<string, string>(), // Idempotency-Key → jobId
   manualIdem: new Map<string, string>(), // JSON [userId, key] → cardId (분석 키와 별개)
@@ -72,14 +73,14 @@ export function resetDb() {
   db.user = clone(seedUser); db.repos = clone(seedRepos); db.candidates = clone(seedCandidates);
   db.cards = clone(seedCards); db.interview = clone(seedInterview) as Record<string, Any[]>;
   db.activities = clone(seedActivities);
-  db.profile = emptyProfile(); db.coverLetters = []; db.assistantRuns = []; db.notifications = []; db.cardMaterialAnswers = {}; db.overall = null; db.repoUpdates = [];
+  db.profile = emptyProfile(); db.coverLetters = []; db.assistantRuns = []; db.notifications = []; db.cardMaterialAnswers = {}; db.overall = null; db.repoUpdates = []; db.flags.replyUnavailable = false;
   db.jobs.clear(); db.idem.clear(); db.manualIdem.clear(); db.activityIdem.clear(); db.seq = 100;
   resetMatchState();
   hydrateCards();
 }
 
 // ───────────────────────────── Job ─────────────────────────────
-const ANALYZE_SEC = 12;
+const ANALYZE_SEC = 9;
 const POLL_MS = 1000;        // Job 상세 — 실서버도 줄을 실시간으로 보여 주려고 1초(#496)
 const ACTIVE_POLL_MS = 2000; // 진행 중 Job 목록은 2초 그대로
 const STEP_KEYS = ['PR_REVIEW', 'COMMITS', 'COMPRESS', 'REASON'] as const;
@@ -137,13 +138,19 @@ export function cancelJob(id: string) {
 const iso = (ms: number) => new Date(ms).toISOString();
 const step = (key: string, state: string, done: number, total: number | null) => ({ key, state, done, total });
 
+// 읽기 줄은 화면이 받는 대로 바로 보여서 목이 읽기 두 단계를 길게 끌 이유가 없다 — 추리기·이유 붙이기에 시간을 더 둔다
+const STEP_SHARE: Record<string, number> = { PR_REVIEW: 1 / 6, COMMITS: 1 / 6, COMPRESS: 1 / 3, REASON: 1 / 3 };
+
 /** 경과 비율에 맞춰 4단계를 채운다. 총량을 모르는 단계는 total: null — 분모를 지어내지 않는다. */
 function analyzeSteps(repo: Any, progress: number, candidates: number | null) {
-  const share = 1 / STEP_KEYS.length;
   const totals: Record<string, number | null> = { COMMITS: repo.contribution.mine, PR_REVIEW: repo.prCount, COMPRESS: null, REASON: null };
-  return STEP_KEYS.map((key, i) => {
-    const local = Math.min(1, Math.max(0, (progress - i * share) / share));
-    if (key === 'PR_REVIEW' && repo.prCount === 0) return step(key, progress > i * share ? 'SKIPPED' : 'QUEUED', 0, 0);
+  let from = 0;
+  return STEP_KEYS.map((key) => {
+    const share = STEP_SHARE[key];
+    const start = from;
+    from += share;
+    const local = Math.min(1, Math.max(0, (progress - start) / share));
+    if (key === 'PR_REVIEW' && repo.prCount === 0) return step(key, progress > start ? 'SKIPPED' : 'QUEUED', 0, 0);
     const total = totals[key];
     const done = total != null ? Math.floor(total * local) : Math.round((candidates ?? 20) * local);
     const state = local >= 1 ? 'DONE' : local > 0 ? 'RUNNING' : 'QUEUED';
@@ -351,10 +358,10 @@ export function cardView(c: Any) {
   const { versions, userId, activityId, ...rest } = c;
   const { _metadata, _confirmed, ...version } = v;
   settleThemes(c); rest.themes = c.themes ?? []; delete rest.themesByUser; delete rest.themesDueAt; // 문항 유형(#564): 목 안의 표시는 내보내지 않는다
-  void versions;
   void userId; void activityId; void _metadata; void _confirmed;
+  const changeCount = versions.filter((x: Any) => x.versionNo > 1 && !x._confirmed).length; // 실서버처럼 확정하며 남긴 사본은 세지 않는다
   // draftSteps: 실서버처럼 AI 초안 기록이 없는 카드(직접 쓴 카드·새로 만든 카드)는 빈 배열
-  return clone({ ...rest, areas: c.areas ?? [], techs: c.techs ?? [], draftSteps: c.draftSteps ?? [], activity: activityRef(c), version });
+  return clone({ ...rest, areas: c.areas ?? [], techs: c.techs ?? [], draftSteps: c.draftSteps ?? [], changeCount, activity: activityRef(c), version });
 }
 /**
  * 목록용 STAR 상태 — 현재 버전의 실제 칸 내용으로 판정한다.
@@ -523,7 +530,7 @@ export function pushVersion(c: Any, source: string, fields: Any) {
 export const INTERVIEW_MAX_TURNS = 8; // 서버 정책(gitory.interview.max-turns). 화면은 응답의 maxTurns 만 본다
 
 /** 앞 결과 답에 숫자가 없어 AI 가 같은 칸을 다시 물을 때의 데모 질문(#430). 실제 AI 의 글이 아니다 */
-const AGAIN_RESULT = { question: '그 변화를 숫자로 말하면 어느 정도였나요? 대략이라도 괜찮아요', missing: '결과를 뒷받침하는 수치' };
+const AGAIN_RESULT = { question: '그 변화를 숫자로 말하면 어느 정도였나요? 대략이라도 괜찮아요' };
 
 /** ai 가 있으면 AI 가 고른 칸이다(서버의 FOLLOW_UP + reason). 없으면 사용자가 칸을 골랐다(USER_REQUEST, reason null) */
 export function askTurn(c: Any, field: string, ai?: { reason: string; again?: boolean }) {
@@ -536,9 +543,8 @@ export function askTurn(c: Any, field: string, ai?: { reason: string; again?: bo
   const turn = {
     turnNo: turns.length + 1, field, askedBy: ai ? 'FOLLOW_UP' : 'USER_REQUEST', sourceType,
     questionType: found.length ? 'FOLLOWUP' : sourceType === 'DIRECT_CARD' ? 'RECALL_AID' : 'EVIDENCE_GAP',
-    found: found.length ? found : ['이 카드에 붙은 커밋 근거가 없습니다'],
-    missing: [ai?.again ? AGAIN_RESULT.missing : bank.missing], question: ai?.again ? AGAIN_RESULT.question : bank.question,
-    options: ai?.again ? [] : bank.options, answer: null, outcome: null, reason: ai?.reason ?? null,
+    question: ai?.again ? AGAIN_RESULT.question : bank.question,
+    options: ai?.again ? [] : bank.options, answer: null, outcome: null, reason: ai?.reason ?? null, exampleAnswer: ai?.again ? null : bank.example,
     remaining: Math.max(0, INTERVIEW_MAX_TURNS - turns.length - 1),
     maxTurns: INTERVIEW_MAX_TURNS,
   };
@@ -548,12 +554,12 @@ export function askTurn(c: Any, field: string, ai?: { reason: string; again?: bo
   return turn;
 }
 
-export function answerTurn(c: Any, turnNo: number, text: string, source: string) {
+export function answerTurn(c: Any, turnNo: number, text: string, source: string, read?: { original: string; extra?: Record<string, string> }) {
   const turn = db.interview[c.id]?.find((t) => t.turnNo === turnNo);
   if (!turn) return null;
-  turn.answer = { text, source }; // 가공 없이 그대로
+  turn.answer = read ? { text, source, original: read.original } : { text, source }; // 읽기 API 가 아니면 가공 없이 그대로
   turn.outcome = 'ANSWERED';
-  pushVersion(c, 'INTERVIEW', { [FIELD_KEY[turn.field]]: text });
+  pushVersion(c, 'INTERVIEW', { [FIELD_KEY[turn.field]]: text, ...Object.fromEntries(Object.entries(read?.extra ?? {}).map(([f, t]) => [FIELD_KEY[f], t])) });
   c.evidence.push({ field: turn.field, type: source, authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo });
   c.droppedFields = c.droppedFields.filter((d: Any) => d.field !== turn.field);
   c.lowConfidenceFields = c.lowConfidenceFields.filter((d: Any) => d.field !== turn.field);
@@ -563,6 +569,59 @@ export function answerTurn(c: Any, turnNo: number, text: string, source: string)
   // 실서버처럼 답으로 상황·행동이 차고 확인 필요 칸이 없으면 확정한다(확정본은 남기지 않는다)
   settleCard(c);
   return c;
+}
+
+/** 읽는 API 의 말투 바꾸기 표 — 데모가 AI 문장을 흉내 내는 전부다. 긴 끝부터 맞춘다 */
+const PLAIN_ENDINGS: [string, string][] = [['있었어요', '있었다'], ['줄었어요', '줄었다'], ['했어요', '했다'], ['됐어요', '됐다'], ['였어요', '였다'], ['이에요', '이다']];
+const toPlain = (piece: string) => {
+  const body = piece.trim();
+  const hit = PLAIN_ENDINGS.find(([from]) => body.endsWith(from));
+  return hit ? body.slice(0, -hit[0].length) + hit[1] : body;
+};
+const MEANINGLESS_MAX_DISTINCT = 2;
+const SHORT_ANSWER = 8;
+const CHANGE_CLAUSE = /\d.*에서.*\d.*(?:으로|로).*(?:줄었|늘었|됐)어요$/;
+
+const meaningless = (text: string) => {
+  const chars = [...text.replace(/\s/g, '')];
+  return !/[\p{L}\p{N}]/u.test(text) || (chars.length >= 3 && new Set(chars).size <= MEANINGLESS_MAX_DISTINCT);
+};
+
+/**
+ * 답 읽기 API 를 데모용으로 흉내 낸다. 규칙은 위에서부터 먼저 맞는 것이 이긴다 —
+ * 뜻 없는 글자 → 기억 안 남 → 짧은 답 → 다듬기 실패 스위치 → 카드에 넣기.
+ */
+export function replyTurn(c: Any, turn: Any, text: string, source: string) {
+  const turns = db.interview[c.id];
+  const base = { reason: null as string | null, written: [] as { field: string; text: string }[], restoreVersionNo: null as number | null, nextTurn: null as Any | null };
+  const done = (outcome: string, extra: Partial<typeof base> = {}) => ({ outcome, ...base, ...extra, card: cardView(c) });
+  if (meaningless(text)) return done('NOT_USED', { reason: '뜻을 알 수 없는 글자예요' });
+  if (/기억|모르|생각이 안/.test(text)) { skipTurn(c, turn.turnNo); return done('SKIPPED'); }
+  const parent = turn.followUpOf ? turns.find((t) => t.turnNo === turn.followUpOf) : null;
+  if (text.length < SHORT_ANSWER && !turn.followUpOf && turns.length < INTERVIEW_MAX_TURNS) {
+    turn.answer = { text, source, original: null };
+    turn.outcome = 'INSUFFICIENT';
+    const reason = '무엇을 어떻게 했는지가 빠져 있어요';
+    const next: Any = askTurn(c, turn.field, { reason });
+    next.question = '무엇을 어떻게 했는지 한 가지만 더 알려 주세요';
+    next.questionType = 'FOLLOWUP';
+    next.options = [];
+    next.followUpOf = turn.turnNo;
+    return done('ASK_MORE', { reason, nextTurn: next });
+  }
+  if (db.flags.replyUnavailable) return done('UNPOLISHED');
+
+  const key = FIELD_KEY[turn.field];
+  const last = c.versions[c.versions.length - 1];
+  const pieces = [parent?.answer?.text, text].filter((x): x is string => !!x).flatMap((x) => x.split(/[.!?]\s*|(?<=요)\s+/)).filter((x) => x.trim());
+  const resultClause = turn.field !== 'R' && isCardBlank(last.result ?? '') ? pieces.find((x) => CHANGE_CLAUSE.test(x.trim())) : undefined;
+  const mine = resultClause && pieces.length > 1 ? pieces.filter((x) => x !== resultClause) : pieces;
+  const extra = resultClause && pieces.length > 1 ? { R: toPlain(resultClause) } : undefined;
+  const parts = [last[key], ...mine.map(toPlain)].filter((x) => x && !isCardBlank(x));
+  const sentence = parts.map((x, i) => (i < parts.length - 1 && !/[.!?]$/.test(x) ? `${x}.` : x)).join(' ');
+  const restoreVersionNo = last.versionNo;
+  answerTurn(c, turn.turnNo, sentence, source, { original: text, extra });
+  return done('APPLIED', { written: [{ field: turn.field, text: sentence }, ...(extra ? [{ field: 'R', text: extra.R }] : [])], restoreVersionNo });
 }
 
 export function skipTurn(c: Any, turnNo: number) {
@@ -659,6 +718,7 @@ export function settleThemes(c: Any) {
   const text = [c.title, ...STAR.map((f) => v[FIELD_KEY[f]] ?? '')].join(' ');
   const picked = THEME_WORDS.filter(([, word]) => word.test(text)).map(([theme]) => theme).slice(0, 2);
   c.themes = picked.length ? picked : ['GROWTH'];
+  letterCardNotices(db.coverLetters, c).forEach((notice) => pushNotice(db.notifications, notice));
 }
 export function chooseThemes(c: Any, themes: string[]) { c.themes = themes; c.themesByUser = true; delete c.themesDueAt; }
 

@@ -1,0 +1,162 @@
+{
+ "buzzvil/113561#team#team_techs": [
+  "AIRFLOW",
+  "AWS",
+  "DJANGO",
+  "GITHUB_ACTIONS",
+  "GRAFANA",
+  "KUBERNETES",
+  "MYSQL",
+  "PROMETHEUS",
+  "PYTHON",
+  "REDIS"
+ ],
+ "deepauto-ai/209166#22#techs": [
+  "LLM"
+ ],
+ "deepauto-ai/209166#23#techs": [
+  "LLM"
+ ],
+ "deepauto-ai/209166#28#education_exempt": true,
+ "deepx/114805#13#techs": [
+  "LINUX"
+ ],
+ "estfamily/107360#15#general_type": null,
+ "finda/173229#team#team_techs": [
+  "AWS",
+  "CI_CD",
+  "DOCKER",
+  "ELASTICSEARCH",
+  "GRAFANA",
+  "JAVA",
+  "JPA",
+  "KAFKA",
+  "KOTLIN",
+  "KUBERNETES",
+  "MONGODB",
+  "MYSQL",
+  "PROMETHEUS",
+  "REDIS",
+  "SPRING",
+  "TERRAFORM"
+ ],
+ "gccompany/176690#4#techs": [
+  "AWS",
+  "KUBERNETES"
+ ],
+ "gccompany/176690#6#techs": [
+  "AWS",
+  "GRAFANA",
+  "PROMETHEUS"
+ ],
+ "ineeji/109288#team#team_techs": [
+  "AWS",
+  "DOCKER",
+  "GCP",
+  "JAVA",
+  "MONGODB",
+  "MYSQL",
+  "PYTHON",
+  "REACT"
+ ],
+ "krafton/8339620002#10#general_type": null,
+ "lawcompany/165289#10#techs": [
+  "LANGCHAIN",
+  "LLM"
+ ],
+ "medistream/217443#10#techs": [
+  "LLM"
+ ],
+ "medistream/217443#15#techs": [
+  "LLM"
+ ],
+ "mobilint/144484#9#general_type": "LOCATION",
+ "realworld/195941#34#general_type": "MILITARY",
+ "sianalytics/230943#18#techs": [
+  "PYTORCH"
+ ],
+ "upstage/191639#13#general_type": "MILITARY",
+ "deepauto-ai/216583#13#general_type": "LANGUAGE",
+ "deepx/114811#5#techs": [
+  "LLM"
+ ],
+ "deepx/114811#12#techs": [
+  "LLM"
+ ],
+ "estfamily/153450#team#team_techs": [
+  "ANDROID"
+ ],
+ "estfamily/153450#5#general_type": null,
+ "gccompany/229111#5#techs": [
+  "AWS",
+  "CI_CD",
+  "JENKINS",
+  "KUBERNETES"
+ ],
+ "kakaomobility/160926#11#techs": [
+  "ELASTICSEARCH",
+  "PROMETHEUS"
+ ],
+ "lawcompany/209788#6#techs": [
+  "AIRFLOW"
+ ],
+ "masangsoft/92118#9#general_type": null,
+ "mobilint/212524#10#techs": [
+  "LINUX"
+ ],
+ "neubility/235661#20#techs": [
+  "CI_CD",
+  "GITHUB_ACTIONS"
+ ],
+ "nextsecurities/236607#19#techs": [
+  "LLM"
+ ],
+ "riibotics/220810#7#techs": [
+  "CPP",
+  "PYTHON"
+ ],
+ "riibotics/220810#8#techs": [
+  "CPP",
+  "PYTHON"
+ ],
+ "shoplive/174633#6#techs": [],
+ "wrtn/189525#7#general_type": null,
+ "wrtn/189525#8#general_type": null,
+ "wrtn/189525#10#general_type": null,
+ "wrtn/189525#11#general_type": null,
+ "wrtn/189525#12#general_type": null,
+ "wrtn/189525#13#general_type": null,
+ "wrtn/189525#14#general_type": null,
+ "wrtn/189525#15#general_type": null,
+ "wrtn/189525#22#techs": [
+  "SQL"
+ ],
+ "bluehole/8511473002#18#general_type": "LANGUAGE",
+ "daangn/6652141003#10#techs": [
+  "GCP"
+ ],
+ "deepauto-ai/224370#20#general_type": null,
+ "deepauto-ai/224370#27#education_exempt": true,
+ "finda/237358#team#team_techs": [
+  "AWS",
+  "CI_CD",
+  "GITHUB_ACTIONS",
+  "GRAFANA",
+  "KAFKA",
+  "KUBERNETES",
+  "MONGODB",
+  "PROMETHEUS",
+  "REDIS",
+  "TERRAFORM"
+ ],
+ "gccompany/239174#11#techs": [],
+ "ineeji/227434#team#team_techs": [
+  "CI_CD",
+  "DOCKER",
+  "GCP",
+  "GITHUB_ACTIONS",
+  "NEXTJS",
+  "REACT",
+  "TYPESCRIPT"
+ ]
+}

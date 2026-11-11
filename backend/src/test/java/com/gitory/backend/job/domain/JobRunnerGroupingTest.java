@@ -9,6 +9,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import org.mockito.Mockito;
+
 import com.gitory.backend.common.infra.ClockConfig;
 import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.ExperienceCandidate;
@@ -467,6 +469,60 @@ class JobRunnerGroupingTest {
         assertThat(second.getSteps()).endsWith(
                 new JobStep(JobStepKey.COMPRESS, JobStepState.DONE, 1, null),
                 new JobStep(JobStepKey.REASON, JobStepState.DONE, 1, null));
+
+    }
+
+    @Test
+    @DisplayName("손댄 후보 때문에 보낼 요청이 달라져도 저장된 재료가 같으면 AI 를 부르지 않고 지난 후보를 그대로 둔다")
+    void skipsAiWhenStoredMaterialIsUnchanged() {
+
+        given(activities.collect(any())).willReturn(activity(null, commit(SHA_A)));
+        given(grouping.group(any())).willAnswer(invocation -> groupedAsPullRequest(invocation.getArgument(0)));
+        enqueue(KEY_1);
+        runNext();
+        List<Long> firstCandidates = candidateIds();
+        // 후보 하나를 카드로 쓰면 그 커밋이 요청에서 빠져 지난번과 다른 요청이 된다
+        jdbc.update("UPDATE candidate SET status = 'USED' WHERE id = ?", firstCandidates.getFirst());
+        given(activities.collect(any())).willReturn(new CollectedActivity(List.of(), List.of(), List.of(), null, null));
+
+        Long secondJobId = enqueue(KEY_2);
+        runNext();
+
+        AnalysisJob second = jobs.findById(secondJobId).orElseThrow();
+        verify(grouping, times(1)).group(any());
+        assertThat(candidateIds()).isEqualTo(firstCandidates);
+        assertThat(second.getState()).isEqualTo(JobState.SUCCEEDED);
+
+    }
+
+    @Test
+    @DisplayName("지난 그룹화가 실패해 저장만 된 커밋은 새로 읽은 것이 없어도 다시 묶는다")
+    void regroupsCommitsLeftByFailedGrouping() {
+
+        given(activities.collect(any())).willReturn(activity(null, commit(SHA_A)));
+        given(grouping.group(any())).willAnswer(invocation -> groupedAsPullRequest(invocation.getArgument(0)));
+        enqueue(KEY_1);
+        runNext();
+
+        given(activities.collect(any())).willReturn(activity(null, commit(SHA_B)));
+        Mockito.reset(grouping);
+        given(grouping.group(any())).willThrow(
+                new AgentUnavailableException("AI 경험 그룹화 실패 (LLM_UNAVAILABLE)", true, false, null));
+        enqueue(KEY_2);
+        runNext();
+
+        List<ExperienceGroupingRequest> sent = new ArrayList<>();
+        Mockito.reset(grouping);
+        given(grouping.group(any())).willAnswer(invocation -> {
+            sent.add(invocation.getArgument(0));
+            return groupedAsPullRequest(invocation.getArgument(0));
+        });
+        given(activities.collect(any())).willReturn(new CollectedActivity(List.of(), List.of(), List.of(), null, null));
+        enqueue("33333333-3333-4333-8333-333333333333");
+        runNext();
+
+        assertThat(sent).hasSize(1);
+        assertThat(sent.get(0).commits()).extracting(GroupingCommit::sha).contains(SHA_B);
 
     }
 

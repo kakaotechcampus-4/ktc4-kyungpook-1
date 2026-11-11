@@ -6,42 +6,40 @@ import { freshSeed, loginAsDemo as login } from './helpers';
 test('E-1 수집 실패 — 정리 시작 자체를 막고 다음 행동 3개를 준다', async ({ page }) => {
   await login(page);
   await page.goto('/repos?select=r_fail&disclose=1');
-  await page.getByRole('button', { name: '정리 시작' }).click();
+  await page.getByRole('button', { name: /정리 시작|다시 정리/ }).click();
   await expect(page.getByRole('heading', { name: 'GitHub에서 답이 오지 않았어요' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('읽은 데까지로는 후보를 만들지 않아요')).toBeVisible();
   await expect(page.getByRole('button', { name: '다시 시도' }).first()).toBeEnabled(); // retryable: true
 });
 
-test('E-2 요청 한도 — partial 을 명시하고 읽은 범위의 후보를 보여준다', async ({ page }) => {
+test('E-2 요청 한도 — partial 을 명시하고 이어 읽기를 안내한 뒤 같은 길로 카드까지 간다', async ({ page }) => {
+  // 일부만 정리한 화면은 1초 안에 카드로 넘어가므로 가짜 시계로 멈춰 두고 본다
+  await page.clock.install();
   await login(page);
   await page.goto('/repos?select=r_ratelimit&disclose=1');
-  await page.getByRole('button', { name: '정리 시작' }).click();
-  await expect(page.getByRole('heading', { name: '읽은 데까지 정리했어요' })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled(); // GITHUB_RATE_LIMITED
-  await page.getByRole('button', { name: '읽은 범위의 후보 보기' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: / 에서 찾은 일$/ })).toBeVisible();
-  await expect(page.getByText('읽은 기록에서 찾은 후보예요')).toBeVisible();
-  await page.getByRole('button', { name: '정리 기준' }).click();
-  await expect(page.getByRole('button', { name: '다시 정리하기' })).toBeDisabled();
-  await page.getByRole('dialog').getByRole('button', { name: '닫기', exact: true }).last().click();
-  await page.getByRole('link', { name: '작업 상태 보기' }).click();
-  await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled();
+  await page.getByRole('button', { name: /정리 시작|다시 정리/ }).click();
+  const heading = page.getByRole('heading', { name: '읽은 데까지 정리했어요' });
+  for (let i = 0; i < 150 && !(await heading.isVisible()); i += 1) await page.clock.runFor(200); // 끝난 화면은 1초 남짓이라 잘게 돌린다
+  await expect(heading).toBeVisible();
+  const note = page.locator('.run-capnote');
+  await expect(note).toBeVisible();
+  await expect(note).toContainText('GitHub 요청 한도에 걸렸어요'); // GITHUB_RATE_LIMITED
+  await expect(note.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled();
+  for (let i = 0; i < 10 && !/\/cards\//.test(page.url()); i += 1) await page.clock.runFor(1_000);
+  await expect(page).toHaveURL(/\/cards\//); // 일부만 읽어도 같은 길로 카드 초안까지 간다
 });
 
-test('되묻기 — 보기에서 고른 답도 그대로 저장되고 칸이 채워진다', async ({ page }) => {
+test('되묻기 — 보기에서 고른 답도 읽어서 카드 문장으로 칸이 채워진다', async ({ page }) => {
   await login(page);
   await page.goto('/cards/card_01/interview?field=T');
-  await page.getByText('질문 근거 보기', { exact: true }).click();
-  await expect(page.getByText('코드에서 찾은 것')).toBeVisible();
   const selectedAnswer = (await page.locator('.chip--option').first().textContent())!;
   await page.locator('.chip--option').first().click();
-  await page.getByRole('button', { name: '답변 저장', exact: true }).click();
-  await expect(page.locator('.toast')).toContainText('답변을 저장했어요');
+  await page.getByRole('button', { name: '답 보내기', exact: true }).click();
+  await expect(page.getByText('과제 칸에 이렇게 넣었어요')).toBeVisible();
   const savedCard = await page.evaluate(async () => (await (await fetch('/api/cards/card_01')).json()).data);
-  expect(savedCard.version.task).toBe(selectedAnswer);
+  expect(savedCard.version.task).toBe(selectedAnswer.replace(/했어요$/, '했다')); // 읽는 API 가 말투를 카드 문장으로 바꿔 넣는다
   expect(savedCard.evidence.some((entry: { field: string; type: string }) => entry.field === 'T' && entry.type === 'USER_SELECTED')).toBe(true);
   // 내부 enum 이 화면에 새지 않는다
-  await expect(page.getByText('선택한 답변, 저장됨')).toBeVisible();
   await expect(page.getByText('USER_SELECTED')).toHaveCount(0);
   // 답하면 칸을 정하지 않고 다음 질문을 요청한다(#418). 이 카드는 T 가 마지막 빈 칸이라 AI 가 스스로 끝낸다
   await expect(page.getByText('추가 질문을 마쳤어요')).toBeVisible();
@@ -73,7 +71,7 @@ test('수정 — 쓰는 동안 서버에 저장되고 AI 초안은 작성 이력
 test('새로고침으로 job 이 빠져도 서버의 진행 중 작업으로 되돌아온다', async ({ page }) => {
   await login(page);
   await page.goto('/repos?select=r_auth&disclose=1');
-  await page.getByRole('button', { name: '정리 시작' }).click();
+  await page.getByRole('button', { name: /정리 시작|다시 정리/ }).click();
   await expect(page).toHaveURL(/\/run\?job=/);
   // 주소에서 job 을 떼고 다시 들어가도(= 새로고침으로 잃어도) 진행 화면으로 붙는다
   await page.goto('/repos/r_auth/run');
@@ -131,5 +129,5 @@ test('동의 취소는 랜딩으로 돌아와 안내를 보여준다', async ({ 
   await freshSeed(page);
   await page.goto('/login?error=access_denied');
   await expect(page.getByText('GitHub 연결을 취소했어요. 준비되면 다시 시작해 주세요.')).toBeVisible();
-  await expect(page.getByRole('button', { name: '샘플로 체험하기' })).toHaveCount(1);
+  await expect(page.locator('.landing__hero').getByRole('button', { name: '샘플로 체험하기' })).toHaveCount(1);
 });

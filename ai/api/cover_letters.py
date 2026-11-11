@@ -19,6 +19,8 @@ from api.openapi import INVALID_PAYLOAD_RESPONSE, LLM_UNAVAILABLE_RESPONSE
 from api.progress_stream import NDJSON, stream_with_progress
 from schemas.common import Envelope, ErrorDetail
 from schemas.cover_letter import (
+    AppendCardRequest,
+    AppendCardResult,
     AssignmentRequest,
     AssignmentResult,
     DraftsRequest,
@@ -29,15 +31,19 @@ from schemas.cover_letter import (
     PolishResult,
     QuestionsRequest,
     QuestionsResult,
+    SuggestionRequest,
+    SuggestionResult,
     TurnRequest,
     TurnResult,
 )
+from services.cover_letter_append import CoverLetterAppender
 from services.cover_letter_asker import CoverLetterAsker
 from services.cover_letter_assigner import CoverLetterAssigner
 from services.cover_letter_drafter import CoverLetterDrafter
 from services.cover_letter_fill import CoverLetterFiller
 from services.cover_letter_llm import CoverLetterLLMUnavailable
 from services.cover_letter_polish import CoverLetterPolisher
+from services.cover_letter_suggester import CoverLetterSuggester
 from services.cover_letter_turns import CoverLetterTurns
 from services.llm_settings import EnvironmentLLMClient
 from services.usage import usage_meta
@@ -66,10 +72,15 @@ _polisher = CoverLetterPolisher(EnvironmentLLMClient("COVER_LETTER_POLISH"), _ju
 _turns = CoverLetterTurns(EnvironmentLLMClient("COVER_LETTER_TURN"))
 # 답으로 다시 쓰기는 초안 쓰기의 고치기 경로라 초안과 같은 쓰기 모델을 쓴다
 _filler = CoverLetterFiller(EnvironmentLLMClient("COVER_LETTER_WRITE"), _judge)
+_appender = CoverLetterAppender(EnvironmentLLMClient("COVER_LETTER_WRITE"), _judge)
 
+_suggester = CoverLetterSuggester(EnvironmentLLMClient("COVER_LETTER_SUGGEST"))
+
+_SUGGEST_PATH = "/internal/cover-letter-suggestions"
 _POLISH_PATH = "/internal/cover-letter-polish"
 _TURN_PATH = "/internal/cover-letter-turns"
 _FILL_PATH = "/internal/cover-letter-fill"
+_APPEND_PATH = "/internal/cover-letter-append"
 
 
 @router.post(
@@ -196,6 +207,46 @@ async def fill_question(request: FillRequest):
         result = await _filler.fill(request)
     except CoverLetterLLMUnavailable as exc:
         return _unavailable("자소서 답으로 다시 쓰기", _FILL_PATH, started, exc, request.cover_letter_id)
+    return Envelope(success=True, data=result, meta=usage_meta(started, "COMPLETED"), error=None)
+
+
+@router.post(
+    "/cover-letter-append", response_model=Envelope[AppendCardResult],
+    responses={503: LLM_UNAVAILABLE_RESPONSE},
+    summary="이미 쓴 글에 새 카드 내용 덧붙이기",
+    description=(
+        "target.current_text 의 문장은 그대로 두고, 새 카드(target.supporting_card, added_card_id)의 내용을 알맞은 자리에 한두 문장으로 더합니다. "
+        "초안 쓰기의 고치기 경로로 쓰므로 근거 없는 수치·낱말 검사와 추론(INFERRED) 표시가 초안과 같고, 새로 더한 문장만 감독이 한 번 더 봅니다. "
+        "원래 문장이 하나라도 바뀌었거나 더한 문장이 없으면 앞 글로 되돌리고 steps 에 REVERTED(reason 에 까닭)를 남깁니다. "
+        "쓰기 답을 60초 안에 받지 못하면 503 LLM_UNAVAILABLE(retryable=true)입니다."
+    ),
+)
+async def append_card(request: AppendCardRequest):
+    started = time.perf_counter()
+    try:
+        result = await _appender.append(request)
+    except CoverLetterLLMUnavailable as exc:
+        return _unavailable("자소서 새 카드 덧붙이기", _APPEND_PATH, started, exc, request.cover_letter_id)
+    return Envelope(success=True, data=result, meta=usage_meta(started, "COMPLETED"), error=None)
+
+
+@router.post(
+    "/cover-letter-suggestions", response_model=Envelope[SuggestionResult],
+    responses={503: LLM_UNAVAILABLE_RESPONSE},
+    summary="자소서 문항에 쓸 만한 재료 제안하기",
+    description=(
+        "카드가 정해지지 않은 문항 하나에, 이 자소서가 아직 쓰지 않은 확정 카드(cards)와 아직 카드가 아닌 경험 후보(candidates) 가운데 "
+        "맞는 것을 최대 3개 골라, 재료가 문항에 어떻게 답이 되는지 한 줄(angle, 60자 이내)과 함께 돌려줍니다. 맞는 것이 없으면 빈 배열입니다. "
+        "id 는 요청에 있던 것만이고 source 는 그 id 가 온 목록(CARD·CANDIDATE)과 같아야 하며, 규칙을 두 번 어기면 어긴 항목만 버립니다. "
+        "LLM 답을 20초 안에 받지 못하면 503 LLM_UNAVAILABLE(retryable=true)입니다."
+    ),
+)
+async def suggest_materials(request: SuggestionRequest):
+    started = time.perf_counter()
+    try:
+        result = await _suggester.suggest(request)
+    except CoverLetterLLMUnavailable as exc:
+        return _unavailable("자소서 재료 제안", _SUGGEST_PATH, started, exc, request.cover_letter_id)
     return Envelope(success=True, data=result, meta=usage_meta(started, "COMPLETED"), error=None)
 
 

@@ -1,14 +1,3 @@
-.draft-progress {
-  gap: 16px;
-  padding: 24px;
-}
-.draft-progress__count {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px 20px;
-}
 .card-review-aside {
   display: flex;
   flex-direction: column;
@@ -26,8 +15,9 @@
 .two-col > .card-review-aside { align-self: stretch; }
 .card-navigation h2 {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: var(--weight-bold);
 }
 .card-navigation__actions {
   display: grid;
@@ -37,11 +27,7 @@
 .card-navigation__actions .btn {
   min-width: 0;
   min-height: 44px;
-}
-@media (max-width: 767px) {
-  .draft-progress {
-    padding: 20px;
-  }
+  font-size: 15px;
 }
 @media print {
   .card-navigation {

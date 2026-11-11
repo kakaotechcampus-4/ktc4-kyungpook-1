@@ -99,8 +99,8 @@ class InterviewTurnTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = TurnOutcome.class, names = {"LATER", "INSUFFICIENT"})
-    @DisplayName("결과가 LATER·INSUFFICIENT 로 남은 질문은 아직 열려 있어 답하면 남아 있던 글을 새 글로 바꾸고 ANSWERED 가 된다")
+    @EnumSource(value = TurnOutcome.class, names = "LATER")
+    @DisplayName("결과가 LATER 로 남은 질문은 아직 열려 있어 답하면 남아 있던 글을 새 글로 바꾸고 ANSWERED 가 된다")
     void answersAnUnfinishedTurnOverItsLeftoverText(TurnOutcome outcome) {
 
         InterviewTurn turn = InterviewTurnSamples.turn(1, StarField.T, QuestionType.EVIDENCE_GAP, TriggerSource.USER,
@@ -115,7 +115,7 @@ class InterviewTurnTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = TurnOutcome.class, names = {"LATER", "INSUFFICIENT"})
+    @EnumSource(value = TurnOutcome.class, names = "LATER")
     @DisplayName("답한 시각이 남아 있어도 결과가 열린 질문이면 답을 받고 답한 시각을 새로 남긴다")
     void answersAnUnfinishedTurnThatKeepsAnAnsweredAt(TurnOutcome outcome) {
 
@@ -149,8 +149,8 @@ class InterviewTurnTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = TurnOutcome.class, names = {"ANSWERED", "SKIPPED", "MEASURED", "NOT_MEASURED"})
-    @DisplayName("결과가 정해진 질문(답함·넘김·측정)은 답하거나 넘기려 하면 예외가 나고 결과가 그대로다")
+    @EnumSource(value = TurnOutcome.class, names = {"ANSWERED", "SKIPPED", "MEASURED", "NOT_MEASURED", "INSUFFICIENT"})
+    @DisplayName("결과가 정해진 질문(답함·넘김·측정·모자란 답)은 답하거나 넘기려 하면 예외가 나고 결과가 그대로다")
     void rejectsChangingAClosedTurn(TurnOutcome outcome) {
 
         InterviewTurn turn = InterviewTurnSamples.turn(1, StarField.R, QuestionType.EVIDENCE_GAP, TriggerSource.USER,
@@ -161,6 +161,23 @@ class InterviewTurnTest {
 
         assertThat(turn.getOutcome()).isEqualTo(outcome);
         assertThat(turn.getAnswerText()).isEqualTo("남은 답 글");
+
+    }
+
+    @Test
+    @DisplayName("모자란 답으로 닫으면 사용자가 친 답과 출처를 남기고 결과가 INSUFFICIENT 인 닫힌 질문이 되며, 답한 질문으로 세지는 않는다")
+    void insufficientKeepsTheTypedAnswerAndClosesTheTurn() {
+
+        InterviewTurn turn = InterviewTurn.ask(5L, (short) 1, StarField.T, QuestionType.EVIDENCE_GAP, "질문");
+
+        turn.insufficient("짧은 답", AnswerSource.TYPED);
+
+        assertThat(turn.getOutcome()).isEqualTo(TurnOutcome.INSUFFICIENT);
+        assertThat(turn.getAnswerText()).isEqualTo("짧은 답");
+        assertThat(turn.getAnswerSource()).isEqualTo(AnswerSource.TYPED);
+        assertThat(turn.getAnsweredAt()).isNotNull();
+        assertThat(turn.isClosed()).isTrue();
+        assertThat(turn.isAnswered()).isFalse();
 
     }
 

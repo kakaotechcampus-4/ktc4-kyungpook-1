@@ -56,8 +56,7 @@ class CompanyShortlistServiceTest {
         when(postings.findShortlistConditions(any())).thenReturn(List.of(
                 new PostingCondition(backend, required(CardTech.JAVA)),
                 new PostingCondition(frontend, required(CardTech.JAVA))));
-        ProfileView frontendOnly = new ProfileView(List.of(), List.of(), List.of(), List.of(),
-                List.of(InterestCategory.FRONTEND), null, false, NOW);
+        ProfileView frontendOnly = new ProfileView(List.of(InterestCategory.FRONTEND), null, false, NOW);
 
         List<ShortlistedCompany> companies = service(postings, frontendOnly).shortlist(1L, Set.of(CardTech.JAVA), 10);
 
@@ -130,8 +129,7 @@ class CompanyShortlistServiceTest {
                 new PostingCondition(notTarget, required(CardTech.JAVA)),
                 new PostingCondition(noOverlap, required(CardTech.REACT)),
                 new PostingCondition(otherCategory, required(CardTech.JAVA))));
-        ProfileView backendOnly = new ProfileView(List.of(), List.of(), List.of(), List.of(),
-                List.of(InterestCategory.BACKEND), null, false, NOW);
+        ProfileView backendOnly = new ProfileView(List.of(InterestCategory.BACKEND), null, false, NOW);
 
         List<ShortlistedPosting> found = service(postings, backendOnly)
                 .postingsAmong(1L, Set.of(CardTech.JAVA), Set.of(1L, 2L, 4L, 5L));
@@ -150,7 +148,7 @@ class CompanyShortlistServiceTest {
 
     private static CompanyShortlistService service(JobPostingRepository postings) {
 
-        return service(postings, new ProfileView(List.of(), List.of(), List.of(), List.of(), List.of(), null, false, null));
+        return service(postings, new ProfileView(List.of(), null, false, null));
 
     }
 

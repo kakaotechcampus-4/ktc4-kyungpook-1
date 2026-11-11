@@ -146,6 +146,11 @@ describe('카드 고르기 실패 화면', () => {
     mount(letter({ stage: 'FAILED', failedStep: 'ASSIGN', errorCode: 'AI_UNAVAILABLE', retryable: true }));
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeEnabled();
   });
+
+  it('J5 새로 만들기는 이 자소서의 입력을 채운 채로 연다', () => {
+    mount(letter({ stage: 'FAILED', failedStep: 'ASSIGN', errorCode: 'INTERNAL_ERROR', retryable: false }));
+    expect(screen.getByRole('link', { name: '새로 만들기' })).toHaveAttribute('href', '/cover-letters/new?from=cl_1');
+  });
 });
 
 describe('① 입력 화면', () => {

@@ -11,17 +11,18 @@ import {
   type GapFillProposal,
   type MatchDetail,
 } from "@/api/matching";
+import { useCoverLetters } from "@/api/coverLetters";
 import { useCards } from "@/api/queries";
-import { Button, PageTitle, Skeleton } from "@/components/ui";
+import { Button, ButtonLink, PageTitle, Skeleton, buttonClass } from "@/components/ui";
+import { applyAction, latestLetter } from "@/features/home/homeApply";
 import { isGithubUnauthorized, reconnectGithub } from "@/lib/githubReconnect";
 import { cardKindLabel } from "@/lib/labels";
 import { track } from "@/lib/track";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { CompanyMark } from "./CompanyMark";
 import { ConditionGapFill, Dots } from "./GapFillParts";
-import { canProceed, clearProceeded, gapKey, gapKeys, gapSummary, readProceeded, rememberProceeded, revealIntervalMs, useProceed, useRevealed, useUsedCandidates } from "./gapFill";
+import { canProceed, clearProceeded, gapKey, gapKeys, proposalCount, readProceeded, rememberProceeded, revealIntervalMs, useProceed, useRevealed, useUsedCandidates } from "./gapFill";
 import { DeadlineMark, PostingFacts, TechChips } from "./PostingParts";
-import { CalendarToggle } from "./CalendarToggle";
 import { MatchBack, MatchFailure, MatchUnavailable } from "./shared";
 import {
   categoryLabel,
@@ -32,6 +33,7 @@ import {
   experienceLabel,
   pickLocation,
   sectionTally,
+  stripLineMark,
   techOverlap,
   type SectionTally,
 } from "./model";
@@ -53,7 +55,7 @@ const STATUS_LABEL: Record<ConditionStatus, string> = {
   MET: "맞음",
   NOT_MET: "모자람",
   UNJUDGED: "맞춰 보기 전",
-  UNKNOWN: "인적사항 필요",
+  UNKNOWN: "직접 확인",
   CHECK: "직접 확인",
 };
 const isTile = (status: ConditionStatus) => status === "MET" || status === "NOT_MET";
@@ -76,14 +78,14 @@ const StatusSuffix = ({ status }: { status: ConditionStatus }) => (
 const EDUCATION_TEXT: Partial<Record<ConditionStatus, string>> = {
   MET: "인적사항의 학력과 맞아요.",
   NOT_MET: "인적사항과 맞지 않아요 — 지원 자격을 확인해 보세요.",
-  UNKNOWN: "인적사항에 학력을 적으면 비교할 수 있어요.",
+  UNKNOWN: "학력 조건은 공고에서 직접 확인해 주세요.",
   CHECK: "학력 조건은 직접 확인해 주세요.",
 };
 
 const EXPERIENCE_TEXT: Partial<Record<ConditionStatus, string>> = {
   MET: "인적사항의 경력이 공고의 경력 조건과 맞아요.",
   NOT_MET: "인적사항의 경력이 공고의 경력 조건보다 짧아요 — 지원 자격을 확인해 보세요.",
-  UNKNOWN: "인적사항을 저장하면 경력을 비교할 수 있어요.",
+  UNKNOWN: "경력 조건은 공고에서 직접 확인해 주세요.",
 };
 
 const noteOf = ({ generalType, status }: Condition) =>
@@ -96,7 +98,7 @@ const displayLines = (conditions: Condition[]) => {
     const quote = condition.quote.trim();
     const line = quote && !seen.has(quote) ? quote : condition.text;
     seen.add(quote);
-    return line;
+    return stripLineMark(line);
   });
 };
 
@@ -104,7 +106,7 @@ const displayLines = (conditions: Condition[]) => {
 const tallyText = ({ met, judged, check }: SectionTally) =>
   [judged > 0 && `${met}/${judged} 맞음`, check > 0 && `직접 확인 ${check}`].filter(Boolean).join(", ");
 
-/** 맞춰 본 결과를 펼칠 때 요약 카드에 적는 두 줄 — 읽은 카드 수와 견준 조건 수 */
+/** 맞춰 본 결과를 펼치는 동안 요약 카드에 적는 줄 — 견준 조건 수 */
 const comparedText = (conditions: Condition[]) => {
   const required = sectionTally(conditions, "REQUIRED").judged;
   const preferred = sectionTally(conditions, "PREFERRED").judged;
@@ -138,11 +140,10 @@ function ConditionItem({ condition, line, judged, filled, detailId, gap }: { con
         {judged && condition.metBy.length > 0 && (
           <p className="posting-condition__evidence">
             <span className="sr-only">근거 카드 </span>
-            {condition.metBy.map((card, i) => {
+            {condition.metBy.slice(0, 1).map((card) => {
               const KindIcon = card.cardKind === "TECH" ? GitCommitHorizontal : MessageSquareQuote;
               return (
                 <Fragment key={card.cardId}>
-                  {i > 0 && <span className="posting-condition__sep" aria-hidden="true">,</span>}
                   <Link
                     to={`/cards/${encodeURIComponent(card.cardId)}`}
                     title={card.reason}
@@ -155,6 +156,9 @@ function ConditionItem({ condition, line, judged, filled, detailId, gap }: { con
                 </Fragment>
               );
             })}
+            {condition.metBy.length > 1 && (
+              <span className="posting-condition__more" title={condition.metBy.slice(1).map((card) => card.cardTitle).join(", ")}>+{condition.metBy.length - 1}</span>
+            )}
           </p>
         )}
         {note && <p className="posting-condition__note">{note}</p>}
@@ -182,8 +186,9 @@ export function MatchDetailPage() {
   const query = useMatch(matchId);
   const judge = useJudgeMatch(matchId);
   const gapFill = useGapFill(matchId);
-  const proceed = useProceed();
+  const proceed = useProceed(matchId);
   const cards = useCards();
+  const letters = useCoverLetters();
   const detail = query.data;
   useDocumentTitle(detail ? `${detail.company} - ${detail.role}` : "공고 상세");
   // 다시 불러와도 같은 공고와 등급이면 한 번만 센다
@@ -309,8 +314,8 @@ export function MatchDetailPage() {
   // 요약 카드의 'AI 가 한 일' — 결과를 펼치는 동안의 두 줄, 돌아와서 다시 맞춰 본 줄, 채우기 진행과 결론
   const log: { key: string; text: ReactNode; live?: boolean }[] = [];
   if (revealing && judgedData) {
-    if (revealed.has("cards")) log.push({ key: "cards", text: confirmedCount === undefined ? "확정 카드를 읽었어요" : `확정 카드 ${confirmedCount}장을 읽었어요` });
-    if (revealed.has("compared")) log.push({ key: "compared", text: comparedText(detail.conditions) });
+    if (!settled && revealed.has("cards")) log.push({ key: "cards", text: confirmedCount === undefined ? "확정 카드를 읽었어요" : `확정 카드 ${confirmedCount}장을 읽었어요` });
+    if (!settled && revealed.has("compared")) log.push({ key: "compared", text: comparedText(detail.conditions) });
   }
   // 처음 맞춰 보는 동안(서버가 AI 에게 묻고 최대 90초) 버튼의 돌림 표시만 있으면 멈춘 것처럼 보인다
   if (!returned && judge.isPending) log.push({ key: "judging", text: confirmedCount === undefined ? "확정 카드를 읽고 조건과 견주고 있어요" : `확정 카드 ${confirmedCount}장을 읽고 조건과 견주고 있어요`, live: true });
@@ -318,7 +323,11 @@ export function MatchDetailPage() {
   if (returned && filled) log.push({ key: "filled", text: `모자랐던 조건 ${returned.length}개 중 ${filled.size}개를 채웠어요` });
   if (returned && !filled && detail && !detail.needsJudgement) log.push({ key: "wait-confirm", text: "새로 만든 카드가 확정되면 다시 맞춰 볼게요" });
   if (showGap && gapRunning) log.push({ key: "gap-running", text: `모자란 조건 ${gf.conditions.length}개를 채울 자료를 찾고 있어요`, live: true });
-  if (showGap && gf.state === "DONE") log.push({ key: "gap-done", text: gapSummary(gf) });
+  // 다 펼친 뒤에는 읽었다·견줬다는 과정 줄을 접고 결과 한 줄만 남긴다
+  if (judgedData && settled && !judge.isPending) {
+    const proposed = showGap && gf.state === "DONE" ? proposalCount(gf) : 0;
+    log.push({ key: "settled", text: `${confirmedCount === undefined ? "카드로" : `카드 ${confirmedCount}장으로`} ${proposed > 0 ? `맞춰 봤고 제안 ${proposed}개를 찾았어요` : "맞춰 봤어요"}` });
+  }
   if (judgedData && settled && gapNeedsGithub) {
     log.push({
       key: "gap-github",
@@ -342,30 +351,32 @@ export function MatchDetailPage() {
     });
   }
 
-  const coverLetter = detail && (
-    <Link className="btn btn--primary" to={`/cover-letters/new?postingId=${encodeURIComponent(detail.id)}`}>
-      이 공고로 자소서 쓰기
-    </Link>
-  );
+  // 자소서 버튼은 맞춰 보는 중에도 늘 맨 위에 둔다 — 이미 쓰던 자소서가 있으면 그 자소서로 잇는다
+  // 목록을 받기 전에는 자리만 둔다 — '자소서 쓰기' 로 보였다가 '초안 보기' 로 바뀌는 깜빡임을 막는다
+  const letterAction = detail && !letters.isPending && applyAction(detail.id, latestLetter(letters.data ?? [], detail.id));
+  const coverLetter = detail && (letterAction ? (
+    <ButtonLink variant="primary" to={letterAction.to}>
+      {letterAction.label === "자소서 쓰기" ? "이 공고로 자소서 쓰기" : letterAction.label}
+    </ButtonLink>
+  ) : <Skeleton h={40} w={168} />);
   // 확정 카드가 없어도 맞춰 보기 버튼은 그대로 두어 이 화면에서 매칭을 한다는 것이 보이게 하고, 누르면 서버를 부르지 않고 카드가 없다고 알린다
   const action = detail && (
     noConfirmedCards ? (
-      <Button onClick={() => setNoCardsTried(true)}>
+      <Button variant="secondary" onClick={() => setNoCardsTried(true)}>
         이 공고와 맞춰 보기
       </Button>
     ) : detail.needsJudgement ? (
       returned && !judge.isError ? null : (
-        <Button loading={judge.isPending} onClick={startJudge}>
+        <Button variant="secondary" loading={judge.isPending} onClick={startJudge}>
           이 공고와 맞춰 보기
         </Button>
       )
     ) : !settled ? null : gapActive ? (
-      <Button loading={proceed.isPending} disabled={chosen.length === 0} onClick={onProceed}>
+      // 자소서 버튼이 늘 진한 버튼이라 제안 버튼은 고른 뒤에도 보조 버튼이다
+      <Button variant="secondary" loading={proceed.isPending} disabled={chosen.length === 0} onClick={onProceed}>
         {chosen.length > 0 ? `고른 ${chosen.length}개 진행하기` : "제안을 골라 진행하기"}
       </Button>
-    ) : (
-      coverLetter
-    )
+    ) : null
   );
   return (
     <main className="main matching-page">
@@ -454,24 +465,19 @@ export function MatchDetailPage() {
                 )
               )}
               <div className="posting-summary__actions">
+                {coverLetter}
                 {action}
                 <a
                   href={detail.source.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn btn--outline"
+                  className={buttonClass('secondary')}
                   onClick={() => track("match_source_opened", { matchId: detail.id })}
                 >
                   공고 원문 보기
                   <ExternalLink size={14} aria-hidden />
                 </a>
-                <CalendarToggle posting={{ id: detail.id, company: companyLabel(detail.company), role: detail.role, expiresAt: detail.source.expiresAt }} />
               </div>
-              {judged && gapActive && (
-                <Link className="posting-summary__alt" to={`/cover-letters/new?postingId=${encodeURIComponent(detail.id)}`}>
-                  이 공고로 자소서 쓰기
-                </Link>
-              )}
               {judge.isError && <p role="alert" className="posting-summary__error">맞춰 보지 못했어요. 잠시 뒤 다시 눌러 주세요.</p>}
               {proceed.isError && <p role="alert" className="posting-summary__error">제안을 넘기지 못했어요. 다시 눌러 주세요.</p>}
               <p className="posting-summary__collected">수집 {dateLabel(detail.source.collectedAt)}</p>

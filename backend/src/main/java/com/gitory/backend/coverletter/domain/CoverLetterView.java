@@ -10,7 +10,7 @@ public record CoverLetterView(UUID id, CoverLetterStage stage, CoverLetterStep f
                               Boolean retryable, boolean running, String jobRole, String memo,
                               List<Strength> strengths, Boolean memoUsable, PostingRef posting, Instant createdAt,
                               Instant updatedAt, List<Question> questions, List<Step> assignSteps,
-                              List<WritingStep> draftSteps) {
+                              List<WritingStep> draftSteps, boolean defaultQuestions) {
 
     public record PostingRef(UUID id, String company, String title) {
     }
@@ -18,7 +18,8 @@ public record CoverLetterView(UUID id, CoverLetterStage stage, CoverLetterStep f
     public record Question(UUID id, int seq, String text, int charLimit, QuestionTheme theme, CardRef primaryCard,
                            boolean primaryCardDeleted, CardRef supportingCard, AssignedBy assignedBy, String pickReason,
                            List<Considered> considered, List<MaterialItem> materials, List<Ask> asks,
-                           QuestionDraft draft, Writing writing, QuestionPolish polish, int polishAppliedCount) {
+                           QuestionDraft draft, Writing writing, QuestionPolish polish, int polishAppliedCount,
+                           List<Suggestion> suggestions) {
     }
 
     public record Writing(String text, int round) {

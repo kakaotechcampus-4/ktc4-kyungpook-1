@@ -3,8 +3,9 @@ package com.gitory.backend.agent.port;
 import java.util.List;
 
 public record AssistantStepReply(Action action, AssistantTool tool, Find find, String postingRef, String repoRef,
-                                 String jobRole, List<Question> questions, String say, String askKind,
-                                 List<String> options) {
+                                 String cardRef, String letterRef, String jobRole, List<Question> questions,
+                                 String say, String askKind, List<String> options,
+                                 Boolean defaultQuestions) {
 
     public enum Action {
         CALL_TOOL,
@@ -19,23 +20,33 @@ public record AssistantStepReply(Action action, AssistantTool tool, Find find, S
     }
 
     public static AssistantStepReply call(AssistantTool tool, Find find, String postingRef, String repoRef,
-                                          String jobRole, List<Question> questions) {
+                                          String cardRef, String letterRef, String jobRole,
+                                          List<Question> questions) {
 
-        return new AssistantStepReply(Action.CALL_TOOL, tool, find, postingRef, repoRef, jobRole, questions, null,
-                null, List.of());
+        return call(tool, find, postingRef, repoRef, cardRef, letterRef, jobRole, questions, false);
+
+    }
+
+    public static AssistantStepReply call(AssistantTool tool, Find find, String postingRef, String repoRef,
+                                          String cardRef, String letterRef, String jobRole,
+                                          List<Question> questions, Boolean defaultQuestions) {
+
+        return new AssistantStepReply(Action.CALL_TOOL, tool, find, postingRef, repoRef, cardRef, letterRef, jobRole,
+                questions, null, null, List.of(), defaultQuestions);
 
     }
 
     public static AssistantStepReply ask(String say, String askKind, List<String> options) {
 
-        return new AssistantStepReply(Action.ASK_USER, null, null, null, null, null, List.of(), say, askKind,
-                options);
+        return new AssistantStepReply(Action.ASK_USER, null, null, null, null, null, null, null, List.of(), say,
+                askKind, options, null);
 
     }
 
     public static AssistantStepReply finish(String say) {
 
-        return new AssistantStepReply(Action.FINISH, null, null, null, null, null, List.of(), say, null, List.of());
+        return new AssistantStepReply(Action.FINISH, null, null, null, null, null, null, null, List.of(), say, null,
+                List.of(), null);
 
     }
 }

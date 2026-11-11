@@ -101,6 +101,7 @@ class InterviewAgent:
             next_action="ASK_AGAIN",
             answer_mode=written.answer_mode,
             suggested_answers=written.suggested_answers,
+            example_answer=written.example_answer,
             # 화면이 정한 칸은 사용자가 고른 것이라 판단 이유를 보이지 않는다
             reason=written.reason if request.target_star_slot is None else None,
         ), False

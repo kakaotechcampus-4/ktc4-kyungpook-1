@@ -8,6 +8,7 @@ import { Card, type InterviewTurn } from '@/api/schemas';
 import { CardPage } from '@/features/cards/CardPage';
 import { ActivityFolderPage, DirectFolderPage, RepoFolderPage } from '@/features/cards/FolderPage';
 import { InterviewPage } from '@/features/cards/InterviewPage';
+import { answeredBy, appliedReply } from './replyResult';
 import { folderNext } from '@/lib/folderNext';
 import { handle } from '@/mock/router';
 import { db, resetDb } from '@/mock/store';
@@ -71,7 +72,17 @@ describe('확정하면 카드가 든 폴더로 돌아가 다음에 할 일 하�
     expect(within(next).getByRole('link', { name: '확인할 카드 보기' })).toHaveAttribute('href', '/cards/card_01');
   });
 
-  it('카드가 모두 확정이면 공고로 보내고, 공고 매칭이 꺼져 있으면 자소서 쓰기로 보낸다', async () => {
+  it('레포 폴더는 매칭이 켜져 있어도 주 버튼이 자소서 쓰기 하나다 — 맞는 공고는 아래 구역이 보여 준다', () => {
+    const ready = [{ id: 'card_03', status: 'CONFIRMED' as const }];
+    const repo = folderNext({ cards: ready, justConfirmed: false, matchOn: true, repoFolder: true });
+    expect(repo?.action).toEqual({ label: '자소서 쓰기', to: '/cover-letters/new' });
+    expect(repo?.more).toBeUndefined();
+    const activity = folderNext({ cards: ready, justConfirmed: false, matchOn: true, repoFolder: false });
+    expect(activity?.action).toEqual({ label: '맞는 공고 보기', to: '/match' });
+    expect(activity?.more).toEqual({ label: '자소서 쓰기', to: '/cover-letters/new' });
+  });
+
+  it('활동 폴더는 매칭이 켜져 있으면 맞는 공고 보기가 주 버튼이고, 꺼져 있으면 자소서 쓰기다', async () => {
     connectMockServer();
     vi.stubEnv('VITE_API_MOCK', 'true');
     mount('/cards/activity/act_edu');
@@ -79,6 +90,7 @@ describe('확정하면 카드가 든 폴더로 돌아가 다음에 할 일 하�
     const on = await strip();
     expect(stripTitle(on)).toHaveTextContent('카드 1장이 준비됐어요');
     expect(within(on).getByRole('link', { name: '맞는 공고 보기' })).toHaveAttribute('href', '/match');
+    expect(within(on).getByRole('link', { name: '맞는 공고 보기' })).toHaveClass('btn--primary');
     expect(within(on).getByRole('link', { name: '자소서 쓰기' })).toHaveAttribute('href', '/cover-letters/new');
     cleanup();
 
@@ -87,7 +99,6 @@ describe('확정하면 카드가 든 폴더로 돌아가 다음에 할 일 하�
     mount('/cards/activity/act_edu');
     const off = await strip();
     expect(within(off).queryByRole('link', { name: '맞는 공고 보기' })).not.toBeInTheDocument();
-    expect(within(off).getByRole('link', { name: '자소서 쓰기' })).toHaveAttribute('href', '/cover-letters/new');
     expect(within(off).getByRole('link', { name: '자소서 쓰기' })).toHaveClass('btn--primary');
   });
 
@@ -120,7 +131,7 @@ describe('확정하면 카드가 든 폴더로 돌아가 다음에 할 일 하�
 
     await screen.findByRole('button', { name: '경험 카드 만들기' });
     expect(screen.queryByLabelText('다음에 할 일')).not.toBeInTheDocument();
-    expect(folderNext({ cards: [], justConfirmed: true, matchOn: true })).toBeNull();
+    expect(folderNext({ cards: [], justConfirmed: true, matchOn: true, repoFolder: false })).toBeNull();
   });
 
   it('되묻기 답으로 확정되면 폴더로 돌아가기 버튼이 보인다', async () => {
@@ -129,10 +140,9 @@ describe('확정하면 카드가 든 폴더로 돌아가 다음에 할 일 하�
     const template = handle('POST', '/cards/card_01/interview', new URLSearchParams(), { field: 'R' }, true).data as InterviewTurn;
     let turns: InterviewTurn[] = [{ ...template, field: 'R', turnNo: 1, question: 'R question', answer: null, outcome: null }];
     vi.spyOn(endpoints, 'interviewTurns').mockImplementation(async () => turns);
-    vi.spyOn(endpoints, 'answerInterview').mockImplementation(async (_id, no, answer) => {
-      if (!('text' in answer)) throw new Error('이 시험은 글 답만 보낸다');
-      turns = turns.map((turn) => turn.turnNo === no ? { ...turn, answer, outcome: 'ANSWERED' } : turn);
-      return { ...card, status: 'CONFIRMED', confirmedAt: '2026-11-01T00:00:00Z' };
+    vi.spyOn(endpoints, 'replyInterview').mockImplementation(async (_id, no, body) => {
+      turns = turns.map((turn) => turn.turnNo === no ? answeredBy(turn, body) : turn);
+      return appliedReply({ ...card, status: 'CONFIRMED', confirmedAt: '2026-11-01T00:00:00Z' });
     });
     const client = newClient();
     client.setQueryData(keys.card(card.id), card);
@@ -143,11 +153,11 @@ describe('확정하면 카드가 든 폴더로 돌아가 다음에 할 일 하�
     ] });
 
     fireEvent.change(await screen.findByRole('textbox', { name: '답변' }), { target: { value: 'R answer' } });
-    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
 
     expect(await screen.findByText('카드를 확정했어요')).toBeInTheDocument();
     expect(screen.getByText('상황과 행동이 있어서 바로 쓸 수 있어요.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '카드 보기' })).toHaveClass('btn--outline');
+    expect(screen.getByRole('button', { name: '카드로 돌아가기' })).toHaveClass('btn--secondary');
     expect(screen.queryByRole('button', { name: '직접 수정하기' })).not.toBeInTheDocument();
     expect(within(screen.getByRole('navigation', { name: 'breadcrumb' })).getByRole('link', { name: 'auth-service' })).toHaveAttribute('href', '/cards/repo/r_auth');
     fireEvent.click(screen.getByRole('button', { name: '폴더로 돌아가기' }));

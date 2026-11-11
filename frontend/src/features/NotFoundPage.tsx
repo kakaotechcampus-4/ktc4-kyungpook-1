@@ -1,5 +1,4 @@
-import { Link } from 'react-router-dom';
-import { EmptyState, PageTitle } from '@/components/ui';
+import { ButtonLink, EmptyState, PageTitle } from '@/components/ui';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 /**
@@ -12,9 +11,9 @@ export function NotFoundPage() {
     <main className="main">
       <PageTitle>페이지를 찾을 수 없어요</PageTitle>
       <EmptyState title="주소를 다시 확인해 주세요" desc="주소가 바뀌었거나 삭제된 화면이에요. 카드나 레포를 찾고 있었다면 아래 목록에서 다시 골라 주세요.">
-        <Link to="/" className="btn btn--primary">홈으로</Link>
-        <Link to="/cards" className="btn btn--outline">경험 카드 목록</Link>
-        <Link to="/repos" className="btn btn--outline">레포 목록</Link>
+        <ButtonLink to="/" variant="primary">홈으로</ButtonLink>
+        <ButtonLink to="/cards" variant="secondary">경험 카드 목록</ButtonLink>
+        <ButtonLink to="/repos" variant="secondary">레포 목록</ButtonLink>
       </EmptyState>
     </main>
   );

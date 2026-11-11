@@ -8,10 +8,13 @@ public enum RateLimitedAction {
     COVER_LETTER("cover-letter"),
     COVER_LETTER_POLISH("cover-letter-polish"),
     COVER_LETTER_TURN("cover-letter-turn"),
+    COVER_LETTER_SUGGEST("cover-letter-suggest"),
+    COVER_LETTER_REWRITE("cover-letter-rewrite"),
     MATCH_JUDGEMENT("match-judgement"),
     MATCH_OVERALL("match-overall"),
     MATCH_GAP_FILL("match-gap-fill"),
-    ASSISTANT("assistant");
+    ASSISTANT("assistant"),
+    FEEDBACK("feedback");
 
     private final String key;
 

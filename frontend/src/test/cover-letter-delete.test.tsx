@@ -72,11 +72,11 @@ describe('자소서 지우기', () => {
     expect(await screen.findByText('아직 쓴 자소서가 없어요')).toBeInTheDocument();
   });
 
-  it('자소서 화면의 자소서 삭제는 확인한 뒤 지우고 목록으로 돌아간다', async () => {
+  it('자소서 화면의 쓰기 그만두기(쓰는 중인 자소서의 삭제)는 확인한 뒤 지우고 목록으로 돌아간다', async () => {
     const a = create('백엔드 개발');
     const server = connectMockServer();
     mountApp(routes(), `/cover-letters/${a.id}`);
-    fireEvent.click(await screen.findByRole('button', { name: '자소서 삭제' }));
+    fireEvent.click(await screen.findByRole('button', { name: '쓰기 그만두기' }));
     const dialog = await screen.findByRole('dialog', { name: '자소서를 삭제할까요?' });
     fireEvent.click(within(dialog).getByRole('button', { name: '삭제' }));
     expect(await screen.findByRole('heading', { name: '자소서' })).toBeInTheDocument();
@@ -87,7 +87,7 @@ describe('자소서 지우기', () => {
 
   it('AI가 도는 단계면 그 결과를 버린다고 알리고, 끝난 자소서에는 알리지 않는다', async () => {
     const summary = (over: Record<string, unknown>) => CoverLetterSummary.parse({
-      id: 'a', stage: 'DRAFTED', jobRole: '백엔드 개발', posting: null, questionCount: 1, firstQuestion: '지원 동기',
+      id: 'a', stage: 'DRAFTED', jobRole: '백엔드 개발', posting: null, questionCount: 1, emptyQuestionCount: 0, firstQuestion: '지원 동기',
       createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-01T00:00:00Z', ...over,
     });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });

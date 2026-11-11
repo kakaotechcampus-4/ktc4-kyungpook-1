@@ -122,7 +122,7 @@ class AiInterviewQuestionAdapterTest {
         assertThat(requestPath).isEqualTo(PATH);
         assertThat(requestContentType).startsWith("application/json");
         assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.ASK_AGAIN,
-                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION, InterviewAnswerMode.TEXT, List.of(), null, List.of()));
+                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION, InterviewAnswerMode.TEXT, List.of(), null, List.of(), null));
 
     }
 
@@ -135,7 +135,7 @@ class AiInterviewQuestionAdapterTest {
 
         InterviewQuestionResult result = adapter.nextQuestion(request());
 
-        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of(), null, List.of()));
+        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of(), null, List.of(), null));
 
     }
 
@@ -149,7 +149,7 @@ class AiInterviewQuestionAdapterTest {
         InterviewQuestionResult result = adapter.nextQuestion(request());
 
         assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.ASK_AGAIN,
-                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION, InterviewAnswerMode.TEXT, List.of(), null, List.of()));
+                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION, InterviewAnswerMode.TEXT, List.of(), null, List.of(), null));
 
     }
 
@@ -162,7 +162,7 @@ class AiInterviewQuestionAdapterTest {
 
         InterviewQuestionResult result = adapter.nextQuestion(request());
 
-        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of(), null, List.of()));
+        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of(), null, List.of(), null));
 
     }
 
@@ -210,6 +210,31 @@ class AiInterviewQuestionAdapterTest {
         assertThat(number.reason()).isNull();
         assertThat(blank.reason()).isNull();
         assertThat(longer.reason()).isEqualTo("가".repeat(60));
+
+    }
+
+    @Test
+    @DisplayName("예시 답은 앞뒤 공백을 떼고 받고, 없거나 글이 아니거나 비었으면 질문은 그대로 두고 null 이며, 80자를 넘으면 자른다")
+    void readsExampleAnswer() {
+
+        responseBody = success(askAgain(data -> data.put("example_answer", "  예: 목록이 느렸어요 ")));
+        InterviewQuestionResult given = adapter.nextQuestion(request());
+        responseBody = success(askAgain(data -> {
+        }));
+        InterviewQuestionResult absent = adapter.nextQuestion(request());
+        responseBody = success(askAgain(data -> data.put("example_answer", 3)));
+        InterviewQuestionResult number = adapter.nextQuestion(request());
+        responseBody = success(askAgain(data -> data.put("example_answer", "   ")));
+        InterviewQuestionResult blank = adapter.nextQuestion(request());
+        responseBody = success(askAgain(data -> data.put("example_answer", "가".repeat(100))));
+        InterviewQuestionResult longer = adapter.nextQuestion(request());
+
+        assertThat(given.exampleAnswer()).isEqualTo("예: 목록이 느렸어요");
+        assertThat(absent.exampleAnswer()).isNull();
+        assertThat(number.questionText()).isEqualTo(QUESTION);
+        assertThat(number.exampleAnswer()).isNull();
+        assertThat(blank.exampleAnswer()).isNull();
+        assertThat(longer.exampleAnswer()).isEqualTo("가".repeat(80));
 
     }
 

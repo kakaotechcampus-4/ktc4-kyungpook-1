@@ -6,7 +6,7 @@ import { ApiError } from '@/api/client';
 import { errorView } from '@/api/errorView';
 import { COVER_LETTER_LIMITS as L, useCoverLetter, useCreateCoverLetter, type NewCoverLetter, type QuestionTheme } from '@/api/coverLetters';
 import { matchSupported, useMatch, type MatchTarget } from '@/api/matching';
-import { Breadcrumb, Button, Chip, EmptyState, Field, Input, Note, PageTitle, Skeleton } from '@/components/ui';
+import { Breadcrumb, Button, ButtonLink, Chip, EmptyState, Field, Input, Note, PageTitle, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { CompanyMark } from '@/features/match/CompanyMark';
 import { companyLabel } from '@/features/match/model';
@@ -115,8 +115,8 @@ export function CoverLetterNewPage() {
       <main className="main main--tight">
         <Breadcrumb items={crumbs} />
         <EmptyState icon={FileSearch} title="공고를 찾을 수 없어요" desc="마감되었거나 내려간 공고예요. 다른 공고를 고르거나, 공고 없이 새 자소서를 쓸 수 있어요.">
-          <Link to="/match" className="btn btn--primary">공고 목록으로</Link>
-          <Link to="/cover-letters/new" className="btn btn--outline">공고 없이 새 자소서 쓰기</Link>
+          <ButtonLink to="/match" variant="primary">공고 목록으로</ButtonLink>
+          <ButtonLink to="/cover-letters/new" variant="secondary">공고 없이 새 자소서 쓰기</ButtonLink>
         </EmptyState>
       </main>
     );
@@ -142,6 +142,7 @@ export function CoverLetterNewPage() {
 
       <section className="cl-group" aria-labelledby="cl-group-where">
         <h2 className="cl-group__head" id="cl-group-where"><span className="cl-group__n" aria-hidden>1</span>어디에 내나요</h2>
+        {!postingId && !from && <p className="t-13 c-2">지원할 공고가 있으면 <Link to="/match" className="cl-inline-link">공고 목록</Link>의 '자소서 쓰기' 로 시작해 보세요. 직무가 채워져요.</p>}
         <Field label="지원 직무" right={`${jobRole.length}/${L.JOB_ROLE}`}>
           <Input value={jobRole} maxLength={L.JOB_ROLE} placeholder="예: 백엔드 개발" aria-invalid={!!show(jobError)}
             onChange={(e) => edit(() => setJobRole(e.target.value))} />
@@ -183,7 +184,6 @@ export function CoverLetterNewPage() {
 
       <div className="sticky-footer">
         <div className="sticky-footer__text">
-          <strong>만들면 카드를 고르고 초안까지 이어서 써요</strong>
           {footWarn && <span className="cl-foot-warn">{footWarn}</span>}
         </div>
         <div className="sticky-footer__actions">

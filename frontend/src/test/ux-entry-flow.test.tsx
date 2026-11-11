@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -28,13 +28,6 @@ it('keeps recent card tiles off the home dashboard', () => {
   expect(document.querySelectorAll('.experience-item')).toHaveLength(0);
   expect(screen.queryByRole('link', { name: /모든 카드 보기/ })).not.toBeInTheDocument();
 });
-it('keeps the full card count in the home status tiles', () => {
-  mount(<HomePage />);
-  const total = (handle('GET', '/cards', new URLSearchParams(), {}, true).data as unknown[]).length;
-  expect(total).toBeGreaterThan(3);
-  const tile = within(screen.getByRole('region', { name: '지금 상태' })).getByRole('link', { name: /^경험 카드/ });
-  expect(tile.querySelector('strong')).toHaveTextContent(`${total}장`);
-});
 it('explains search misses without claiming a private-repository permission problem', () => {
   mount(<ReposPage />, '/repos');
   fireEvent.change(screen.getByRole('textbox', { name: '레포 이름 검색' }), { target: { value: 'no-such-repo' } });
@@ -46,7 +39,7 @@ it('explains search misses without claiming a private-repository permission prob
 it('does not equate a small commit share with exaggerating experience', () => {
   mount(<ReposPage />, '/repos');
   expect(screen.queryAllByText(/부풀린 것처럼/)).toHaveLength(0);
-  expect(screen.getAllByText('맡은 일은 답변으로 채울 수 있어요').length).toBeGreaterThan(0);
+  expect(screen.queryByText('맡은 일은 답변으로 채울 수 있어요')).not.toBeInTheDocument();
 });
 it('does not tell sample visitors their actual login expired', () => {
   vi.stubEnv('VITE_API_MOCK', 'true');

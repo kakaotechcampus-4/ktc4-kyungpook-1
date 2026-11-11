@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { CHAT_START } from '@/components/chat/chatScroll';
 import './AiJudgement.css';
 
 /**
@@ -6,9 +7,9 @@ import './AiJudgement.css';
  * 이유는 AI 가 쓴 글이라 카드 문장과 섞이지 않게 'AI 판단' 이름표와 따옴표, 왼쪽 선으로 따로 보인다.
  * 이유는 HTML 이 아니라 글로만 그린다. 긴 글은 줄바꿈하고, 색이 아니라 이름표 글자가 AI 의 글임을 말한다.
  */
-export function AiJudgement({ head, children }: { head?: string; children: string }) {
+export function AiJudgement({ head, lead, children }: { head?: string; lead?: boolean; children: string }) {
   return (
-    <p className="ai-judgement">
+    <p className="ai-judgement" {...(lead ? { [CHAT_START]: 'lead' } : {})}>
       <span className="ai-judgement__label">AI 판단</span>
       {head && <span className="ai-judgement__head">{head}</span>}
       <q className="ai-judgement__text">{children}</q>

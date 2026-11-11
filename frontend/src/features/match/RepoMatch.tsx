@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { matchSupported, useRepoRecommendation, type RepoRecommendation } from "@/api/matching";
-import { Button, Note, Skeleton } from "@/components/ui";
+import { Button, ButtonLink, Note, Skeleton } from "@/components/ui";
 import { folderPath } from "@/lib/cardFolders";
 import { techLabels } from "@/lib/cardTags";
 import { CompanyMark } from "./CompanyMark";
@@ -29,7 +29,7 @@ export function RepoMatch({ repoId, cardCount }: { repoId: string; cardCount: nu
           <h2 id="repo-match-title">이 레포로 맞는 기업</h2>
           <p>이 레포의 카드로 맞는 기업을 3곳까지 골라 드려요.</p>
         </div>
-        <Link to="/match" className="btn btn--outline btn--sm">전체 공고 보기</Link>
+        <ButtonLink to="/match" variant="secondary" size="sm">전체 공고 보기</ButtonLink>
       </div>
       {cardCount === 0 ? (
         <p className="overall-match__empty">카드가 생기면 이 레포 카드로 맞는 기업을 골라 드려요.</p>
@@ -55,7 +55,7 @@ function RepoMatchBody({ repoId, data }: { repoId: string; data: RepoRecommendat
       {picking && (
         <div className="overall-match__picking">
           <p role="status" className="overall-match__empty">이 레포 카드로 맞는 기업을 고르고 있어요.</p>
-          <Link to={folderPath.repoMatch(repoId)} className="btn btn--text">고르는 과정 보기</Link>
+          <ButtonLink to={folderPath.repoMatch(repoId)} variant="text">고르는 과정 보기</ButtonLink>
         </div>
       )}
       {!picking && status === "FAILED" && (
@@ -79,7 +79,7 @@ function RepoMatchBody({ repoId, data }: { repoId: string; data: RepoRecommendat
           ))}
         </ol>
       )}
-      {!picking && status === "READY" && live && <Link to={folderPath.repoMatch(repoId)} className="btn btn--text overall-match__process">고른 과정 보기</Link>}
+      {!picking && status === "READY" && live && <ButtonLink to={folderPath.repoMatch(repoId)} variant="text" className="overall-match__process">고른 과정 보기</ButtonLink>}
     </>
   );
 }

@@ -17,17 +17,17 @@ test.describe('반응형 레이아웃', () => {
     await freshSeed(page);
     await page.goto('/login?reason=expired');
 
+    const hero = page.locator('.landing__hero');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.getByRole('button', { name: '샘플로 체험하기' })).toBeVisible();
+    await expect(hero.getByRole('button', { name: '샘플로 체험하기' })).toBeVisible();
     await expect(page.getByText('로그인이 만료됐어요. 다시 시작해 주세요.')).toHaveCount(0);
     await expect(page.getByText('샘플 데이터로 체험해요. 실제 GitHub 계정은 연결하지 않아요.')).toHaveCount(0);
-    await expect(page.getByLabel('경험 카드 예시')).toBeVisible();
+    // 좁은 화면은 노트북 대신 폰 화면 하나만 보인다
+    await expect(hero.getByAltText('휴대폰에서 본 자소서 초안 화면')).toBeVisible();
+    await expect(hero.locator('.lp-laptop')).toBeHidden();
     await expectNoHorizontalOverflow(page);
 
-    const columns = await page.locator('.landing__hero').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
-    expect(columns).toBe(1);
-
-    await page.getByRole('button', { name: '샘플로 체험하기' }).click();
+    await hero.getByRole('button', { name: '샘플로 체험하기' }).click();
     await expect(page.getByRole('navigation', { name: '모바일 주 메뉴' })).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
@@ -80,14 +80,14 @@ test.describe('반응형 레이아웃', () => {
     await freshSeed(page);
     await page.goto('/login');
 
-    const buttons = page.getByRole('button', { name: '샘플로 체험하기', exact: true });
+    const buttons = page.locator('.landing__hero').getByRole('button', { name: '샘플로 체험하기', exact: true });
     await expect(buttons).toHaveCount(1);
     await expect(page.getByText(/GitHub으로 시작/)).toHaveCount(0);
     await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'done');
 
     const geometry = await page.evaluate(() => {
-      const header = document.querySelector<HTMLElement>('.landing__top')!;
-      const hero = document.querySelector<HTMLElement>('.landing__hero')!;
+      const header = document.querySelector<HTMLElement>('.lp-top__in')!;
+      const hero = document.querySelector<HTMLElement>('.lp-hero__in')!;
       const logo = header.querySelector<HTMLImageElement>('img')!;
       const h = header.getBoundingClientRect();
       const content = hero.getBoundingClientRect();
@@ -108,7 +108,7 @@ test.describe('반응형 레이아웃', () => {
 
     // 홈은 카드 목록을 두지 않는다. 카드 목록은 묶음 안에 경험 목록을 쓴다(기본 보기는 폴더라 최근순으로 바꿔 본다)
     await page.goto('/');
-    await expect(page.getByRole('region', { name: '지금 상태' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: '지원할 곳' })).toBeVisible();
     await expect(page.locator('.experience-item')).toHaveCount(0);
     await page.goto('/cards');
     await showCardTiles(page);
@@ -125,9 +125,9 @@ test.describe('반응형 레이아웃', () => {
     await loginAsDemo(page);
     await page.goto('/settings');
 
-    await expect(page.locator('.settings-section')).toHaveCount(4);
-    await expect(page.locator('.stat-grid > .card')).toHaveCount(0);
-    const shadows = await page.locator('.settings-section').evaluateAll((els) => els.map((el) => getComputedStyle(el).boxShadow));
+    await expect(page.locator('.set-group')).toHaveCount(4);
+    await expect(page.locator('.set-list')).toHaveCount(3);
+    const shadows = await page.locator('.set-list').evaluateAll((els) => els.map((el) => getComputedStyle(el).boxShadow));
     expect(shadows.every((shadow) => shadow === 'none')).toBe(true);
 
     await page.goto('/repos');

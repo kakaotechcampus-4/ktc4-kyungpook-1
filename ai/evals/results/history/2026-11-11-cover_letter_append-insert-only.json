@@ -1,0 +1,18 @@
+{
+ "date": "2026-11-11",
+ "measured_at": "2026-11-11T04:33:33",
+ "eval": "cover_letter_append",
+ "label": "insert-only",
+ "sample": "가상 사용자 5문항",
+ "model": "gpt-5.6-luna",
+ "git_sha": "a066c7d7",
+ "calls": 27,
+ "spend_won": 32.47,
+ "metrics": {
+  "kept_ratio": 1.0,
+  "added_sentences": 2.0,
+  "over_limit": 0,
+  "reverted": 1
+ },
+ "note": null
+}

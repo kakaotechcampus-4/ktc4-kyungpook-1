@@ -4,5 +4,5 @@ import java.util.List;
 import java.util.UUID;
 
 public record UnusedCandidate(Long userRepositoryId, UUID publicId, String title, String reason,
-                              List<String> commitMessages) {
+                              List<String> commitMessages, int reviewCommentCount) {
 }

@@ -5,7 +5,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties("gitory.rate-limit")
 public record RateLimitProperties(boolean enabled, Limit interviewAsk, Limit interviewAnswer, Limit cardDraft,
                                   Limit coverLetter, Limit coverLetterPolish, Limit coverLetterTurn,
-                                  Limit matchJudgement, Limit matchOverall, Limit matchGapFill, Limit assistant) {
+                                  Limit coverLetterSuggest, Limit coverLetterRewrite,
+                                  Limit matchJudgement, Limit matchOverall, Limit matchGapFill, Limit assistant, Limit feedback) {
 
     public RateLimitProperties {
         interviewAsk = interviewAsk == null ? Limit.NONE : interviewAsk;
@@ -14,10 +15,13 @@ public record RateLimitProperties(boolean enabled, Limit interviewAsk, Limit int
         coverLetter = coverLetter == null ? Limit.NONE : coverLetter;
         coverLetterPolish = coverLetterPolish == null ? Limit.NONE : coverLetterPolish;
         coverLetterTurn = coverLetterTurn == null ? Limit.NONE : coverLetterTurn;
+        coverLetterSuggest = coverLetterSuggest == null ? Limit.NONE : coverLetterSuggest;
+        coverLetterRewrite = coverLetterRewrite == null ? Limit.NONE : coverLetterRewrite;
         matchJudgement = matchJudgement == null ? Limit.NONE : matchJudgement;
         matchOverall = matchOverall == null ? Limit.NONE : matchOverall;
         matchGapFill = matchGapFill == null ? Limit.NONE : matchGapFill;
         assistant = assistant == null ? Limit.NONE : assistant;
+        feedback = feedback == null ? Limit.NONE : feedback;
     }
 
     public Limit of(RateLimitedAction action) {
@@ -29,10 +33,13 @@ public record RateLimitProperties(boolean enabled, Limit interviewAsk, Limit int
             case COVER_LETTER -> coverLetter;
             case COVER_LETTER_POLISH -> coverLetterPolish;
             case COVER_LETTER_TURN -> coverLetterTurn;
+            case COVER_LETTER_SUGGEST -> coverLetterSuggest;
+            case COVER_LETTER_REWRITE -> coverLetterRewrite;
             case MATCH_JUDGEMENT -> matchJudgement;
             case MATCH_OVERALL -> matchOverall;
             case MATCH_GAP_FILL -> matchGapFill;
             case ASSISTANT -> assistant;
+            case FEEDBACK -> feedback;
         };
 
     }

@@ -11,7 +11,8 @@ public record AiClientProperties(URI baseUrl, Duration connectTimeout, Duration 
                                  Duration collectReadTimeout, Duration groupsReadTimeout,
                                  Duration interviewReadTimeout, Duration diffEvidenceReadTimeout,
                                  Duration starReadTimeout, Duration postingExtractReadTimeout,
-                                 Duration matchingSearchReadTimeout, Duration matchingIndexReadTimeout) {
+                                 Duration matchingSearchReadTimeout, Duration matchingIndexReadTimeout,
+                                 Duration suggestReadTimeout) {
 
     public AiClientProperties {
         baseUrl = baseUrl == null ? URI.create("http://localhost:8000") : baseUrl;
@@ -25,6 +26,7 @@ public record AiClientProperties(URI baseUrl, Duration connectTimeout, Duration 
         postingExtractReadTimeout = postingExtractReadTimeout == null ? Duration.ofSeconds(300) : postingExtractReadTimeout;
         matchingSearchReadTimeout = matchingSearchReadTimeout == null ? Duration.ofSeconds(25) : matchingSearchReadTimeout;
         matchingIndexReadTimeout = matchingIndexReadTimeout == null ? Duration.ofSeconds(120) : matchingIndexReadTimeout;
+        suggestReadTimeout = suggestReadTimeout == null ? Duration.ofSeconds(25) : suggestReadTimeout;
         if ((!"http".equals(baseUrl.getScheme()) && !"https".equals(baseUrl.getScheme()))
                 || baseUrl.getHost() == null || baseUrl.getUserInfo() != null
                 || baseUrl.getQuery() != null || baseUrl.getFragment() != null) {
@@ -39,7 +41,8 @@ public record AiClientProperties(URI baseUrl, Duration connectTimeout, Duration 
                 || starReadTimeout.isNegative() || starReadTimeout.isZero()
                 || postingExtractReadTimeout.isNegative() || postingExtractReadTimeout.isZero()
                 || matchingSearchReadTimeout.isNegative() || matchingSearchReadTimeout.isZero()
-                || matchingIndexReadTimeout.isNegative() || matchingIndexReadTimeout.isZero()) {
+                || matchingIndexReadTimeout.isNegative() || matchingIndexReadTimeout.isZero()
+                || suggestReadTimeout.isNegative() || suggestReadTimeout.isZero()) {
             throw new IllegalArgumentException("AI 시간 제한은 양수여야 한다");
         }
     }

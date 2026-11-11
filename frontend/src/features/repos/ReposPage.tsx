@@ -3,10 +3,11 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRepo, useRepos, useStartAnalysis } from '@/api/queries';
 import type { RepoSummary } from '@/api/schemas';
 import { FolderGit2 } from 'lucide-react';
-import { Badge, Button, IconBox, Radio, PageTitle, SectionHead, Skeleton, StickyFooter, Note, EmptyState } from '@/components/ui';
+import { Badge, Button, ButtonLink, EmptyState, IconBox, Note, PageTitle, Radio, SectionHead, Skeleton, StickyFooter, TitleCount } from '@/components/ui';
 import { AiWait } from '@/components/ui/AiWait';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGrid } from '@/features/auth/LandingPage';
+import { koMd } from '@/lib/format';
 import { COUNTING, isCounting } from '@/lib/repoCounts';
 import { groupRepos } from '@/lib/repoGroups';
 import { repoMeta, repoSentence } from '@/lib/repoSentence';
@@ -44,6 +45,14 @@ export function ReposPage() {
   const shown = picking + groups.done.length;
   const selected = (repos.data ?? []).find((r) => r.id === selectedId) ?? null;
   const detail = useRepo(disclose ? selectedId ?? undefined : undefined);
+  const [showScope, setShowScope] = useState(false);
+  // 지난 정리 뒤 새 기록만 읽는 추정이 오면 다시 정리 창으로 본다 — 못 받은 서버는 처음 정리 모양 그대로
+  const disclosure = detail.data?.disclosure;
+  const again = !!selected?.lastAnalyzedAt && disclosure?.reanalyzeSeconds != null;
+  const newCommits = disclosure?.newCommits ?? 0;
+  const newPulls = disclosure?.newPullRequests ?? 0;
+  const nothingNew = newCommits + newPulls === 0;
+  const lastDate = koMd(selected?.lastAnalyzedAt ?? '');
 
   // setSp({...}) 는 쿼리스트링 전체를 교체한다 — URL 에만 남아 있던 다른 값이 select/disclose 조작 한 번에 사라지지 않게
   // 기존 파라미터를 남기고 필요한 키만 바꾼다.
@@ -63,14 +72,9 @@ export function ReposPage() {
 
   return (
     <main className="main main--footer main--tight">
-      <ol className="wizard__steps repo-picker__steps" aria-label="진행 단계">
-        <li className="wstep wstep--now"><span className="wstep__no">1</span>레포 선택</li>
-        <li className="wstep"><span className="wstep__no">2</span>읽는 범위 확인</li>
-        <li className="wstep"><span className="wstep__no">3</span>후보 고르기</li>
-      </ol>
       <div className="list-head">
         {/* 아직 못 받았으면 개수를 모른다 — 0 으로 보이면 "레포가 없다"로 읽힌다 */}
-        <PageTitle>레포 {repos.data && <span className="c-3 t-14">{repos.data.length}</span>}</PageTitle>
+        <PageTitle>레포{repos.data && <TitleCount n={repos.data.length} />}</PageTitle>
         <div className="right">
           <SearchField className="list-search" value={q} onChange={setQ} placeholder="레포 이름 검색" />
           <Select value={sort} onChange={setSort} label="정렬" options={(Object.keys(SORT_LABEL) as Sort[]).map((value) => ({ value, label: SORT_LABEL[value] }))} />
@@ -87,7 +91,7 @@ export function ReposPage() {
       </>}
       {repos.isSuccess && shown === 0 && <div className="stack" style={{ gap: 12, alignItems: 'center' }}>
         <EmptyState title={q.trim() ? '검색 결과가 없어요' : '아직 불러온 레포가 없어요'} desc={q.trim() ? '이름을 확인하거나 검색을 초기화해 주세요.' : '비공개 레포, 커밋이 없는 레포와 내 프로필 README 레포는 목록에서 제외돼요. GitHub 연결 상태도 확인해 주세요.'} />
-        {q ? <Button variant="outline" onClick={() => setQ('')}>검색 초기화</Button> : <Link to="/settings/github" className="btn btn--outline">GitHub 연결 확인</Link>}
+        {q ? <Button variant="secondary" onClick={() => setQ('')}>검색 초기화</Button> : <ButtonLink to="/settings/github" variant="secondary">GitHub 연결 확인</ButtonLink>}
       </div>}
       {shown > 0 && (
         <div className="repo-groups">
@@ -101,28 +105,40 @@ export function ReposPage() {
         </div>
       )}
 
-      <StickyFooter strong={selected ? `${selected.name} 을 골랐어요` : '레포를 하나 골라 주세요'} sub={selected ? '다음은 읽는 범위 확인이에요' : undefined}>
-        <Link to="/" className="btn btn--outline">취소</Link>
+      {/* 읽는 범위 확인 창이 떠 있으면 창의 버튼만 주된 동작이 되게 아래 막대를 숨긴다 */}
+      {!(disclose && selected) && <StickyFooter strong={selected ? `${selected.name} 을 골랐어요` : '정리할 레포를 고르면 다음으로 넘어가요'}>
+        <ButtonLink to="/" variant="secondary">취소</ButtonLink>
         <Button size="lg" disabled={!selected} onClick={openDisclose}>다음</Button>
-      </StickyFooter>
+      </StickyFooter>}
 
       {disclose && selected && (
-        <Modal title="읽는 범위 확인" width={720} onClose={closeDisclose}
-          footer={{ strong: detail.data ? `약 ${detail.data.disclosure.estimatedSeconds}초` : '…',
-            actions: <><Button variant="outline" onClick={closeDisclose}>취소</Button><Button onClick={begin} loading={start.isPending} disabled={!detail.data}>정리 시작</Button></> }}>
+        <Modal title={again ? '새 기록만 읽어요' : '읽는 범위 확인'} width={720} onClose={closeDisclose}
+          footer={{ strong: detail.data ? `약 ${again ? disclosure?.reanalyzeSeconds : detail.data.disclosure.estimatedSeconds}초` : '…',
+            actions: again && nothingNew
+              ? <><ButtonLink to={`/repos/${selected.id}/candidates`}>지난 후보 보기</ButtonLink><Button variant="secondary" onClick={begin} loading={start.isPending}>그래도 다시 정리</Button></>
+              : <><Button variant="secondary" onClick={closeDisclose}>취소</Button><Button onClick={begin} loading={start.isPending} disabled={!detail.data}>{again ? '다시 정리' : '정리 시작'}</Button></> }}>
             <div className="stack" style={{ gap: 14 }}>
               <div className="card card--paper repo-ctx" style={{ padding: '14px 16px' }}>
                 <IconBox icon={FolderGit2} size={36} />
                 <div className="stack grow" style={{ gap: 3 }}>
-                  <span className="w-600" style={{ fontSize: 14 }}>{selected.owner} / {selected.name}</span>
-                  <span className="t-12 c-2">{isCounting(selected) ? `기여 개수를 ${COUNTING}이에요 — 0건이 아니라 집계 전이에요` : `내 커밋 ${selected.contribution.mine} / 팀 ${selected.contribution.team}, PR ${selected.prCount}, 리뷰 ${selected.reviewCount}`}</span>
+                  <span className="w-bold" style={{ fontSize: 14 }}>{selected.owner} / {selected.name}</span>
+                  <span className="t-12 c-2">{isCounting(selected) ? `기여 개수를 ${COUNTING}이에요` : `내 커밋 ${selected.contribution.mine} / 팀 ${selected.contribution.team}, PR ${selected.prCount}, 리뷰 ${selected.reviewCount}`}</span>
                 </div>
                 <Badge kind="NEUTRAL">읽기 전용</Badge>
               </div>
-              {detail.isPending ? <Skeleton h={160} /> : detail.data && <PermissionGrid compact reads={detail.data.disclosure.reads} skips={detail.data.disclosure.skips} />}
+              {detail.isPending && <Skeleton h={160} />}
+              {again && disclosure && <>
+                <div className="stack" style={{ gap: 4 }}>
+                  <strong className="t-14">{nothingNew ? `지난 정리(${lastDate}) 뒤 새 기록이 없어요` : `지난 정리(${lastDate}) 뒤 새 커밋 ${newCommits}개 · PR ${newPulls}개`}</strong>
+                  {nothingNew && <span className="t-14 c-2">지난 후보를 그대로 둬요</span>}
+                </div>
+                <Button variant="text" aria-expanded={showScope} onClick={() => setShowScope((v) => !v)}>{showScope ? '읽는 범위 접기' : '읽는 범위 보기'}</Button>
+                {showScope && <PermissionGrid compact reads={disclosure.reads} skips={disclosure.skips} />}
+              </>}
+              {!again && disclosure && <PermissionGrid compact reads={disclosure.reads} skips={disclosure.skips} />}
               {detail.isError && <QueryFailure error={detail.error} retry={() => detail.refetch()} pending={detail.isFetching} />}
-              <p className="t-14 c-2">정리한 뒤에 새 커밋이 생기면 Gitory가 다시 읽어 카드 초안을 써 둬요</p>
-              {selected.lastAnalyzedAt && <Note strong="전에 정리한 레포예요" tone="inset">다시 정리해 새 기록을 확인할 수 있어요. 지난 결과만 보려면 <Link to={`/repos/${selected.id}/candidates`}>지난 후보 보기</Link></Note>}
+              {!again && <p className="t-14 c-2">정리한 뒤에 새 커밋이 생기면 Gitory가 다시 읽어 카드 초안을 써 둬요</p>}
+              {!again && selected.lastAnalyzedAt && <Note strong="전에 정리한 레포예요" tone="inset">다시 정리해 새 기록을 확인할 수 있어요. 지난 결과만 보려면 <Link to={`/repos/${selected.id}/candidates`}>지난 후보 보기</Link></Note>}
             </div>
         </Modal>
       )}
@@ -157,7 +173,6 @@ function RepoRow({ r, selected, onSelect }: { r: RepoSummary; selected: boolean;
         {r.description && <span className="repo-row__desc">{r.description}</span>}
         <span className="repo-row__line">
           {line.before}{line.caution && <span className="repo-row__caution">{line.caution}</span>}{line.after}
-          {line.hint && <>{'. '}<span className="repo-row__hint">{line.hint}</span></>}
         </span>
         {meta && <span className="repo-row__foot"><span className="repo-row__meta">{meta}</span></span>}
       </div>

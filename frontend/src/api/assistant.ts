@@ -14,7 +14,7 @@ const nullish = <T extends z.ZodTypeAny>(schema: T) => schema.nullish().transfor
 
 export const AssistantRunState = z.enum(['RUNNING', 'WAITING_USER', 'DONE', 'FAILED']);
 export type AssistantRunState = z.infer<typeof AssistantRunState>;
-export const AssistantTool = z.enum(['FIND_POSTINGS', 'MATCH_POSTING', 'START_COVER_LETTER', 'START_REPO_ANALYSIS']);
+export const AssistantTool = z.enum(['FIND_POSTINGS', 'MATCH_POSTING', 'FILL_POSTING_GAPS', 'ASK_CARD_GAP', 'POLISH_COVER_LETTER', 'START_COVER_LETTER', 'START_REPO_ANALYSIS']);
 export type AssistantTool = z.infer<typeof AssistantTool>;
 export const AssistantAskKind = z.enum(['QUESTIONS', 'CHOICE', 'FREE']);
 export type AssistantAskKind = z.infer<typeof AssistantAskKind>;
@@ -49,10 +49,21 @@ export const AssistantItem = z.object({
   find: nullish(z.object({ company: nullish(z.string()), keywords: z.array(z.string()).default([]) })),
   postings: z.array(AssistantPosting).default([]),
   totalFound: nullish(z.number()),
-  /** MATCH_POSTING 이 맞춰 본 공고 */
+  /** MATCH_POSTING · FILL_POSTING_GAPS 가 다루는 공고 */
   posting: nullish(AssistantPosting),
   match: nullish(AssistantMatch),
+  /** FILL_POSTING_GAPS 로 새로 맞게 된 모자란 조건 수 */
+  gapsFilled: nullish(z.number()),
+  /** ASK_CARD_GAP 이 연 카드와 질문. 물을 게 없으면 question 이 null */
+  cardId: nullish(z.string()),
+  cardTitle: nullish(z.string()),
+  question: nullish(z.object({ field: z.string(), text: z.string() })),
+  /** POLISH_COVER_LETTER 가 첨삭한 문항과 남은 문항 수 */
+  letterId: nullish(z.string()),
+  polished: z.array(z.object({ seq: z.number(), points: z.number() })).default([]),
+  remainingQuestions: nullish(z.number()),
   questionCount: nullish(z.number()),
+  defaultQuestions: nullish(z.boolean()),
   coverLetterId: nullish(z.string()),
   repoId: nullish(z.string()),
   repoName: nullish(z.string()),

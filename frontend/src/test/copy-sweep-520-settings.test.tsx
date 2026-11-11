@@ -5,7 +5,6 @@ import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { NotFoundPage } from '@/features/NotFoundPage';
 import { GithubSettingsPage } from '@/features/settings/GithubSettingsPage';
 import { LeavePage } from '@/features/settings/LeavePage';
-import { MyPage } from '@/features/settings/MyPage';
 import { resetDb } from '@/mock/store';
 
 /**
@@ -24,6 +23,7 @@ vi.mock('@/api/queries', async (importOriginal) => ({
   useRepos: () => ({ data: [], isSuccess: true, isError: false }),
   useDisconnectGithub: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useLogout: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useLeaveAccount: () => ({ mutateAsync: vi.fn(), isPending: false, isError: false, error: null, reset: vi.fn() }),
 }));
 
 beforeEach(() => { resetDb(); mocks.me = undefined; });
@@ -59,15 +59,9 @@ describe('S-02·S-03 마이페이지 하위 화면', () => {
     const { container } = render(<MemoryRouter><GithubSettingsPage /></MemoryRouter>);
     expect(container.textContent).not.toMatch(FORMAL);
     expect(container.textContent).not.toMatch(/ — /);
-    expect(container.textContent).toContain('연결되어 있지 않아요');
-    expect(screen.getAllByText(/다시 연결해 주세요/)).toHaveLength(1);
-    expect(container.textContent).toContain('아직 정리한 레포가 없어요.');
-  });
-
-  it('마이페이지: 아직 모르는 통계는 0 도 하이픈도 아닌 "—" 이다', () => {
-    const { container } = render(<MemoryRouter><MyPage /></MemoryRouter>);
-    const values = [...container.querySelectorAll('.stat b')].map((b) => b.textContent);
-    expect(values).toEqual(['—', '—', '—', '—']);
+    expect(container.textContent).toContain('다시 연결하면 이어서 쓸 수 있어요');
+    expect(screen.getAllByText(/다시 연결/)).toHaveLength(2);
+    expect(container.textContent).toContain('아직 정리한 레포가 없어요');
   });
 });
 

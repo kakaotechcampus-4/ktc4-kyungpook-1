@@ -33,11 +33,11 @@ public record AssistantRunResponse(
             @Schema(description = "USER 는 사용자의 말, ASK 와 SAY 는 AI 가 쓴 문장") String text,
             AssistantTool tool,
             @Schema(description = "STEP 만. 없으면 하는 중, true 면 끝, false 면 실패(error)") Boolean ok,
-            @Schema(description = "실패한 걸음의 코드(NOT_FOUND·NO_CONFIRMED_CARDS·RATE_LIMITED·FAILED)") String error,
+            @Schema(description = "실패한 걸음의 코드(NOT_FOUND·NO_CONFIRMED_CARDS·RATE_LIMITED·NOT_MATCHED·GITHUB_DISCONNECTED·CAP_REACHED·NOT_READY·FAILED)") String error,
             AssistantRunFind find,
             List<AssistantRunPosting> postings,
             Integer totalFound,
-            @Schema(description = "MATCH_POSTING 이 맞춰 본 공고") AssistantRunPosting posting,
+            @Schema(description = "MATCH_POSTING·FILL_POSTING_GAPS 가 다룬 공고") AssistantRunPosting posting,
             AssistantRunMatch match,
             Integer questionCount,
             @Schema(format = "uuid") String coverLetterId,
@@ -45,7 +45,15 @@ public record AssistantRunResponse(
             String repoName,
             @Schema(format = "uuid") String jobId,
             @Schema(description = "ASK 만. QUESTIONS·CHOICE·FREE") String askKind,
-            List<String> options) {
+            List<String> options,
+            @Schema(format = "uuid", description = "ASK_CARD_GAP 이 질문을 연 카드") String cardId,
+            String cardTitle,
+            @Schema(format = "uuid", description = "POLISH_COVER_LETTER 가 첨삭한 자소서") String letterId,
+            @Schema(description = "FILL_POSTING_GAPS 로 맞은 필수 조건이 늘어난 수") Integer gapsFilled,
+            @Schema(description = "ASK_CARD_GAP 이 연 질문. 더 물을 것이 없으면 없다") AssistantRunQuestion question,
+            @Schema(description = "POLISH_COVER_LETTER 가 첨삭한 문항(번호 순서)") List<AssistantRunPolished> polished,
+            @Schema(description = "POLISH_COVER_LETTER 뒤에도 아직 첨삭하지 않은 문항 수") Integer remainingQuestions,
+            @Schema(description = "START_COVER_LETTER 가 자주 나오는 문항 3개로 자소서를 만들었을 때만 true, 아니면 null") Boolean defaultQuestions) {
 
         static AssistantRunItem from(RunItem item) {
 
@@ -56,7 +64,15 @@ public record AssistantRunResponse(
                     item.match() == null ? null : new AssistantRunMatch(item.match().requiredMet(),
                             item.match().requiredTotal(), item.match().met(), item.match().missing()),
                     item.questionCount(), string(item.coverLetterId()), string(item.repoId()), item.repoName(),
-                    string(item.jobId()), item.askKind(), item.options());
+                    string(item.jobId()), item.askKind(), item.options(), string(item.cardId()), item.cardTitle(),
+                    string(item.letterId()), item.gapsFilled(),
+                    item.question() == null ? null
+                            : new AssistantRunQuestion(item.question().field(), item.question().text()),
+                    item.polished() == null ? null
+                            : item.polished().stream()
+                            .map(done -> new AssistantRunPolished(done.seq(), done.points()))
+                            .toList(),
+                    item.remainingQuestions(), item.defaultQuestions());
 
         }
 
@@ -68,6 +84,13 @@ public record AssistantRunResponse(
     }
 
     public record AssistantRunFind(String company, List<String> keywords) {
+    }
+
+    public record AssistantRunQuestion(@Schema(description = "S·T·A·R") String field, String text) {
+    }
+
+    public record AssistantRunPolished(@Schema(description = "문항 번호") int seq,
+                                       @Schema(description = "첨삭 포인트 수") int points) {
     }
 
     public record AssistantRunPosting(

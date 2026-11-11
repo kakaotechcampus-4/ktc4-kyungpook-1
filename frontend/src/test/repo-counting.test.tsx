@@ -5,7 +5,6 @@ import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { keys } from '@/api/keys';
 import { CandidateBoard, Job, JobErrorCode, RepoDetail, RepoSummary, StartedJob } from '@/api/schemas';
-import { GithubSettingsPage } from '@/features/settings/GithubSettingsPage';
 import { AnalyzePage } from '@/features/repos/AnalyzePage';
 import { ReposPage } from '@/features/repos/ReposPage';
 import { jobErrorHint, jobErrorTitle } from '@/lib/labels';
@@ -102,7 +101,7 @@ describe('레포 목록 화면', () => {
     mount('/repos', <ReposPage />, '/repos', seedRepos);
     const row = rowOf(/side-project-new/);
     expect(within(row).getByText(/기여 개수를 세는 중이에요/)).toBeInTheDocument();   // #756 숫자 줄 대신 문장 한 줄
-    expect(within(row).getByText(/집계 전이에요/)).toBeInTheDocument();
+    expect(within(row).queryByText(/집계 전이에요/)).not.toBeInTheDocument();
     expect(within(row).queryByText(/내 기여/)).not.toBeInTheDocument();
     expect(within(row).queryByText('PR 0건')).not.toBeInTheDocument();
     expect(within(row).queryByText(/부풀린 것처럼/)).not.toBeInTheDocument();
@@ -129,18 +128,6 @@ describe('레포 목록 화면', () => {
 });
 
 describe('설정 · 분석 화면', () => {
-  it('설정의 수집 이력 줄도 못 센 레포는 숫자를 숨긴다', () => {
-    mount('/settings/github', <GithubSettingsPage />, '/settings/github', (client) => {
-      const list = repos().map((repo) => repo.id === 'r_counting' ? { ...repo, lastAnalyzedAt: '2026-10-10T00:00:00Z' } : repo);
-      client.setQueryData(keys.repos, list);
-      client.setQueryData(keys.me, req('GET', '/me').data);
-    });
-    const row = screen.getByText('side-project-new').closest('.collection-row') as HTMLElement;
-    expect(row).toHaveTextContent('개수 세는 중');
-    expect(row).not.toHaveTextContent('커밋 0');
-    expect(screen.getByText('auth-service').closest('.collection-row')).toHaveTextContent('커밋 214, PR 31, 리뷰 88');
-  });
-
   // 다시 분석하면 새 기록만 읽으므로, 저장소 전체 숫자를 이번에 읽는 양처럼 말하지 않는다(읽는 양은 단계 숫자가 보여 준다)
   it('분석 진행 화면의 머리는 못 센 레포든 센 레포든 저장소 숫자 없이 무엇을 찾는지만 말한다', () => {
     for (const repoId of ['r_counting', 'r_auth']) {
@@ -197,11 +184,12 @@ describe('분석 화면 — 수집 상한에 걸린 부분 결과', () => {
     });
   };
 
-  it('상한 때문이라는 이유를 말하고, 읽은 범위의 후보로 이어 준다', () => {
+  it('상한 때문이라는 이유를 말하고, 같은 길로 카드까지 이어 가며 직접 고르는 길을 남긴다', () => {
     capped(false);
     expect(screen.getByText(jobErrorTitle.COLLECTION_CAPPED)).toBeInTheDocument();
     expect(screen.getByText(new RegExp(jobErrorHint.COLLECTION_CAPPED))).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '읽은 범위의 후보 보기' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '후보 직접 고르기' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '읽은 범위의 후보 보기' })).not.toBeInTheDocument();
     expect(screen.queryByText('일부 기록만 정리했어요')).not.toBeInTheDocument();   // 이유를 모를 때의 문구가 아니다
   });
 
@@ -225,6 +213,6 @@ describe('분석 화면 — 수집 상한에 걸린 부분 결과', () => {
     });
     expect(screen.getByText('일부 기록만 정리했어요')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /이어 읽기/ })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '읽은 범위의 후보 보기' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '후보 직접 고르기' })).toBeInTheDocument();
   });
 });

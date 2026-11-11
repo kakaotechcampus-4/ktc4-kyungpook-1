@@ -193,6 +193,10 @@ function handleLlm(body, res) {
         reason: 'E2E 가짜 LLM 이 만든 설명입니다.',
       })),
     };
+  } else if (schema === 'ReplyOutput') {
+    // 되묻기 답은 적은 그대로 그 칸의 문장으로 넣는다고 답한다
+    const user = body.messages?.find((m) => m.role === 'user')?.content ?? '{}';
+    content = { verdict: 'APPLY', sentence: JSON.parse(user).answer ?? '', extra: [], follow_up: null, reason: null };
   } else {
     return send(res, 500, { error: { message: `fake: 모르는 출력 형식 ${schema}` } });
   }
@@ -232,7 +236,11 @@ const server = createServer(async (req, res) => {
     requests.push({ method: req.method, path: url.pathname + url.search, authorization: req.headers.authorization ?? null });
 
     // LLM 은 키가 Authorization 에 실려 오므로 GitHub 토큰 검사 앞에서 가른다
-    if (req.method === 'POST' && url.pathname.endsWith('/chat/completions')) return handleLlm(JSON.parse(raw || '{}'), res);
+    if (req.method === 'POST' && url.pathname.endsWith('/chat/completions')) {
+      const llmFailure = failures.find((f) => f.pattern.test(url.pathname + url.search));
+      if (llmFailure) return send(res, llmFailure.status, { message: 'fake: 시험이 일부러 실패시킨 요청' });
+      return handleLlm(JSON.parse(raw || '{}'), res);
+    }
 
     if (url.pathname.startsWith('/avatars/')) return send(res, 200, PIXEL, { 'Content-Type': 'image/png' });
 

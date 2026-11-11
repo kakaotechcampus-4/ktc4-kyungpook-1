@@ -6,8 +6,9 @@ import { ApiError } from '@/api/client';
 import { endpoints } from '@/api/endpoints';
 import { keys } from '@/api/keys';
 import { z } from 'zod';
-import { envelope, InterviewTurn as InterviewTurnSchema, isOpenTurn, type Card, type InterviewTurn, type StarField } from '@/api/schemas';
+import { envelope, InterviewTurn as InterviewTurnSchema, isOpenTurn, type Card, type InterviewReply, type InterviewTurn, type StarField } from '@/api/schemas';
 import { InterviewPage } from '@/features/cards/InterviewPage';
+import { answeredBy, appliedReply } from './replyResult';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 
@@ -40,18 +41,17 @@ describe('interview retry and pending answer', () => {
       turns = [...turns, turn];
       return turn;
     });
-    vi.spyOn(endpoints, 'answerInterview').mockImplementation(async (_id, no, body) => {
-      if (!('text' in body)) throw new Error('이 시험은 글 답만 보낸다');
-      turns = turns.map((turn) => turn.turnNo === no ? { ...turn, answer: body } : turn);
-      return card;
+    vi.spyOn(endpoints, 'replyInterview').mockImplementation(async (_id, no, body) => {
+      turns = turns.map((turn) => turn.turnNo === no ? answeredBy(turn, body) : turn);
+      return appliedReply(card);
     });
     mount(turns, suffix);
     if (suffix) {
       await screen.findByRole('textbox', { name: '답변' });
       fireEvent.change(screen.getByRole('textbox', { name: '답변' }), { target: { value: 'T answer' } });
-      fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+      fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
     }
-    fireEvent.click(await screen.findByRole('button', { name: /결과 질문 받기 · 미작성/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /결과 질문 받기, 미작성/ }));
     const retry = await screen.findByRole('button', { name: /다시/ });
     fireEvent.click(retry);
     await waitFor(() => expect(ask.mock.calls.map((call) => call[1])).toEqual(suffix ? ['T', undefined, 'R', 'R'] : [undefined, 'R', 'R']));
@@ -62,50 +62,49 @@ describe('interview retry and pending answer', () => {
   it('says the card is confirmed and stops offering slots when the answer completes the card', async () => {
     let turns: InterviewTurn[] = [{ ...template, field: 'R', turnNo: 1, question: 'R question', answer: null }];
     vi.spyOn(endpoints, 'interviewTurns').mockImplementation(async () => turns);
-    vi.spyOn(endpoints, 'answerInterview').mockImplementation(async (_id, no, answer) => {
-      if (!('text' in answer)) throw new Error('이 시험은 글 답만 보낸다');
-      turns = turns.map((turn) => turn.turnNo === no ? { ...turn, answer } : turn);
-      return { ...card, status: 'CONFIRMED', confirmedAt: '2026-11-01T00:00:00Z' };
+    vi.spyOn(endpoints, 'replyInterview').mockImplementation(async (_id, no, body) => {
+      turns = turns.map((turn) => turn.turnNo === no ? answeredBy(turn, body) : turn);
+      return appliedReply({ ...card, status: 'CONFIRMED', confirmedAt: '2026-11-01T00:00:00Z' });
     });
     mount(turns);
     fireEvent.change(await screen.findByRole('textbox', { name: '답변' }), { target: { value: 'R answer' } });
-    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
     expect(await screen.findByText('카드를 확정했어요')).toBeInTheDocument();
     expect(screen.queryByText('이어서 물을까요?')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '카드 보기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '카드로 돌아가기' })).toBeInTheDocument();
   });
 
   it('locks option chips while an answer is being saved', async () => {
-    let resolve!: (value: Card) => void;
-    vi.spyOn(endpoints, 'answerInterview').mockImplementation(() => new Promise<Card>((r) => { resolve = r; }));
+    let resolve!: (value: InterviewReply) => void;
+    vi.spyOn(endpoints, 'replyInterview').mockImplementation(() => new Promise<InterviewReply>((r) => { resolve = r; }));
     vi.spyOn(endpoints, 'interviewTurns').mockResolvedValue([]);
     mount([{ ...template, options: ['First option', 'Second option'], answer: null }]);
     fireEvent.click(screen.getByRole('button', { name: 'First option' }));
-    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
     await waitFor(() => expect(screen.getByRole('textbox', { name: '답변' })).toBeDisabled());
     expect(screen.getByRole('button', { name: 'Second option' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Second option' }));
     expect(screen.getByRole('textbox', { name: '답변' })).toHaveValue('First option');
-    await act(async () => { resolve(card); });
+    await act(async () => { resolve(appliedReply(card)); });
   });
 
   it('shows why an answer was rejected instead of blaming the connection', async () => {
-    vi.spyOn(endpoints, 'answerInterview').mockRejectedValue(new ApiError('INVALID_REQUEST', 'hidden', 400));
+    vi.spyOn(endpoints, 'replyInterview').mockRejectedValue(new ApiError('INVALID_REQUEST', 'hidden', 400));
     vi.spyOn(endpoints, 'interviewTurns').mockResolvedValue([]);
     mount([{ ...template, answer: null }]);
     fireEvent.change(screen.getByRole('textbox', { name: '답변' }), { target: { value: 'T answer' } });
-    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
     expect(await screen.findByText('입력한 내용을 확인한 뒤 다시 시도해 주세요. 같으면 화면을 새로고침해 주세요.')).toBeInTheDocument();
     expect(screen.queryByText(/연결을 확인/)).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '답변' })).toHaveValue('T answer');
   });
 
   it('still asks to check the connection when the server cannot be reached', async () => {
-    vi.spyOn(endpoints, 'answerInterview').mockRejectedValue(new ApiError('NETWORK', 'hidden', 0));
+    vi.spyOn(endpoints, 'replyInterview').mockRejectedValue(new ApiError('NETWORK', 'hidden', 0));
     vi.spyOn(endpoints, 'interviewTurns').mockResolvedValue([]);
     mount([{ ...template, answer: null }]);
     fireEvent.change(screen.getByRole('textbox', { name: '답변' }), { target: { value: 'T answer' } });
-    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
     expect(await screen.findByText(/연결을 확인한 뒤 다시 시도해 주세요/)).toBeInTheDocument();
   });
 });
@@ -136,7 +135,7 @@ describe('#417 skip saves SKIP instead of leaving the question open', () => {
 
     await screen.findByText('이어서 물을까요?');
     expect(screen.queryByRole('button', { name: /^과제/ })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /결과 질문 받기 · 미작성/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /결과 질문 받기, 미작성/ })).toBeInTheDocument();
   });
 
   it('keeps the question open and explains why when skipping fails', async () => {
@@ -164,9 +163,9 @@ describe('#418 AI picks the next field and ends the interview by itself', () => 
   it('asks for the next question without a field after an answer and shows it', async () => {
     let turns: InterviewTurn[] = [open('T')];
     vi.spyOn(endpoints, 'interviewTurns').mockImplementation(async () => turns);
-    vi.spyOn(endpoints, 'answerInterview').mockImplementation(async (_id, no) => {
-      turns = turns.map((turn) => turn.turnNo === no ? { ...turn, answer: { text: 'T answer', source: 'USER_STATED' }, outcome: 'ANSWERED' } : turn);
-      return card;
+    vi.spyOn(endpoints, 'replyInterview').mockImplementation(async (_id, no, body) => {
+      turns = turns.map((turn) => turn.turnNo === no ? answeredBy(turn, body) : turn);
+      return appliedReply(card);
     });
     const ask = vi.spyOn(endpoints, 'askInterview').mockImplementation(async () => {
       const next = { ...open('R', 2), question: 'AI 가 고른 R 질문' };
@@ -176,7 +175,7 @@ describe('#418 AI picks the next field and ends the interview by itself', () => 
     mount(turns);
 
     fireEvent.change(await screen.findByRole('textbox', { name: '답변' }), { target: { value: 'T answer' } });
-    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
 
     expect(await screen.findByRole('heading', { name: /AI 가 고른 R 질문/ })).toBeInTheDocument();
     expect(ask).toHaveBeenCalledWith(card.id, undefined);
@@ -185,15 +184,15 @@ describe('#418 AI picks the next field and ends the interview by itself', () => 
   it('shows the finished state when the AI has nothing more to ask', async () => {
     let turns: InterviewTurn[] = [open('T')];
     vi.spyOn(endpoints, 'interviewTurns').mockImplementation(async () => turns);
-    vi.spyOn(endpoints, 'answerInterview').mockImplementation(async (_id, no) => {
-      turns = turns.map((turn) => turn.turnNo === no ? { ...turn, answer: { text: 'T answer', source: 'USER_STATED' }, outcome: 'ANSWERED' } : turn);
-      return card;
+    vi.spyOn(endpoints, 'replyInterview').mockImplementation(async (_id, no, body) => {
+      turns = turns.map((turn) => turn.turnNo === no ? answeredBy(turn, body) : turn);
+      return appliedReply(card);
     });
     vi.spyOn(endpoints, 'askInterview').mockResolvedValue(null);
     mount(turns);
 
     fireEvent.change(await screen.findByRole('textbox', { name: '답변' }), { target: { value: 'T answer' } });
-    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
 
     expect(await screen.findByText('추가 질문을 마쳤어요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '카드 검토하기' })).toBeInTheDocument();
@@ -222,15 +221,15 @@ describe('#418 AI picks the next field and ends the interview by itself', () => 
       open('T', 3),
     ];
     vi.spyOn(endpoints, 'interviewTurns').mockImplementation(async () => turns);
-    vi.spyOn(endpoints, 'answerInterview').mockImplementation(async (_id, no) => {
-      turns = turns.map((turn) => turn.turnNo === no ? { ...turn, answer: { text: 't', source: 'USER_STATED' }, outcome: 'ANSWERED' } : turn);
-      return card;
+    vi.spyOn(endpoints, 'replyInterview').mockImplementation(async (_id, no, body) => {
+      turns = turns.map((turn) => turn.turnNo === no ? answeredBy(turn, body) : turn);
+      return appliedReply(card);
     });
     const ask = vi.spyOn(endpoints, 'askInterview').mockResolvedValue(null);
     mount(turns);
 
     fireEvent.change(await screen.findByRole('textbox', { name: '답변' }), { target: { value: 't' } });
-    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
 
     expect(await screen.findByText(/질문 3개를 다 썼어요/)).toBeInTheDocument();
     expect(ask).not.toHaveBeenCalled();

@@ -20,7 +20,10 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .t-24 { font-size: 28px; line-height: 32px; }
 .t-28 { font-size: 28px; line-height: 40px; letter-spacing: var(--text-tracking); }
 .t-40 { font-size: 40px; line-height: 52px; letter-spacing: var(--text-tracking); }
-.w-500 { font-weight: 500; } .w-600 { font-weight: 600; } .w-700 { font-weight: 700; } .w-800 { font-weight: 800; }
+/* 입력 칸 밖을 눌렀을 때 깜박이는 글자 커서가 보이지 않게(캐럿 브라우징 포함, #918). 입력 칸과 편집 영역은 기본 커서 */
+body { caret-color: transparent; }
+input, textarea, select, [contenteditable]:not([contenteditable="false"]) { caret-color: auto; }
+.w-regular { font-weight: var(--weight-regular); } .w-bold { font-weight: var(--weight-bold); } .w-heavy { font-weight: var(--weight-heavy); }
 .c-2 { color: var(--text-secondary); } .c-3 { color: var(--text-tertiary); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }

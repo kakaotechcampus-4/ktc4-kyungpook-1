@@ -1,11 +1,11 @@
 /* 앱 셸 — 원본 Section 1 레이아웃 언어: 사이드바 220 · 메인 pad 28/32 · 스티키 푸터 84 */
 .shell { display: grid; grid-template-columns: var(--size-sidebar) minmax(0, 1fr); min-height: 100vh; }
 .sidebar { position: sticky; top: 0; height: 100vh; background: var(--bg-surface); border-right: 1px solid var(--border-default); display: flex; flex-direction: column; padding: 24px 16px; gap: 24px; }
-.brand { display: flex; align-items: center; gap: 8px; font-size: 20px; line-height: 24px; font-weight: 800; letter-spacing: -.02em; padding: 0 4px; }
+.brand { display: flex; align-items: center; gap: 8px; font-size: 20px; line-height: 24px; font-weight: var(--weight-heavy); letter-spacing: -.02em; padding: 0 4px; }
 .brand svg { flex: 0 0 auto; }
 .menu-group { display: flex; flex-direction: column; gap: 2px; }
-.menu-group__title { font-size: 11px; line-height: 16px; font-weight: 700; color: var(--sidebar-text); padding: 0 4px 8px; }
-.menu-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: var(--radius-md); font-size: 14px; line-height: 17px; font-weight: 600; color: var(--sidebar-text); }
+.menu-group__title { font-size: 11px; line-height: 16px; font-weight: var(--weight-bold); color: var(--sidebar-text); padding: 0 4px 8px; }
+.menu-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: var(--radius-md); font-size: 14px; line-height: 17px; font-weight: var(--weight-bold); color: var(--sidebar-text); }
 .menu-item svg { color: var(--border-strong); flex: 0 0 auto; }
 .menu-item:hover { background: var(--bg-subtle); }
 .menu-item[aria-current="page"] { background: var(--nav-active-bg); color: var(--sidebar-text); }
@@ -13,7 +13,7 @@
 .sidebar__profile { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); }
 .sidebar__avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-inset); flex: 0 0 auto; overflow: hidden; }
 .sidebar__avatar img { width: 100%; height: 100%; object-fit: cover; }
-.sidebar__name { font-size: 14px; line-height: 20px; font-weight: 600; }
+.sidebar__name { font-size: 14px; line-height: 20px; font-weight: var(--weight-bold); }
 
 .main { --main-px: 32px; --main-pb: 32px; padding: 28px var(--main-px) var(--main-pb); display: flex; flex-direction: column; gap: 20px; min-width: 0; max-width: 1220px; }
 .main--tight { gap: 18px; }

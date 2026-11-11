@@ -30,7 +30,7 @@ test.describe('시나리오 1: 로그인부터 카드 자동 확정과 되묻기
     await test.step('1. 로그인', async () => {
       await page.goto('/');
       await expect(page).toHaveURL(/\/login/);
-      await page.locator('.landing__actions').getByRole('button', { name: 'GitHub로 시작' }).click();
+      await page.locator('.landing__hero .landing__actions').getByRole('button', { name: 'GitHub로 시작' }).click();
       await page.getByRole('dialog').getByRole('button', { name: 'GitHub으로 이동' }).click();
       await expect(page).toHaveURL('/', { timeout: 15_000 });
 
@@ -42,21 +42,13 @@ test.describe('시나리오 1: 로그인부터 카드 자동 확정과 되묻기
 
     await test.step('1-1. 처음 입력 창', async () => {
       const setup = page.getByRole('dialog');
-      await expect(setup).toHaveAccessibleName('관심 분야'); // 제목은 지금 단계 이름(#802)
+      await expect(setup).toHaveAccessibleName('관심 분야');
       await setup.getByRole('checkbox', { name: '백엔드', exact: true }).check();
-      await setup.getByRole('button', { name: '다음', exact: true }).click();
-      await setup.getByRole('button', { name: '경력 없음', exact: true }).click();
-      await setup.getByRole('radio', { name: '대학교', exact: true }).check(); // 4년제가 먼저 골라진다(#802)
-      await setup.getByRole('button', { name: '다음', exact: true }).click();
-      await setup.getByRole('radio', { name: '졸업', exact: true }).check();
-      await setup.getByRole('button', { name: '다음', exact: true }).click();
-      await setup.getByRole('button', { name: '어학 없음', exact: true }).click();
-      await setup.getByRole('button', { name: '자격증 없음', exact: true }).click();
+      await setup.getByRole('button', { name: '저장하고 시작하기', exact: true }).click();
       await expect(setup).toHaveCount(0);
 
       const profile = await dataOf(await page.request.get('/api/profile'));
       expect(profile.interests).toEqual(['BACKEND']);
-      expect(profile.educations).toHaveLength(1);
     });
 
     await test.step('2. 저장소 고르기와 개수', async () => {
@@ -145,13 +137,15 @@ test.describe('시나리오 1: 로그인부터 카드 자동 확정과 되묻기
       await expect(page).toHaveURL(/\/interview\?field=T/);
       await expect(page.getByRole('heading', { name: /^Q1\. \S/ })).toBeVisible({ timeout: SLOW });
       await page.getByRole('textbox', { name: '답변' }).fill(ANSWER);
-      await page.getByRole('button', { name: '답변 저장' }).click();
-      await expect(page.getByText('내 답변, 저장됨')).toBeVisible({ timeout: 15_000 });
+      // 답을 읽는 가짜 LLM 이 적은 그대로 넣는다고 답하므로 과제 칸에 답이 그대로 들어간다
+      await page.getByRole('button', { name: '답 보내기' }).click();
+      await expect(page.getByText('과제 칸에 이렇게 넣었어요')).toBeVisible({ timeout: SLOW });
       // 질문이 끝나면 "카드로" 링크를 두지 않아서(AI 가 더 묻지 않기로 하면 열린 질문이 없다) 카드 주소로 바로 간다
       await page.goto(`/cards/${cardId}`);
-      // 확정된 카드는 칸이 읽기 줄이라 칸 이름 영역 대신 글로 찾는다. 과제를 채웠으니 안내는 결과 칸만 남는다
+      // 확정된 카드는 칸이 읽기 줄이라 칸 이름 영역 대신 글로 찾는다. 과제를 채웠으니 안내 줄에는 답하기나 질문 받기가 남는다
+      // (답한 뒤 다음 질문이 열려 있으면 안내 줄이 그 질문 글과 답하기, 없으면 빈 결과 칸 안내와 질문 받기)
       await expect(page.getByText(ANSWER)).toBeVisible();
-      await expect(page.getByText('결과 칸이 비어 있어요. 한두 가지만 알려 주면 채울 수 있어요')).toBeVisible();
+      await expect(page.getByRole('button', { name: /^(답하기|질문 받기)$/ })).toBeVisible();
     });
 
     await test.step('8. 답한 뒤에도 확정 그대로', async () => {

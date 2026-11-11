@@ -1,15 +1,19 @@
-import { useEffect, useRef } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Briefcase, PenLine } from 'lucide-react';
-import { useCoverLetter, useRetryCoverLetter, useStartAsking, useStartDrafting, type CoverLetter, type CoverLetterPosting } from '@/api/coverLetters';
+import { useCoverLetter, useRetryCoverLetter, useRewriteQuestion, useStartAsking, useStartDrafting, type CoverLetter, type CoverLetterPosting } from '@/api/coverLetters';
 import { errorView } from '@/api/errorView';
-import { Breadcrumb, Button, Note, PageTitle, Skeleton } from '@/components/ui';
+import { Breadcrumb, Button, ButtonLink, Note, PageTitle, Skeleton, buttonClass } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { FAILED_STEP_LABEL, flowStep } from '@/lib/coverLetterCopy';
+import { elapsed } from '@/lib/format';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { useNow } from '@/lib/useNow';
 import { CoverLetterDeleteAction } from './CoverLetterDeleteAction';
+import { CardSuggestBanner } from './CardSuggestBanner';
 import { DraftEditor } from './DraftEditor';
+import { NextSteps } from './NextSteps';
 import { DraftPaper } from './paper/DraftPaper';
 import { Stepper } from './Stepper';
 import './coverLetters.css';
@@ -43,6 +47,30 @@ function useContinue(id: string, letter: CoverLetter | undefined): Failure | nul
   return step?.isError ? { error: step.error, retry: send } : null;
 }
 
+/**
+ * 카드를 확인하고 돌아온 길(?useCard=&question=) — 그 문항을 그 카드로 한 번만 다시 쓰고 주소의 표시를 지운다.
+ * 다시 쓰는 동안은 returning 이 true 라서 화면이 옛 글로 편집기를 먼저 열지 않고, 다시 쓰지 못했으면 failed 로 한 줄 알린다.
+ */
+function useReturnRewrite(id: string, letter: CoverLetter | undefined): { returning: boolean; failed: boolean } {
+  const [sp, setSp] = useSearchParams();
+  const rewrite = useRewriteQuestion(id);
+  const sent = useRef(false);
+  const [failed, setFailed] = useState(false);
+  const cardId = sp.get('useCard');
+  const questionId = sp.get('question');
+  const want = !!cardId && !!questionId;
+  useEffect(() => {
+    if (!want || letter?.stage !== 'DRAFTED' || sent.current) return;
+    sent.current = true;
+    rewrite.mutate({ questionId, cardId }, {
+      onSuccess: (r) => { if (r.rewriteFailed) setFailed(true); },
+      onError: () => setFailed(true),
+      onSettled: () => setSp({}, { replace: true }),
+    });
+  }, [want, letter?.stage]);
+  return { returning: want, failed };
+}
+
 /** 자소서 한 편 — 응답의 stage 가 화면을 정한다. 카드 고르기와 재료 확인이 끝난 단계에서도 멈추지 않고 다음 기다림 화면을 보인다 */
 export function CoverLetterPage() {
   const { coverLetterId = '' } = useParams();
@@ -50,6 +78,7 @@ export function CoverLetterPage() {
   const letter = useCoverLetter(coverLetterId);
   const l = letter.data;
   const failure = useContinue(coverLetterId, l);
+  const { returning, failed: returnFailed } = useReturnRewrite(coverLetterId, l);
   useDocumentTitle(l ? `${l.jobRole} 자소서` : '자소서');
   const crumbs = [{ label: '홈', to: '/' }, { label: '자소서', to: '/cover-letters' }, { label: l?.jobRole ?? '…' }];
 
@@ -65,22 +94,31 @@ export function CoverLetterPage() {
   }
   if (!l) return <main className="main main--tight"><Breadcrumb items={crumbs} /><Skeleton h={36} w="60%" /><Skeleton h={220} /></main>;
 
+  // 쓰는 동안의 '문항 고치기'는 이 자소서가 아니라 문항을 채운 새 자소서를 만들어 버려서 쓰는 동안에는 두지 않고, 지우기는 '쓰기 그만두기'로 말한다
+  const writing = l.stage !== 'DRAFTED' && l.stage !== 'FAILED';
   return (
     <main className="main main--tight">
       <div className="cl-crumbbar">
         <Breadcrumb items={crumbs} />
         <div className="row" style={{ gap: 8 }}>
-          <Link to={`/cover-letters/new?from=${encodeURIComponent(l.id)}`} className="btn btn--outline btn--sm cl-edit-trigger"><PenLine size={16} aria-hidden />문항 고치기</Link>
-          <CoverLetterDeleteAction letter={l} label="자소서 삭제" onDeleted={() => nav('/cover-letters', { replace: true })} />
+          {!writing && <ButtonLink to={`/cover-letters/new?from=${encodeURIComponent(l.id)}`} variant="secondary" size="sm" className="cl-edit-trigger"><PenLine size={16} aria-hidden />문항 고치기</ButtonLink>}
+          <CoverLetterDeleteAction letter={l} label={writing ? '쓰기 그만두기' : '자소서 삭제'} onDeleted={() => nav('/cover-letters', { replace: true })} />
         </div>
       </div>
       <Stepper current={flowStep(l.stage, l.failedStep)} />
       {l.posting && <PostingLine posting={l.posting} />}
+      {/* 쓰는 동안에는 '문항 고치기' 버튼이 숨어 있어서(#961) 다 쓴 뒤에 바꿀 수 있다고 말한다 */}
+      {l.defaultQuestions && l.stage === 'DRAFTED' && <p className="cl-wait-note">자주 나오는 문항으로 썼어요. 실제 문항이 있으면 문항 고치기로 바꿔 주세요</p>}
+      {l.defaultQuestions && l.stage !== 'DRAFTED' && l.stage !== 'FAILED' && <p className="cl-wait-note">자주 나오는 문항으로 쓰는 중이에요. 다 쓴 뒤 문항 고치기로 실제 문항으로 바꿀 수 있어요</p>}
       {l.stage === 'ASSIGNING' && <AssignWait letter={l} />}
       {l.stage === 'FAILED' && <Failed letter={l} />}
       {(l.stage === 'ASSIGNED' || l.stage === 'ASKING') && <AskWait letter={l} failure={failure} />}
-      {(l.stage === 'ASKED' || l.stage === 'DRAFTING') && <DraftWait letter={l} failure={failure} />}
-      {l.stage === 'DRAFTED' && <DraftEditor key={l.id} letter={l} />}
+      {(l.stage === 'ASKED' || l.stage === 'DRAFTING') && <DraftWait letter={l} failure={failure} checkedAt={letter.dataUpdatedAt} />}
+      {l.stage === 'DRAFTED' && returning && <PageTitle sub={<WaitNote />}>고른 카드로 다시 쓰고 있어요</PageTitle>}
+      {l.stage === 'DRAFTED' && !returning && returnFailed && <Note strong="고른 카드로 다시 쓰지 못했어요" tone="danger">글은 그대로예요. 대화 탭의 제안에서 다시 고를 수 있어요.</Note>}
+      {l.stage === 'DRAFTED' && !returning && <CardSuggestBanner letter={l} />}
+      {l.stage === 'DRAFTED' && !returning && <DraftEditor key={l.id} letter={l} />}
+      {l.stage === 'DRAFTED' && !returning && l.posting && <NextSteps posting={l.posting} />}
     </main>
   );
 }
@@ -135,13 +173,13 @@ function Failed({ letter }: { letter: CoverLetter }) {
       <div className="fail-card" role="alert">
         <span className="fail-card__bang">!</span>
         <div className="stack" style={{ gap: 6 }}>
-          <span className="w-600" style={{ fontSize: 16 }}>{why}</span>
+          <span className="w-bold" style={{ fontSize: 16 }}>{why}</span>
           <span className="c-2 t-13">입력한 직무와 문항은 그대로 남아 있어요.</span>
         </div>
       </div>
       <div className="row" style={{ gap: 8 }}>
         {letter.retryable === true && <Button onClick={() => retry.mutate(undefined)} loading={retry.isPending}>다시 시도</Button>}
-        <Link to="/cover-letters/new" className={`btn ${letter.retryable === true ? 'btn--outline' : 'btn--primary'}`}>새로 만들기</Link>
+        <Link to={`/cover-letters/new?from=${encodeURIComponent(letter.id)}`} className={buttonClass(letter.retryable === true ? 'secondary' : 'primary')}>새로 만들기</Link>
       </div>
     </>
   );
@@ -158,11 +196,21 @@ function AskWait({ letter, failure }: { letter: CoverLetter; failure: Failure | 
   );
 }
 
+/**
+ * 쓰는 동안 멈추지 않았다는 증거 두 가지 — 이 화면이 쓰는 중(DRAFTING)을 처음 본 뒤로 흐른 시간과 서버에서 마지막으로 응답을 받은 뒤로 흐른 시간.
+ * 서버가 쓰기 시작한 시각을 주지 않아 앞의 것은 이 화면이 열린 때부터 센다. 매초 바뀌는 글이라 낭독 영역으로 두지 않는다
+ */
+function DraftLiveness({ checkedAt }: { checkedAt: number }) {
+  const [since] = useState(() => Date.now());
+  const now = useNow(true);
+  return <span className="cl-wait-note cl-wait-live">{elapsed((now - since) / 1000)}째 쓰고 있어요 · 마지막 확인 {elapsed((now - checkedAt) / 1000)} 전</span>;
+}
+
 /** ⑤ 문항마다 쓰고 검사하는 동안(ASKED·DRAFTING) — 종이 위에 글이 써지고, 문항마다 상태 한 줄과 여백 메모가 붙는다(#618) */
-function DraftWait({ letter, failure }: { letter: CoverLetter; failure: Failure | null }) {
+function DraftWait({ letter, failure, checkedAt }: { letter: CoverLetter; failure: Failure | null; checkedAt: number }) {
   return (
     <>
-      <PageTitle sub={<WaitNote />}>초안을 쓰고 있어요</PageTitle>
+      <PageTitle sub={<><WaitNote />{letter.stage === 'DRAFTING' && <DraftLiveness checkedAt={checkedAt} />}</>}>초안을 쓰고 있어요</PageTitle>
       {failure && <StepFailure {...failure} />}
       <DraftPaper letter={letter} mode="live" />
     </>

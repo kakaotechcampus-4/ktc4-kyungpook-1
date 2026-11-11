@@ -28,7 +28,16 @@ public record AssistantStepRequest(List<Message> messages, List<DoneStep> steps,
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record DoneStep(int seq, AssistantTool tool, boolean ok, String error, Find find, String postingRef,
                            String repoRef, List<Posting> postings, Integer totalFound, Match match,
-                           Integer questionCount) {
+                           Integer questionCount, String cardRef, String letterRef, Integer gapsFilled,
+                           QuestionAsked question, List<Polished> polished, Integer remainingQuestions) {
+    }
+
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public record QuestionAsked(String field, String text) {
+    }
+
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public record Polished(int seq, int points) {
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
@@ -36,6 +45,15 @@ public record AssistantStepRequest(List<Message> messages, List<DoneStep> steps,
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public record Context(int confirmedCards, List<Repo> repos, List<String> interests) {
+    public record Card(String ref, String title, List<String> missing) {
+    }
+
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public record Letter(String ref, String jobRole, String company, int questionCount) {
+    }
+
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public record Context(int confirmedCards, List<Repo> repos, List<String> interests, List<Card> cards,
+                          List<Letter> letters) {
     }
 }

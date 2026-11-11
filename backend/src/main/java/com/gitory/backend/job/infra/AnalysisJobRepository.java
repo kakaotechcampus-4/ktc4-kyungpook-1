@@ -27,6 +27,8 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Long> 
 
     Optional<AnalysisJob> findByPublicIdAndUserId(UUID publicId, Long userId);
 
+    boolean existsByUserIdAndStateIn(Long userId, List<JobState> states);
+
     boolean existsByPublicIdAndStateIn(UUID publicId, List<JobState> states);
 
     @Query(value = "SELECT public_id FROM user_repository WHERE id = :id", nativeQuery = true)

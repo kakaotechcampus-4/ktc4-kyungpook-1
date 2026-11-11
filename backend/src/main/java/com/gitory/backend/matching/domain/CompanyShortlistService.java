@@ -11,8 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.time.YearMonth;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -24,15 +22,12 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * 매칭 1단계로, AI 없이 인적사항으로 공고를 거르고 카드 기술이 겹친 만큼 회사 순위를 매긴다
+ * 매칭 1단계로, AI 없이 관심 분야로 공고를 거르고 카드 기술이 겹친 만큼 회사 순위를 매긴다
  * 같은 입력이면 늘 같은 순서가 나와야 해서, 점수가 같을 때 가르는 기준을 끝까지 둔다
  */
 @Service
 @RequiredArgsConstructor
 public class CompanyShortlistService {
-
-    // 인적사항의 달은 한국 달력 기준이다
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     private static final Comparator<CandidatePosting> BEST_POSTING_FIRST = Comparator
             .comparing(CandidatePosting::overlap, TechOverlap.STRONGER_FIRST)
@@ -57,7 +52,7 @@ public class CompanyShortlistService {
 
     /**
      * techs 는 부르는 쪽이 고른 카드들의 기술 이름표이며, 겹친 기술이 하나도 없는 공고는 후보에 넣지 않는다
-     * 관심 분야는 저장된 인적사항에서 읽어 그 직무의 공고만 남기고, 아직 고르지 않았으면 거르지 않는다
+     * 관심 분야는 저장된 프로필에서 읽어 그 직무의 공고만 남기고, 아직 고르지 않았으면 거르지 않는다
      */
     @Transactional(readOnly = true)
     public List<ShortlistedCompany> shortlist(Long userId, Set<CardTech> techs, int limit) {
@@ -73,7 +68,7 @@ public class CompanyShortlistService {
     }
 
     /**
-     * 회사로 묶지 않고 postingIds 에 든 공고만 같은 인적사항 거르기와 기술 겹침으로 남겨, 많이 겹친 공고부터 돌려준다
+     * 회사로 묶지 않고 postingIds 에 든 공고만 같은 거르기와 기술 겹침으로 남겨, 많이 겹친 공고부터 돌려준다
      * 새 공고 알림이 새로 조건을 뽑은 공고만 사용자마다 줄일 때 쓴다
      */
     @Transactional(readOnly = true)
@@ -92,7 +87,7 @@ public class CompanyShortlistService {
         Set<JobCategory> interests = profile.interests().stream()
                 .map(interest -> JobCategory.valueOf(interest.name()))
                 .collect(Collectors.toSet());
-        Applicant applicant = Applicant.of(profile, interests, YearMonth.from(now.atZone(SEOUL)));
+        Applicant applicant = Applicant.of(interests);
         Set<String> mine = techs.stream().map(Enum::name).collect(Collectors.toSet());
 
         Map<UUID, List<PostingCondition>> byPosting = postings.findShortlistConditions(now).stream()
@@ -105,7 +100,7 @@ public class CompanyShortlistService {
                 continue;
             }
             List<JobPostingCriterion> criteria = rows.stream().map(PostingCondition::criterion).toList();
-            if (!applicant.allows(posting, criteria)) {
+            if (!applicant.allows(posting)) {
                 continue;
             }
             TechOverlap overlap = TechOverlap.of(posting, criteria, mine);

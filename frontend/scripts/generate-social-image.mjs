@@ -1,19 +1,42 @@
 // Manual asset generation; production builds consume the committed PNG and need no browser.
+// 링크 미리보기 이미지는 로그인 첫 화면의 본문(제목 · GitHub 기록 → 경험 카드 예시)을 잘라 찍는다.
+// 운영과 같은 'GitHub로 시작' 버튼이 보이게 샘플 모드를 끄고 띄운 뒤 실행한다.
+//   VITE_API_MOCK=false npx vite --port 5173
+//   node scripts/generate-social-image.mjs [http://localhost:5173]
 import { chromium } from '@playwright/test';
-import { readFile, mkdir } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+
 const root = new URL('../', import.meta.url);
-const logo = (await readFile(new URL('public/gitory-wordmark.png', root))).toString('base64');
+const base = process.argv[2] ?? 'http://localhost:5173';
+const output = 'public/og/gitory-social-light-v3.png';
+const [width, height] = [1200, 630];
+const padding = 32;
+
+async function openLanding(browser, scale) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: scale });
+  await page.addInitScript(() => localStorage.setItem('gitory.theme', 'light'));
+  await page.goto(`${base}/login?intro=1`, { waitUntil: 'networkidle' });
+  await page.keyboard.press('Escape');
+  await page.locator('.landing[data-intro="done"]').waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForTimeout(1500);
+  return page;
+}
+
 const browser = await chromium.launch();
 try {
-  const page = await browser.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1 });
-  await page.setContent(`<!doctype html><html lang="ko"><head><meta charset="utf-8">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-    <style>*{box-sizing:border-box}body{margin:0;background:#F2F7F4;color:#18251D;font-family:Pretendard,"Malgun Gothic",sans-serif;letter-spacing:-.04em}.canvas{width:1200px;height:630px;padding:64px 70px;position:relative;overflow:hidden;background:radial-gradient(ellipse at 90% 75%,#DCEBE1 0%,transparent 60%)}.logo{height:42px;width:auto}.tag{position:absolute;right:70px;top:75px;font-size:17px;letter-spacing:.02em;color:#46704E}.headline{margin:60px 0 24px;font-size:76px;font-weight:650;line-height:1.14}.headline span{color:#46704E}.caption{margin:0;font-size:22px;color:#52675A;line-height:1.6}.flow{position:absolute;right:70px;bottom:68px;display:flex;gap:10px}.slot{width:64px;height:64px;border:1px solid #C5D8CA;background:#FFFFFF;border-radius:18px;display:grid;place-items:center;font-size:26px;font-weight:600;color:#46704E}.slot:first-child{background:#46704E;color:#FFFFFF;border-color:#46704E}.foot{position:absolute;left:70px;bottom:72px;font-size:17px;color:#52675A;letter-spacing:.01em}</style></head>
-    <body><main class="canvas"><img class="logo" src="data:image/png;base64,${logo}" alt="Gitory"><div class="tag">기록을 경험으로</div><h1 class="headline">커밋과 PR을<br><span>자소서 경험으로</span></h1><p class="caption">내가 한 일을 찾고, 내 경험으로 정리하세요.</p><div class="foot">GitHub → 경험 카드</div><div class="flow"><span class="slot">S</span><span class="slot">T</span><span class="slot">A</span><span class="slot">R</span></div></main></body></html>`, { waitUntil: 'networkidle' });
-  await page.evaluate(() => document.fonts.ready);
-  await page.locator('.logo').evaluate(img => img.decode());
+  // 본문 상자를 미리보기 비율(1200:630)로 넓힌 영역을 정하고, 그 영역이 정확히 1200×630 이 되게 배율을 맞춘다
+  const probe = await openLanding(browser, 1);
+  const hero = await probe.locator('.landing__hero').boundingBox();
+  await probe.close();
+  // 1200:630 = 40:21 이라 너비를 40 의 배수로 올리면 잘라 낸 크기와 배율을 곱한 값이 정수로 떨어진다
+  const clipWidth = Math.ceil(Math.max(hero.width + padding * 2, (hero.height + padding * 2) * 40 / 21) / 40) * 40;
+  const clipHeight = clipWidth * 21 / 40;
+  const clip = { x: Math.round(hero.x + hero.width / 2 - clipWidth / 2), y: Math.round(hero.y + hero.height / 2 - clipHeight / 2),
+    width: clipWidth, height: clipHeight };
+  const page = await openLanding(browser, width / clipWidth);
   await mkdir(new URL('public/og/', root), { recursive: true });
-  await page.screenshot({ path: fileURLToPath(new URL('public/og/gitory-social-light-v2.png', root)) });
-  console.log('Generated public/og/gitory-social-light-v2.png (1200×630).');
+  await page.screenshot({ path: fileURLToPath(new URL(output, root)), clip });
+  console.log(`Generated ${output} (${width}×${height}).`);
 } finally { await browser.close(); }

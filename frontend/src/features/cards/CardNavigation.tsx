@@ -1,6 +1,6 @@
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useCards } from '@/api/queries';
-import { Button } from '@/components/ui';
+import { Button, ButtonLink } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { cardOrderFromState, sortCardSummaries } from '@/lib/cardListOrder';
 import './CardReviewFlow.css';
@@ -33,16 +33,16 @@ export function CardNavigation({ cardId }: { cardId: string }) {
           [next, '다음 카드'],
         ].map(([id, label]) =>
           id && !disabled ? (
-            <Link
+            <ButtonLink
               key={label}
               to={`/cards/${encodeURIComponent(id)}`}
               state={{ cardOrder: order }}
-              className="btn btn--outline"
+              variant="secondary"
             >
               {label}
-            </Link>
+            </ButtonLink>
           ) : (
-            <Button key={label} variant="outline" disabled>
+            <Button key={label} variant="secondary" disabled>
               {label}
             </Button>
           ),

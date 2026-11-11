@@ -1,12 +1,12 @@
 /* ───────── 정리 진행 화면(#789) — 단계 4개를 점과 선으로 그리고 지금 단계만 펼친다 ───────── */
 .run-sub { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; margin: -10px 0 4px; font-size: 14px; line-height: 21px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-.run-sub > b { font-weight: 600; color: var(--text-primary); }
+.run-sub > b { font-weight: var(--weight-bold); color: var(--text-primary); }
 /* 경과·마지막 확인은 공용 JobLiveness 그대로 쓰되 이 줄 안에서는 점 없이 글만 잇는다 */
 .run-sub .job-live { display: contents; }
 .run-sub .job-live .spinner { display: none; }
 .run-sub .job-live > span:not(.spinner), .run-sub__item { margin: 0; font-size: 14px; line-height: 21px; color: var(--text-secondary); }
 .run-sub .job-live > span:not(.spinner)::before, .run-sub__item::before { content: '·'; margin-right: 6px; color: var(--text-tertiary); }
-.run-goal { margin: 0 0 6px; font-size: 16px; line-height: 24px; font-weight: 500; color: var(--text-primary); }
+.run-goal { margin: 0 0 6px; font-size: 16px; line-height: 24px; font-weight: var(--weight-regular); color: var(--text-primary); }
 
 .tl { margin: 0; padding: 0; list-style: none; }
 .tl__item { position: relative; display: flex; gap: 16px; padding: 0 0 24px; }
@@ -14,7 +14,7 @@
 .tl__item::before { content: ''; position: absolute; left: 9px; top: 22px; bottom: -4px; width: 2px; background: var(--border-default); }
 .tl__item:last-child::before { display: none; }
 .tl__item--done::before { background: var(--bg-ink-solid); }
-.tl__dot { flex: 0 0 auto; display: grid; place-items: center; width: 20px; height: 20px; margin-top: 2px; border-radius: 50%; border: 2px solid var(--border-default); background: var(--bg-surface); font-size: 11px; line-height: 1; font-weight: 700; color: var(--text-on-ink); }
+.tl__dot { flex: 0 0 auto; display: grid; place-items: center; width: 20px; height: 20px; margin-top: 2px; border-radius: 50%; border: 2px solid var(--border-default); background: var(--bg-surface); font-size: 11px; line-height: 1; font-weight: var(--weight-bold); color: var(--text-on-ink); }
 .tl__item--done .tl__dot { border-color: var(--bg-ink-solid); background: var(--bg-ink-solid); }
 .tl__item--skip .tl__dot { border-color: var(--border-strong); background: var(--border-strong); }
 .tl__item--now .tl__dot { border-color: var(--border-accent); animation: tl-ring 1.8s ease-out infinite; }
@@ -24,20 +24,20 @@
 @keyframes tl-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--border-accent) 30%, transparent); } 70% { box-shadow: 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 .tl__body { flex: 1; min-width: 0; }
 .tl__head { display: flex; align-items: baseline; gap: 10px; font-size: 15px; line-height: 22px; }
-.tl__label { font-weight: 600; }
+.tl__label { font-weight: var(--weight-bold); }
 .tl__meta { margin-left: auto; font-size: 13px; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tl__item--wait .tl__label, .tl__item--wait .tl__meta { color: var(--text-tertiary); }
 .tl__line { margin: 2px 0 0; font-size: 13px; line-height: 19px; color: var(--text-strong); }
 .tl__item--wait .tl__line { color: var(--text-tertiary); }
-.tl__item--now .tl__line { color: var(--text-primary); font-weight: 500; }
-.tl__item--halt .tl__line { color: var(--state-failed-text); font-weight: 500; }
-.tl__item--cap .tl__line { color: var(--field-low-text); font-weight: 500; }
+.tl__item--now .tl__line { color: var(--text-primary); font-weight: var(--weight-regular); }
+.tl__item--halt .tl__line { color: var(--state-failed-text); font-weight: var(--weight-regular); }
+.tl__item--cap .tl__line { color: var(--field-low-text); font-weight: var(--weight-regular); }
 /* 지금 단계만 상자로 펼친다 — 큰 숫자가 그 단계의 진행을 말하고 그 아래로 읽는 줄이 흐른다 */
 .tl__item--now .tl__body { margin: -8px 0 0; padding: 12px 14px; border-radius: var(--radius-md); background: var(--bg-subtle); }
 .tl__item--now .tl__head { align-items: center; gap: 12px; }
 .tl__item--now .tl__label { font-size: 16px; }
-.tl__count { margin-left: auto; font-size: 22px; line-height: 26px; font-weight: 700; letter-spacing: -.02em; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.tl__count small { margin-left: 3px; font-size: 13px; font-weight: 500; letter-spacing: 0; color: var(--text-secondary); }
+.tl__count { margin-left: auto; font-size: 22px; line-height: 26px; font-weight: var(--weight-bold); letter-spacing: -.02em; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tl__count small { margin-left: 3px; font-size: 13px; font-weight: var(--weight-regular); letter-spacing: 0; color: var(--text-secondary); }
 /* 흐르는 줄 — 최근 셋이고 위로 갈수록 옅다. 뺀 커밋은 줄을 긋는다 */
 .tl__stream { margin: 10px 0 0; padding: 10px 0 0; list-style: none; border-top: 1px solid var(--border-default); }
 .sline { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13px; line-height: 20px; color: var(--text-secondary); animation: tl-in .18s ease-out; }
@@ -52,11 +52,18 @@
 .tl__notes { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
 .tl-note { padding: 8px 12px; border-left: 2px solid var(--bg-ink-solid); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; background: var(--bg-subtle); animation: tl-in .2s ease-out; }
 .tl__item--now .tl-note { background: var(--bg-surface); }
-.tl-note b { display: block; font-size: 13px; line-height: 19px; font-weight: 600; }
+.tl-note b { display: block; font-size: 13px; line-height: 19px; font-weight: var(--weight-bold); }
 .tl-note span { display: block; font-size: 12px; line-height: 18px; color: var(--text-secondary); }
-.tl-note--one { font-size: 13px; line-height: 19px; font-weight: 500; }
+.tl-note--one { font-size: 13px; line-height: 19px; font-weight: var(--weight-regular); }
 
 .run-foot { display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap; margin-top: 6px; padding-top: 18px; border-top: 1px solid var(--border-default); font-size: 14px; color: var(--text-secondary); }
+.tl__fold { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 8px 0 0; font-size: 13px; line-height: 19px; color: var(--text-secondary); }
+.tl__fold a { font-size: 12px; color: var(--text-secondary); text-decoration: underline; }
+.run-capnote { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 12px 0 0; padding: 10px 12px; border-radius: var(--radius-md); background: var(--field-low-bg); color: var(--field-low-text); font-size: 13px; line-height: 19px; }
+.run-capnote__text { display: flex; flex-wrap: wrap; gap: 0 6px; flex: 1 1 auto; min-width: 0; }
+.run-foot__go { display: flex; align-items: center; gap: 10px; font-weight: var(--weight-bold); color: var(--text-primary); }
+.run-foot__pulse { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--border-accent); animation: run-pulse 1s ease-in-out infinite; }
+@keyframes run-pulse { 0%, 100% { transform: scale(.7); opacity: .5; } 50% { transform: scale(1); opacity: 1; } }
 .run-foot__right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
 
 @media (max-width: 560px) {
@@ -66,4 +73,4 @@
   .run-foot__right { margin-left: 0; flex-direction: column; }
   .run-foot .btn { width: 100%; }
 }
-@media (prefers-reduced-motion: reduce) { .tl__item--now .tl__dot, .sline, .tl-note { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .tl__item--now .tl__dot, .sline, .tl-note, .run-foot__pulse { animation: none; } }

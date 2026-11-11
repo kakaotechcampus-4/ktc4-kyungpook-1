@@ -3,9 +3,9 @@ import { loginAsDemo, freshSeed, showCardTiles } from './helpers';
 
 test('demo starts in one action without repeating mode explanations', async ({ page }) => {
   await freshSeed(page); await page.goto('/login');
-  const trigger = page.locator('.landing__actions').getByRole('button', { name: '샘플로 체험하기' });
+  const trigger = page.locator('.landing__hero .landing__actions').getByRole('button', { name: '샘플로 체험하기' });
   await trigger.click();
-  await expect(page.getByRole('heading', { name: '오늘은 무엇을 할까요?', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^지원할 곳/ })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
@@ -20,15 +20,15 @@ test('missing Job is not treated as successful analysis', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/repos/r_auth/run?job=missing');
   await expect(page.getByRole('heading', { name: '요청한 항목을 찾을 수 없어요' })).toBeVisible();
   await expect(page).toHaveURL(/job=missing/);
-  await expect(page.getByRole('button', { name: '정리 시작' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /정리 시작|다시 정리/ })).toHaveCount(0);
 });
 
 test('lost analysis response retries the same request without another job', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/repos?select=r_auth&disclose=1&demoScenario=lost-response');
-  await page.getByRole('button', { name: '정리 시작' }).click();
+  await page.getByRole('button', { name: /정리 시작|다시 정리/ }).click();
   await expect(page.locator('.toast')).toBeVisible();
   await expect(page.getByRole('dialog')).toBeVisible();
-  await page.getByRole('button', { name: '정리 시작' }).click();
+  await page.getByRole('button', { name: /정리 시작|다시 정리/ }).click();
   await expect(page).toHaveURL(/run\?job=/);
   const jobs = await page.evaluate(async () => (await (await fetch('/api/jobs?active=true')).json()).data.jobs);
   expect(jobs).toHaveLength(1);
@@ -36,7 +36,7 @@ test('lost analysis response retries the same request without another job', asyn
 
 test('409 leaves the analysis action in place and creates no job', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/repos?select=r_auth&disclose=1&demoScenario=conflict');
-  await page.getByRole('button', { name: '정리 시작' }).click();
+  await page.getByRole('button', { name: /정리 시작|다시 정리/ }).click();
   await expect(page.locator('.toast')).toContainText('다른 레포에 쓰인 요청');
   await expect(page).toHaveURL(/disclose=1/);
   const jobs = await page.evaluate(async () => (await (await fetch('/api/jobs?active=true')).json()).data.jobs);

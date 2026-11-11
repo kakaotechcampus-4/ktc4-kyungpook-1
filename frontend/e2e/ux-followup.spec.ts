@@ -34,15 +34,17 @@ test('field edit has a phone-sized target and focuses the requested field', asyn
   await expect(page).toHaveURL(/mode=edit&field=A/);
 });
 
-test('mobile landing shows the output before another screen and expands complete examples', async ({ page }) => {
+test('mobile landing shows the output before another screen and walks through the flow below', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await freshSeed(page); await page.goto('/login?reason=expired');
-  const output = page.getByLabel('경험 카드 예시');
+  const output = page.locator('.landing__hero').getByAltText('휴대폰에서 본 자소서 초안 화면');
   expect((await output.boundingBox())!.y).toBeLessThan(650);
-  await expect(page.locator('.landing-card__field[data-slot=T]')).toBeHidden();
-  await page.getByRole('button', { name: '전체 예시 보기', exact: true }).click();
-  await expect(page.locator('.landing-card__field[data-slot=T]')).toBeVisible();
-  await expect(page.locator('.github-snapshot__commits li')).toHaveCount(3);
+  await page.locator('#how').scrollIntoViewIfNeeded();
+  for (const step of ['01  레포 고르기', '05  자소서']) {
+    const chip = page.locator('.lp-chip', { hasText: step.slice(4) });
+    await chip.scrollIntoViewIfNeeded();
+    await expect(chip).toBeVisible();
+  }
 });
 
 test('settings prioritizes controls and keeps storage details available on demand', async ({ page }) => {

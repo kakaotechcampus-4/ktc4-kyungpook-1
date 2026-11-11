@@ -40,7 +40,7 @@ public class RepoRecommendationQueryService {
     /**
      * 남의 레포나 없는 레포면 RecommendationRepositoryNotFoundException, 계산한 적이 없고 카드도 없으면 status 가 null 이다
      * 계산한 적이 없는데 카드가 있으면 계산을 예약만 하고 COMPUTING 과 queued 로 답하며, 여는 요청 안에서 계산하지는 않는다
-     * queued 는 다시 계산이 예약돼 아직 시작하지 않았다는 뜻이고, live 는 메모리에 남은 진행이 없으면 null 이다
+     * queued 는 다시 계산이 예약돼 아직 시작하지 않았다는 뜻이고, live 는 메모리에 진행이 없으면 저장된 끝난 진행이고 그것도 없으면 null 이다
      */
     @Transactional
     public RepoRecommendationView of(UUID repoPublicId, Long userId) {
@@ -71,8 +71,10 @@ public class RepoRecommendationQueryService {
 
         Optional<RepoRecommendation> saved = recommendations.findByUserRepositoryId(repoId);
         // 계산이 멈추면 진행을 먼저 지운 뒤 실패로 저장하므로, 저장본을 먼저 읽어야 FAILED 인데 끝나지 않은 진행이 보이지 않는다
-        RepoRecommendationLive live = liveLog.of(repoId).orElse(null);
-        return saved.map(recommendation -> view(recommendation, live))
+        Optional<RepoRecommendationLive> inMemory = liveLog.of(repoId);
+        RepoRecommendationLive live = inMemory.orElse(null);
+        return saved.map(recommendation -> view(recommendation,
+                        inMemory.orElse(recommendation.getProcess())))
                 .orElseGet(() -> notComputed(userId, repoId, live));
 
     }

@@ -1,6 +1,7 @@
 package com.gitory.backend.coverletter.infra;
 
 import com.gitory.backend.coverletter.domain.CoverLetter;
+import com.gitory.backend.coverletter.domain.CoverLetterStage;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -18,7 +19,13 @@ public interface CoverLetterRepository extends JpaRepository<CoverLetter, Long> 
 
     Optional<CoverLetter> findByPublicId(UUID publicId);
 
+    boolean existsByUserIdAndStageIn(Long userId, List<CoverLetterStage> stages);
+
     List<CoverLetter> findByUserIdOrderByCreatedAtDescIdDesc(Long userId);
+
+    List<CoverLetter> findTop3ByUserIdAndStageAndUpdatedAtAfterOrderByUpdatedAtDescIdDesc(Long userId,
+                                                                                         CoverLetterStage stage,
+                                                                                         Instant after);
 
     Optional<CoverLetter> findByUserIdAndIdempotencyKey(Long userId, String idempotencyKey);
 

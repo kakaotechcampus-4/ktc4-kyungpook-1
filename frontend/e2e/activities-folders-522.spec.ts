@@ -55,7 +55,7 @@ test('활동 만들기, 활동 안에서 카드 만들기, 폴더 보기, 지우
   // 카드 상세의 활동 이름에서 폴더 안으로, 목록의 폴더에서도 같은 곳으로
   await crumbs.getByRole('link', { name: '알고리즘 스터디' }).click();
   await expect(page.locator('.experience-item')).toHaveCount(1);
-  await expect(page.getByText('카드 1장 · 확정 0장')).toBeVisible();
+  await expect(page.getByText('카드 1장, 확정 0장')).toBeVisible();
   await page.getByRole('navigation', { name: 'breadcrumb' }).getByRole('link', { name: '경험 카드' }).click();
   await expect(folder(page, /^활동, 스터디, 알고리즘 스터디, 카드 1장/)).toBeVisible();
   await folder(page, /^활동, 스터디, 알고리즘 스터디/).click();

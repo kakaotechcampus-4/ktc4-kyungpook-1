@@ -1,0 +1,50 @@
+{
+ "date": "2026-11-11",
+ "measured_at": "2026-11-11T00:39:53",
+ "eval": "interview_asks",
+ "label": "after",
+ "sample": "활동 카드 10장 + 가상 카드 10장, 카드마다 1번",
+ "model": "gpt-5.6-luna",
+ "git_sha": null,
+ "calls": 22,
+ "spend_won": 17.41,
+ "metrics": {
+  "all": {
+   "blank_shown": 0,
+   "blank_raw": 0,
+   "repeat_final": 1,
+   "repeat_first": 2,
+   "hypothesis": 0,
+   "ended": 1,
+   "fell_back": 0,
+   "asked_again": 2,
+   "gave_up": 1,
+   "cards": 20
+  },
+  "templates": {
+   "blank_shown": 0,
+   "blank_raw": 0,
+   "repeat_final": 0,
+   "repeat_first": 0,
+   "hypothesis": 0,
+   "ended": 0,
+   "fell_back": 0,
+   "asked_again": 0,
+   "gave_up": 0,
+   "cards": 10
+  },
+  "repeat": {
+   "blank_shown": 0,
+   "blank_raw": 0,
+   "repeat_final": 1,
+   "repeat_first": 2,
+   "hypothesis": 0,
+   "ended": 1,
+   "fell_back": 0,
+   "asked_again": 2,
+   "gave_up": 1,
+   "cards": 10
+  }
+ },
+ "note": "원본 결과 파일에서 뒤늦게 만든 요약 — date 는 원본 파일 시각, git_sha 는 알 수 없어 비움"
+}

@@ -111,7 +111,7 @@ describe('정리 진행 화면 — 타임라인 (#789)', () => {
     expect(screen.getByRole('button', { name: '다시 연결' })).toBeInTheDocument();
   });
 
-  it('일부만 정리했으면 상한에 걸린 단계가 호박색 점으로 어디까지 읽었는지 보이고, 읽은 범위의 후보로 갈 수 있다', () => {
+  it('일부만 정리했으면 상한에 걸린 단계가 호박색 점으로 어디까지 읽었는지 보이고, 같은 길로 카드까지 이어 간다', () => {
     mount(job({
       state: 'SUCCEEDED', partial: true, errorCode: 'COLLECTION_CAPPED', retryable: false, finishedAt: new Date(NOW - 1_000).toISOString(),
       steps: [{ key: 'PR_REVIEW', state: 'DONE', done: 58, total: 58 }, { key: 'COMMITS', state: 'DONE', done: 1000, total: 2310 },
@@ -122,7 +122,8 @@ describe('정리 진행 화면 — 타임라인 (#789)', () => {
     expect(capped).toHaveClass('tl__item--cap');
     expect(capped.querySelector('.tl__meta')).toHaveTextContent('1000 / 2310개');
     expect(item('PR과 리뷰 읽기')).toHaveClass('tl__item--done');
-    expect(screen.getByRole('button', { name: '읽은 범위의 후보 보기' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '후보 직접 고르기' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '읽은 범위의 후보 보기' })).not.toBeInTheDocument();
     expect(screen.getByText('한 번에 읽는 상한까지만 읽었어요')).toBeInTheDocument();
   });
 });

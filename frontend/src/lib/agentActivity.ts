@@ -4,7 +4,7 @@ import { readCommit } from '@/lib/commitMessage';
 
 /**
  * Job 의 activity(#496)를 분석 화면의 한 줄로 바꾼다. 서버는 값만 주고 문장은 화면이 만든다.
- * 읽기 줄(PR·커밋)은 1초에 여러 개 지나가서 단계마다 최근 몇 줄만, 판단 줄(묶음·고른 이유)은 모두 보인다.
+ * 읽기 줄(PR·커밋)과 판단 줄(묶음·고른 이유)은 1초에 여러 개 지나가서 단계마다 최근 몇 줄만 보이고 나머지는 접는다.
  */
 export type ActivityLine = {
   seq: number;
@@ -26,6 +26,8 @@ const EXCLUDED: Record<string, string> = {
 
 /** 단계마다 보여 줄 읽기 줄 수 — 지나가는 느낌만 주고 화면을 밀어내지 않는다 */
 export const READ_LINES = 3;
+/** 지금 읽는 단계에서 보여 줄 판단 줄 수 — 고른 이유가 100줄 넘게 와도 화면을 밀어내지 않는다 */
+export const JUDGE_LINES = 3;
 
 /** 모르는 종류이거나 그릴 값이 없으면 null — 지어내지 않는다 */
 export function activityLine(a: JobActivity): ActivityLine | null {
@@ -56,18 +58,26 @@ export function activityLine(a: JobActivity): ActivityLine | null {
 }
 
 /**
- * 한 단계에서 보여 줄 줄 — 읽기 줄은 지금 읽는 단계에서만 최근 READ_LINES 개, 판단 줄은 모두. seq 순서 그대로.
- * 끝난 단계의 읽기 줄은 접는다(숫자가 단계 줄에 남는다).
+ * 한 단계에서 보여 줄 줄 — 지금 읽는 단계는 읽기 줄·판단 줄 모두 최근 몇 줄만, seq 순서 그대로.
+ * 끝난 단계의 읽기 줄은 접고(숫자가 단계 줄에 남는다) 판단 줄은 JUDGE_LINES 개 이하일 때만 남긴다.
  */
 export function stepLines(lines: ActivityLine[], step: string, reading: boolean): ActivityLine[] {
   const mine = lines.filter((l) => l.step === step);
+  const judges = mine.filter((l) => l.tone === 'judge');
   const reads = reading ? mine.filter((l) => l.tone !== 'judge').slice(-READ_LINES) : [];
-  const keep = new Set([...reads, ...mine.filter((l) => l.tone === 'judge')]);
+  const shownJudges = reading ? judges.slice(-JUDGE_LINES) : judges.length <= JUDGE_LINES ? judges : [];
+  const keep = new Set([...reads, ...shownJudges]);
   return mine.filter((l) => keep.has(l));
 }
 
-/** 판단 줄이 한꺼번에 와도(고른 이유는 8개씩) 차례로 보이게 — 남은 줄이 많으면 빨리, 적으면 천천히 */
-export const revealDelay = (pending: number) => Math.min(600, Math.max(150, Math.round(3000 / Math.max(1, pending))));
+/** stepLines 가 접은 판단 줄 수 — 화면이 "앞의 n개는 접었어요" 를 쓴다 */
+export function foldedJudgeCount(lines: ActivityLine[], step: string, reading: boolean): number {
+  const total = lines.filter((l) => l.step === step && l.tone === 'judge').length;
+  return total - stepLines(lines, step, reading).filter((l) => l.tone === 'judge').length;
+}
+
+/** 판단 줄을 드러내는 간격 — 앞을 건너뛰고 남은 몇 줄은 밀린 수와 상관없이 이 간격으로 보여 읽을 수 있게 한다 */
+export const REVEAL_MS = 800;
 
 /** 끝난 지 이만큼 지난 작업은 다시 열어도 고른 이유를 차례로 재생하지 않는다(재방문마다 8초씩 기다리던 문제). 방금 끝난 작업은 재생한다 */
 export const REPLAY_WINDOW_MS = 60_000;
@@ -76,7 +86,8 @@ const finishedLongAgo = (job: Job | undefined) =>
 
 /**
  * 폴링마다 오는 activity 를 seq 로 모은다. 서버는 읽기 줄을 단계마다 최근 20줄만 주므로 화면이 지난 줄을 들고 있는다.
- * 판단 줄은 seq 순서대로 하나씩 드러내고, 읽기 줄은 받는 즉시 보인다.
+ * 판단 줄은 seq 순서대로 하나씩 드러내되, 한 단계에 보여 줄 수(JUDGE_LINES)보다 많이 쌓였으면 앞쪽은 기다리지 않고 한꺼번에 넘기고 마지막 몇 줄만 차례로 보인다.
+ * 읽기 줄은 받는 즉시 보인다.
  * drained 는 아직 보이지 않은 판단 줄이 없다는 뜻 — 분석이 끝나도 고른 이유를 다 보여 준 뒤 다음 화면으로 넘어간다.
  */
 export function useActivityFeed(job: Job | undefined) {
@@ -99,7 +110,12 @@ export function useActivityFeed(job: Job | undefined) {
   const next = pending[0]?.seq;
   useEffect(() => {
     if (next == null) return;
-    const t = setTimeout(() => setShownJudge(next), revealDelay(pending.length));
+    const sameStep = pending.filter((l) => l.step === pending[0].step);
+    if (sameStep.length > JUDGE_LINES) {
+      setShownJudge(sameStep[sameStep.length - JUDGE_LINES - 1].seq);
+      return;
+    }
+    const t = setTimeout(() => setShownJudge(next), REVEAL_MS);
     return () => clearTimeout(t);
   }, [next, pending.length]);
 

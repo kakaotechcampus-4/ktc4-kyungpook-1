@@ -13,7 +13,8 @@ export function listNotices(list: Any[]): Any[] {
 export function pushNotice(list: Any[], notice: Any): Any {
   const added = {
     id: `notice_${list.length + 1}`, createdAt: new Date().toISOString(), readAt: null,
-    repoId: null, repoName: null, cardCount: null, cardTitles: [], jobId: null, errorCode: null, postings: [], ...notice,
+    repoId: null, repoName: null, cardCount: null, cardTitles: [], jobId: null, errorCode: null, postings: [],
+    letterId: null, letterTitle: null, questionId: null, questionText: null, cardId: null, cardTitle: null, ...notice,
   };
   list.push(added);
   return added;
@@ -47,4 +48,18 @@ export function draftedNotice(cards: Any[]): Any {
 
 export function failedNotice(repo: Any, jobId: string, errorCode: string): Any {
   return { kind: 'ANALYSIS_FAILED', repoId: repo.id, repoName: `${repo.owner}/${repo.name}`, jobId, errorCode };
+}
+
+/** 카드 유형이 정해지면 서버처럼 초안이 나온 자소서마다 그 유형의 문항 하나를 골라 알린다 */
+export function letterCardNotices(letters: Any[], card: Any): Any[] {
+  return letters.filter((letter) => letter.stage === 'DRAFTED').slice(0, 3).flatMap((letter) => {
+    const question = (letter.questions ?? []).find((q: Any) => (card.themes ?? []).includes(q.theme)
+      && q.primaryCardId !== card.id && q.supportingCardId !== card.id);
+    if (!question) return [];
+    const title = letter.posting?.company ? `${letter.posting.company} ${letter.jobRole}` : letter.jobRole;
+    return [{
+      kind: 'LETTER_CARD_SUGGESTED', letterId: letter.id, letterTitle: title, questionId: question.id,
+      questionText: question.text.slice(0, 40), cardId: card.id, cardTitle: card.title,
+    }];
+  });
 }

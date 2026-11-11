@@ -136,6 +136,29 @@ class NoticeApiTest {
     }
 
     @Test
+    @DisplayName("자소서 카드 알림은 자소서·문항·카드의 id 와 이름을 그대로 담고, 다른 종류의 알림에는 그 칸이 null 이다")
+    void listsLetterCardSuggestionInTheNotice() throws Exception {
+
+        insert(DRAFTED, myUserId, "LETTER_CARD_SUGGESTED", """
+                {"letterId":"%s","letterTitle":"가온소프트 백엔드","questionId":"%s","questionText":"문제를 해결한 경험을 쓰세요","cardId":"%s","cardTitle":"결제 장애 대응"}
+                """.formatted(REPO, JOB, FAILED), Instant.parse("2026-11-05T00:00:00Z"), null);
+        insert(OTHERS, myUserId, "CARDS_DRAFTED", "{}", Instant.parse("2026-11-04T00:00:00Z"), null);
+
+        mvc.perform(get("/api/notifications").with(loggedIn()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].kind").value("LETTER_CARD_SUGGESTED"))
+                .andExpect(jsonPath("$.data[0].letterId").value(REPO.toString()))
+                .andExpect(jsonPath("$.data[0].letterTitle").value("가온소프트 백엔드"))
+                .andExpect(jsonPath("$.data[0].questionId").value(JOB.toString()))
+                .andExpect(jsonPath("$.data[0].questionText").value("문제를 해결한 경험을 쓰세요"))
+                .andExpect(jsonPath("$.data[0].cardId").value(FAILED.toString()))
+                .andExpect(jsonPath("$.data[0].cardTitle").value("결제 장애 대응"))
+                .andExpect(jsonPath("$.data[1].letterId").value(nullValue()))
+                .andExpect(jsonPath("$.data[1].cardTitle").value(nullValue()));
+
+    }
+
+    @Test
     @DisplayName("알림을 읽음으로 표시하면 ok 를 주고 목록에 읽은 시각이 나타난다")
     void readMarksTheNoticeAndListShowsIt() throws Exception {
 

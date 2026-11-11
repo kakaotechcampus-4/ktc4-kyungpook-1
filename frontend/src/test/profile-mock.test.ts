@@ -12,8 +12,8 @@ const put = (body: unknown) => request('PUT', body);
 beforeEach(() => { resetDb(); vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-10-29T12:00:00+09:00')); });
 afterEach(() => vi.useRealTimers());
 
-describe('mock server: GET·PUT /profile (BE #552 contract)', () => {
-  it('answers 200 with four empty lists and savedAt null before anything is saved', () => {
+describe('mock server: GET·PUT /profile (관심 분야·메일 계약)', () => {
+  it('answers 200 with no interests and savedAt null before anything is saved', () => {
     const result = get();
     expect(result).toMatchObject({ status: 200, error: null });
     expect(Profile.parse(result.data)).toEqual(emptyProfile());
@@ -40,66 +40,44 @@ describe('mock server: GET·PUT /profile (BE #552 contract)', () => {
     expect(Profile.parse(get().data)).toMatchObject({ ...minimalInput(), savedAt: '2026-10-29T03:00:00.000Z' });
   });
 
-  it('replaces rather than merges: a changed document moves savedAt and drops removed rows', () => {
+  it('replaces rather than merges: a changed document moves savedAt and drops removed interests', () => {
     put(sampleInput());
     vi.setSystemTime(new Date('2026-10-30T12:00:00+09:00'));
-    const next = { ...sampleInput(), languages: [], certifications: [] };
-    const saved = put(next).data as Profile;
-    expect(saved.languages).toEqual([]);
-    expect(saved.certifications).toEqual([]);
+    const saved = put({ interests: ['DATA'] }).data as Profile;
+    expect(saved.interests).toEqual(['DATA']);
     expect(saved.savedAt).toBe('2026-10-30T03:00:00.000Z');
   });
-  it('lets four empty lists clear every row that was saved — the interests sent with them stay', () => {
-    put(sampleInput());
-    const cleared = put(minimalInput()).data as Profile;
-    expect(cleared).toMatchObject({ educations: [], careers: [], languages: [], certifications: [], interests: ['BACKEND'] });
-    expect((get().data as Profile).educations).toEqual([]);
-  });
-  it('returns trimmed values and null for blanks, like the real server', () => {
-    const body = { educations: [{ level: 'MASTER', school: '  샘플대학교 ', major: '  ', status: 'ENROLLED', startMonth: '', endMonth: null, gpa: null, gpaMax: null }], careers: [], languages: [], certifications: [], interests: ['BACKEND'] };
-    const saved = put(body).data as Profile;
-    expect(saved.educations[0]).toMatchObject({ school: '샘플대학교', major: null, startMonth: null });
+  it('ignores the removed sections an old screen may still send', () => {
+    const saved = put({ educations: [{ level: 'PHD' }], careers: [], languages: [], certifications: [], interests: ['BACKEND'] }).data as Profile;
+    expect(saved).toMatchObject({ interests: ['BACKEND'] });
+    expect(saved).not.toHaveProperty('educations');
   });
 
-  it('rejects a missing list with 400 and saves nothing — a partial body must not wipe the saved one', () => {
-    put(sampleInput());
-    const before = JSON.stringify(db.profile);
-    const { certifications: _dropped, ...partial } = sampleInput();
-    expect(put(partial)).toMatchObject({ status: 400, data: null, error: { code: 'INVALID_REQUEST' } });
-    expect(JSON.stringify(db.profile)).toBe(before);
-  });
   it('rejects a body without any interest with 400 naming 관심 분야, and saves nothing', () => {
     const result = put({ ...sampleInput(), interests: [] });
     expect(result).toMatchObject({ status: 400, error: { code: 'INVALID_REQUEST', message: '관심 분야 목록을 확인해 주세요.' } });
     expect(db.profile).toEqual(emptyProfile());
   });
-  it('rejects invalid input with 400 INVALID_REQUEST and one Korean sentence — no per-field list, like #552 — and saves nothing', () => {
+  it('rejects invalid input with 400 INVALID_REQUEST and one Korean sentence — no per-field list — and saves nothing', () => {
     put(sampleInput());
     const before = JSON.stringify(db.profile);
-    const bad = sampleInput();
-    (bad.educations[0] as { level: string }).level = 'PHD'; // 모르는 학력 구분
-    bad.careers[0].endMonth = '2020-01'; // startMonth 2022-03 보다 앞
-    const result = put(bad);
-    expect(result).toMatchObject({ status: 400, data: null, error: { code: 'INVALID_REQUEST', message: '학력 1번째 항목을 확인해 주세요.' } });
+    const result = put({ interests: ['BACKEND', 'GAME'] });
+    expect(result).toMatchObject({ status: 400, data: null, error: { code: 'INVALID_REQUEST', message: '관심 분야 2번째 항목을 확인해 주세요.' } });
     expect(result.error).not.toHaveProperty('details');
     expect(JSON.stringify(db.profile)).toBe(before);
   });
   it('never echoes submitted values in an error response', () => {
-    const secret = '비밀학교-ZXQ-7731';
-    const bad = sampleInput();
-    bad.educations[0].school = secret.repeat(10); // TOO_LONG
-    bad.educations[0].major = secret.repeat(10);
-    const result = put(bad);
+    const secret = 'secret-ZXQ-7731';
+    const result = put({ interests: ['BACKEND'], email: `${secret}${'a'.repeat(300)}` });
     expect(result.status).toBe(400);
     expect(JSON.stringify(result)).not.toContain('ZXQ');
   });
   it.each([null, [], 'text', 42, {}])('rejects a malformed body %j', (body) => {
     expect(put(body)).toMatchObject({ status: 400, error: { code: 'INVALID_REQUEST' } });
   });
-  it('rejects more rows than a list allows', () => {
-    const row = sampleInput().languages[0];
-    const result = put({ ...sampleInput(), languages: Array.from({ length: 11 }, () => row) });
-    expect(result).toMatchObject({ status: 400, error: { code: 'INVALID_REQUEST', message: '어학 목록을 확인해 주세요.' } });
+  it('rejects more interests than the limit', () => {
+    const result = put({ interests: ['BACKEND', 'FRONTEND', 'MOBILE', 'DEVOPS'] });
+    expect(result).toMatchObject({ status: 400, error: { code: 'INVALID_REQUEST', message: '관심 분야 목록을 확인해 주세요.' } });
   });
 });
 
@@ -141,13 +119,13 @@ describe('demo database: reset, snapshot and restore', () => {
   it('POST /__reset (E2E) clears it too', () => {
     put(sampleInput());
     expect(handle('POST', '/__reset', new URLSearchParams(), {}, false).status).toBe(200);
-    expect((get().data as Profile).educations).toEqual([]);
+    expect((get().data as Profile).interests).toEqual([]);
     expect((get().data as Profile).savedAt).toBeNull();
   });
   it('survives snapshot → restore', () => {
     put(sampleInput());
     const raw = snapshot();
-    expect(JSON.parse(raw).profile.educations[0].school).toBe(sampleInput().educations[0].school);
+    expect(JSON.parse(raw).profile.interests).toEqual(sampleInput().interests);
     resetDb();
     expect(restore(raw)).toBe(true);
     expect(Profile.parse(get().data)).toMatchObject(sampleInput());

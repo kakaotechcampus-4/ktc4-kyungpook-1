@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-/** 내 인적사항만 읽고 통째로 바꾸며, 다른 모듈(매칭·자소서)은 {@link #of} 로 읽고 메일 수신 정보는 mailAddressOf 와 mailOptInUserIds 로 읽는다 */
+/** 내 프로필만 읽고 통째로 바꾸며, 다른 모듈(매칭·자소서)은 {@link #of} 로 읽고 메일 수신 정보는 mailAddressOf 와 mailOptInUserIds 로 읽는다 */
 @Service
 @RequiredArgsConstructor
 public class ProfileService {
@@ -48,25 +48,19 @@ public class ProfileService {
     }
 
     /**
-     * 네 목록을 모두 검사한 뒤 한 번에 바꾸고, 빈 목록 네 개를 보내면 '입력 건너뜀' 으로 저장된다
+     * 입력을 모두 검사한 뒤 한 번에 바꾼다
      * 처음 저장이 동시에 두 번 오면 한쪽이 user_id 유니크에 막히므로, 그쪽은 실패한 트랜잭션 밖에서 이미 생긴 줄을 고쳐 쓴다
      */
     public ProfileView replace(Long userId, ProfileInput input) {
 
-        List<Education> educations = ProfileRules.educations(input.educations());
-        List<Career> careers = ProfileRules.careers(input.careers());
-        List<LanguageScore> languages = ProfileRules.languages(input.languages());
-        List<Certification> certifications = ProfileRules.certifications(input.certifications());
         List<InterestCategory> interests = ProfileRules.interests(input.interests());
         String email = ProfileRules.email(input.email());
 
         Saved saved;
         try {
-            saved = transaction.execute(status -> save(userId, educations, careers, languages, certifications,
-                    interests, email, input.mailOptIn()));
+            saved = transaction.execute(status -> save(userId, interests, email, input.mailOptIn()));
         } catch (DataIntegrityViolationException firstSaveRace) {
-            saved = transaction.execute(status -> save(userId, educations, careers, languages, certifications,
-                    interests, email, input.mailOptIn()));
+            saved = transaction.execute(status -> save(userId, interests, email, input.mailOptIn()));
         }
         // 확인 메일은 커밋이 끝난 뒤에 부탁해, 롤백된 저장이 메일을 보내지 않는다
         if (saved.confirmTo() != null) {
@@ -76,17 +70,15 @@ public class ProfileService {
 
     }
 
-    private Saved save(Long userId, List<Education> educations, List<Career> careers,
-                       List<LanguageScore> languages, List<Certification> certifications,
-                       List<InterestCategory> interests, String email, Boolean mailOptIn) {
+    private Saved save(Long userId, List<InterestCategory> interests, String email, Boolean mailOptIn) {
 
         Profile profile = profiles.findWithLockByUserId(userId).orElseGet(() -> Profile.of(userId));
         boolean wasOptedIn = profile.isMailOptIn();
         String beforeEmail = profile.getEmail();
-        profile.replace(educations, careers, languages, certifications, interests);
+        profile.replace(interests);
         profile.changeMail(email, mailOptIn);
         ProfileView saved = profiles.saveAndFlush(profile).view();
-        // 매칭이 관심 분야·학력·경력으로 공고를 거르므로 알리고, 롤백된 저장은 듣는 쪽이 받지 않는다
+        // 매칭이 관심 분야로 공고를 거르므로 알리고, 롤백된 저장은 듣는 쪽이 받지 않는다
         events.publishEvent(new ProfileChanged(userId));
 
         boolean confirm = profile.isMailOptIn() && (!wasOptedIn || !Objects.equals(beforeEmail, profile.getEmail()));

@@ -18,6 +18,10 @@ import { PageLoading } from '@/components/ui/PageLoading';
  */
 const L = (f: () => Promise<Record<string, unknown>>, name: string) => lazy(() => f().then((m) => ({ default: m[name] as React.ComponentType })));
 const LandingPage = L(() => import('@/features/auth/LandingPage'), 'LandingPage');
+const PrivacyPage = L(() => import('@/features/legal/PrivacyPage'), 'PrivacyPage');
+const FaqPage = L(() => import('@/features/legal/FaqPage'), 'FaqPage');
+const UiShowcasePage = L(() => import('@/features/dev/UiShowcasePage'), 'UiShowcasePage');
+const TermsPage = L(() => import('@/features/legal/TermsPage'), 'TermsPage');
 const HomePage = L(() => import('@/features/home/HomePage'), 'HomePage');
 const AskPage = L(() => import('@/features/assistant/AskPage'), 'AskPage');
 const MatchListPage = L(() => import('@/features/match/MatchListPage'), 'MatchListPage');
@@ -57,12 +61,18 @@ function AuthCallback() {
 
 export const router = createBrowserRouter([
   { path: '/login', element: <S><LandingPage /></S>, errorElement: <ErrorBoundary /> },
+  // 정책 문서는 로그인 없이 연다(로그인 전 동의 문구에서 연결된다)
+  { path: '/privacy', element: <S><PrivacyPage /></S>, errorElement: <ErrorBoundary /> },
+  { path: '/terms', element: <S><TermsPage /></S>, errorElement: <ErrorBoundary /> },
+  { path: '/faq', element: <S><FaqPage /></S>, errorElement: <ErrorBoundary /> },
   { path: '/auth/callback', element: <AuthCallback /> }, // Spring 이 세션을 세운 뒤 여기로 보낼 수도 있다
   {
     element: <AuthGate><AppShell /></AuthGate>,
     errorElement: <ErrorBoundary />,
     children: [
       { path: '/', element: <S><HomePage /></S> },
+      // 디자인 기본값 견본(#804) — 목에서만. 실서버 배포에는 없다
+      ...(import.meta.env.VITE_API_MOCK !== 'false' ? [{ path: '/__ui', element: <S><UiShowcasePage /></S> }] : []),
       { path: '/ask', element: <S><AskPage /></S> },
       { path: '/ask/:runId', element: <S><AskPage /></S> },
       { path: '/match', element: <S><MatchListPage /></S> },

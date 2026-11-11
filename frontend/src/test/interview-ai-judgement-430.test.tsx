@@ -4,8 +4,9 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { endpoints } from '@/api/endpoints';
 import { keys } from '@/api/keys';
-import { Card as CardSchema, InterviewTurn as InterviewTurnSchema, type Card, type InterviewTurn } from '@/api/schemas';
+import { Card as CardSchema, InterviewTurn as InterviewTurnSchema, type Card, type EvidenceType, type InterviewTurn } from '@/api/schemas';
 import { InterviewPage } from '@/features/cards/InterviewPage';
+import { answeredBy, appliedReply } from './replyResult';
 import { handle } from '@/mock/router';
 import { db, resetDb } from '@/mock/store';
 
@@ -26,10 +27,11 @@ function mount(turns: InterviewTurn[]) {
   const router = createMemoryRouter([{ path: '/cards/:cardId/interview', element: <InterviewPage /> }], { initialEntries: [`/cards/${card.id}/interview`] });
   render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
 }
+const answeredIf = (turn: InterviewTurn, no: number, body: { text: string; source: EvidenceType }) => turn.turnNo === no ? answeredBy(turn, body) : turn;
 const openTurn = (reason: string | null): InterviewTurn => ({ ...template, field: 'T', turnNo: 1, askedBy: 'FOLLOW_UP', question: 'T question', answer: null, outcome: null, reason });
 async function answerOpenTurn() {
   fireEvent.change(await screen.findByRole('textbox', { name: '답변' }), { target: { value: 'T answer' } });
-  fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+  fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
 }
 
 describe('#430 되묻기에서 AI 판단을 보여 주기', () => {
@@ -49,9 +51,9 @@ describe('#430 되묻기에서 AI 판단을 보여 주기', () => {
   it('AI 가 되묻기를 끝내면 카드를 다시 읽어 끝낸 이유를 보여 준다', async () => {
     let turns = [openTurn(null)];
     vi.spyOn(endpoints, 'interviewTurns').mockImplementation(async () => turns);
-    vi.spyOn(endpoints, 'answerInterview').mockImplementation(async (_id, no, body) => {
-      turns = turns.map((turn) => turn.turnNo === no ? { ...turn, answer: body as InterviewTurn['answer'] } : turn);
-      return card;
+    vi.spyOn(endpoints, 'replyInterview').mockImplementation(async (_id, no, body) => {
+      turns = turns.map((turn) => answeredIf(turn, no, body));
+      return appliedReply(card);
     });
     const ask = vi.spyOn(endpoints, 'askInterview').mockResolvedValue(null);
     vi.spyOn(endpoints, 'card').mockResolvedValue({ ...card, interviewEndReason: '네 칸 모두 근거가 있어 질문을 마칠게요' });
@@ -67,16 +69,16 @@ describe('#430 되묻기에서 AI 판단을 보여 주기', () => {
   it('답으로 카드가 확정되면 다음 질문을 요청하지 않고 확정 안내와 카드 보기를 보인다', async () => {
     let turns = [openTurn(null)];
     vi.spyOn(endpoints, 'interviewTurns').mockImplementation(async () => turns);
-    vi.spyOn(endpoints, 'answerInterview').mockImplementation(async (_id, no, body) => {
-      turns = turns.map((turn) => turn.turnNo === no ? { ...turn, answer: body as InterviewTurn['answer'] } : turn);
-      return { ...card, status: 'CONFIRMED', confirmedAt: '2026-11-01T00:00:00Z' };
+    vi.spyOn(endpoints, 'replyInterview').mockImplementation(async (_id, no, body) => {
+      turns = turns.map((turn) => answeredIf(turn, no, body));
+      return appliedReply({ ...card, status: 'CONFIRMED', confirmedAt: '2026-11-01T00:00:00Z' });
     });
     const ask = vi.spyOn(endpoints, 'askInterview');
     mount(turns);
     await answerOpenTurn();
 
     expect(await screen.findByText('카드를 확정했어요')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '카드 보기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '카드로 돌아가기' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '카드 검토하기' })).not.toBeInTheDocument();
     expect(ask).not.toHaveBeenCalled();
   });

@@ -47,7 +47,8 @@ public class UnusedCandidateReader {
         return found.stream()
                 .map(candidate -> new UnusedCandidate(candidate.getUserRepositoryId(), candidate.getPublicId(),
                         candidate.getTitle(), candidate.getReasonText(),
-                        firstLines(commitIds.getOrDefault(candidate.getId(), List.of()), summaries, commitLimit)))
+                        firstLines(commitIds.getOrDefault(candidate.getId(), List.of()), summaries, commitLimit),
+                        candidate.getReviewCommentCount()))
                 .toList();
 
     }

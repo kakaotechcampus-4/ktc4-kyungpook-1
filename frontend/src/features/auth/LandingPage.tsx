@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useMe } from '@/api/queries';
 import { Button, Note } from '@/components/ui';
@@ -33,6 +33,7 @@ export function LandingPage() {
   const introActive = introRequested && !consent;
   const root = useRef<HTMLElement>(null);
   const { scrolled } = useLandingMotion(root, !introActive);
+  useLightLanding();
   // 이미 로그인한 사람이 /login 을 열면 로그인 화면에 머물지 않고 홈으로 간다. 원래 가려던 곳은 AuthGate 가 이어 준다.
   // (로그아웃은 캐시를 비운 뒤 여기로 오므로 다시 튕기지 않는다)
   const me = useMe();
@@ -113,6 +114,21 @@ export function LandingPage() {
     </main>
   );
 }
+/** 첫 화면은 다크 테마를 켜 둔 사람에게도 밝은 테마로 보인다. 떠날 때 원래 테마로 되돌린다 */
+function useLightLanding() {
+  useEffect(() => {
+    const html = document.documentElement;
+    const theme = html.getAttribute('data-theme');
+    const scheme = html.style.colorScheme;
+    html.removeAttribute('data-theme');
+    html.style.colorScheme = 'light';
+    return () => {
+      if (theme) html.setAttribute('data-theme', theme);
+      html.style.colorScheme = scheme;
+    };
+  }, []);
+}
+
 export function PermissionGrid({ reads, skips, compact }: { reads: string[]; skips: string[]; compact?: boolean }) {
   return (
     <div className={`perm ${compact ? 'perm--compact' : ''}`}>

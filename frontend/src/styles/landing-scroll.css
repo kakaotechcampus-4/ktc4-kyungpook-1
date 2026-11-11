@@ -1,6 +1,6 @@
 /*
  * 첫 화면(/login) 스크롤형 랜딩. .landing 에 쌓여 있던 예전 규칙(pages, design2, mono-pastel)을 .lp 범위에서 덮는다.
- * 색은 모두 토큰이라 다크 테마에서도 그대로 맞는다. 화면 캡처는 테마마다 따로 있다(lp-shot--light, lp-shot--dark).
+ * 첫 화면은 사용자가 다크 테마를 켜 두어도 밝은 테마로 보인다(LandingPage 가 열려 있는 동안 data-theme 을 뗀다).
  */
 .landing.lp { display: block; min-height: 100vh; padding: 0; gap: 0; background: var(--bg-paper); color: var(--text-primary); overflow-x: clip; word-break: keep-all; }
 .lp .lp-wrap { width: 100%; max-width: 1200px; margin-inline: auto; padding-inline: 20px; }
@@ -18,9 +18,9 @@
 .lp-top__link:hover { color: var(--text-primary); }
 
 /* 히어로 */
-.lp .lp-hero { display: block; width: 100%; max-width: none; padding: clamp(56px, 8vw, 96px) 0 0; background: var(--bg-surface); border-bottom: 1px solid var(--border-default); grid-template-columns: none; }
+.lp .lp-hero { display: block; width: 100%; max-width: none; padding: clamp(56px, 8vw, 96px) 0 clamp(40px, 5vw, 64px); background: var(--bg-surface); border-bottom: 1px solid var(--border-default); grid-template-columns: none; }
 .lp-hero__in { display: flex; flex-direction: column; align-items: center; text-align: center; }
-.lp .lp-h1 { margin: 0; max-width: none; font-size: clamp(30px, 6.2vw, 64px); line-height: 1.22; font-weight: var(--weight-heavy); letter-spacing: -.035em; text-wrap: balance; }
+.lp .lp-h1 { margin: 0; max-width: none; font-size: clamp(30px, 6.2vw, 64px); line-height: 1.22; font-weight: var(--weight-heavy); letter-spacing: -.035em; text-align: center; text-wrap: balance; }
 .lp .lp-h1 > span { display: block; text-decoration: none; }
 .lp-hword { display: inline-block; animation: lp-word .7s cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc(var(--i) * 70ms + 120ms); }
 .landing[data-intro="playing"] .lp-hword, .landing[data-intro="playing"] .lp-hero__stage { animation-play-state: paused; }
@@ -34,7 +34,7 @@
 .lp .lp-perm { margin-top: 14px; color: var(--text-secondary); font-size: 14px; text-align: left; }
 .lp .lp-perm summary { cursor: pointer; text-align: center; padding: 8px; }
 .lp-hero__stage { position: relative; width: 100%; max-width: 1040px; margin-top: 52px; padding-right: 9%; animation: lp-rise 1s cubic-bezier(.2, .7, .2, 1) .55s both; }
-.lp-hero__phone { position: absolute; right: 0; bottom: -18px; width: 24%; }
+.lp-hero__phone { position: absolute; right: 0; bottom: 0; width: 24%; }
 
 /* 기기 틀 */
 .lp-laptop { margin: 0; }
@@ -49,9 +49,6 @@
 .lp-phone .lp-shot { height: auto; aspect-ratio: 390 / 844; }
 .lp-phone__home { height: 22px; display: grid; place-items: center; }
 .lp-phone__home::after { content: ''; width: 34%; height: 4px; border-radius: 999px; background: var(--text-primary); }
-.lp-shot--dark { display: none; }
-[data-theme="dark"] .lp-shot--light { display: none; }
-[data-theme="dark"] .lp-shot--dark { display: block; }
 
 /* 흐르는 띠 */
 .lp-strip { overflow: hidden; padding: 20px 0; background: var(--bg-surface); border-bottom: 1px solid var(--border-default); }
@@ -63,7 +60,7 @@
 /* 채워지는 문장: PC 는 화면에 잠깐 머물고, 휴대폰은 지나가며 채운다 */
 .lp-ink { position: relative; height: 160vh; }
 .lp-ink__stage { position: sticky; top: 0; height: 100vh; display: flex; align-items: center; padding-inline: 20px; }
-.lp-ink__text { max-width: 1100px; margin: 0 auto; font-size: clamp(30px, 5.4vw, 60px); line-height: 1.3; font-weight: var(--weight-heavy); letter-spacing: -.035em; }
+.lp-ink__text { max-width: 1100px; margin: 0 auto; text-align: center; text-wrap: balance; font-size: clamp(30px, 5.4vw, 60px); line-height: 1.3; font-weight: var(--weight-heavy); letter-spacing: -.035em; }
 .lp[data-motion="on"] [data-ink-part] { color: color-mix(in srgb, var(--text-primary) 20%, transparent); transition: color .35s ease-out; }
 .lp[data-motion="on"] [data-ink-part][data-inked] { color: var(--text-primary); }
 
@@ -75,7 +72,7 @@
 .lp-line { display: block; }
 .lp-body { margin: 18px 0 0; color: var(--text-secondary); font-size: clamp(16px, 1.7vw, 20px); line-height: 1.65; text-wrap: pretty; }
 .lp-grid3 { margin-top: clamp(40px, 6vw, 56px); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.lp-quote { padding: 30px 28px; border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--bg-surface); font-size: clamp(20px, 2.4vw, 26px); line-height: 1.4; font-weight: var(--weight-heavy); }
+.lp-quote { padding: 32px 28px; text-align: center; border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--bg-surface); font-size: clamp(20px, 2.4vw, 26px); line-height: 1.4; font-weight: var(--weight-heavy); }
 .lp-quote small { display: block; margin-top: 14px; color: var(--text-on-feature-muted); font-size: 16px; font-weight: var(--weight-regular); }
 .lp-quote--ink { border-color: transparent; background: var(--bg-feature); color: var(--text-on-feature); }
 
@@ -164,8 +161,8 @@
   /* 휴대폰: 히어로는 노트북 대신 폰 하나를 크게, 채워지는 문장은 고정하지 않는다 */
   .lp-hero__stage { padding-right: 0; display: flex; justify-content: center; margin-top: 40px; }
   .lp-hero__stage .lp-laptop { display: none; }
-  .lp-hero__phone { position: static; width: min(72%, 300px); margin-bottom: -60px; }
-  .lp .lp-hero { padding-bottom: 0; overflow: hidden; }
+  .lp-hero__phone { position: static; width: min(72%, 300px); }
+  .lp .lp-hero { padding-bottom: 40px; overflow: hidden; }
   .lp-ink { height: auto; }
   .lp-ink__stage { position: static; height: auto; padding: 88px 20px; }
 }

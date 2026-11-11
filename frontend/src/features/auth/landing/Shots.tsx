@@ -1,14 +1,8 @@
-/**
- * 첫 화면에 쓰는 실제 화면 캡처. 밝은, 어두운 테마를 둘 다 두고 지금 테마에 맞는 쪽만 보인다(landing-scroll.css).
- * 캡처는 샘플 데이터 화면이며, public/landing 에 있다.
- */
-const src = (name: string, theme: 'light' | 'dark') => `/landing/${name}-${theme}.webp`;
+/** 첫 화면에 쓰는 실제 화면 캡처(샘플 데이터 화면, 밝은 테마). public/landing 에 있다 */
+const src = (name: string) => `/landing/${name}-light.webp`;
 
 function Themed({ name, alt, eager }: { name: string; alt: string; eager?: boolean }) {
-  return <>
-    <img className="lp-shot lp-shot--light" src={src(name, 'light')} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" />
-    <img className="lp-shot lp-shot--dark" src={src(name, 'dark')} alt="" aria-hidden="true" loading="lazy" decoding="async" />
-  </>;
+  return <img className="lp-shot" src={src(name)} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" />;
 }
 
 /** 노트북 틀. video 를 주면 캡처 대신 짧은 시연 영상을 반복 재생한다 */

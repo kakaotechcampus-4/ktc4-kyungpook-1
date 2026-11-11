@@ -192,6 +192,17 @@ LLM 은 경험 묶기 · STAR 초안 · 되묻기 · 공고 조건 추출 · 자
 
 운영 서비스는 [gitory.duckdns.org](https://gitory.duckdns.org/)에서 바로 쓸 수 있고, 로그인 없이 [샘플 데이터로 둘러보기](https://gitory.duckdns.org/login)도 됩니다. 직접 띄우거나 검증하려면 파트별 문서를 따라가면 됩니다.
 
+```bash
+# 1) 화면만 1분 안에 — 백엔드 없이 샘플 데이터로 (Node 22)
+cd frontend && npm ci && npm run dev        # http://localhost:5173
+
+# 2) 전체 서비스 — 가짜 GitHub·LLM 으로 Spring·FastAPI·DB 까지 (Docker)
+docker compose -f e2e/compose.yaml -p gitory-e2e up -d --build --wait   # http://localhost:8088
+docker compose -f e2e/compose.yaml -p gitory-e2e down                   # 끝나면 내리기
+```
+
+실제 GitHub·LLM 과 연결하거나 서버에 배포하려면 아래 문서를 따라가면 됩니다.
+
 | 작업 | 시작 문서 |
 | --- | --- |
 | 화면만 띄우기(백엔드 없이 샘플 데이터) · 단위/E2E 검사 | [Frontend README](./frontend/README.md) |
